@@ -1,0 +1,6 @@
+[submodule "third_party/substrait-python"]
+	path = third_party/substrait-python
+	url = git@github.com:substrait-io/substrait-python.git
+[submodule "third_party/spark"]
+	path = third_party/spark
+	url = git@github.com:apache/spark.git
