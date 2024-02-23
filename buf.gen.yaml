@@ -1,4 +1,0 @@
-plugins:
-  - name: python
-    out: src
-version: v1
