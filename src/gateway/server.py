@@ -12,12 +12,6 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
 
     def ExecutePlan(self, request, context):
         print(f"ExecutePlan: {request}")
-
-        # get the string from the incoming request
-        #message = request.message
-        #result = f'Hello I am up and running received "{message}" message from you'
-        #result = {'message': result, 'received': True}
-
         yield pb2.ExecutePlanResponse(session_id=request.session_id)
 
     def AnalyzePlan(self, request, context):
