@@ -10,14 +10,43 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
     def __init__(self, *args, **kwargs):
         pass
 
-    def GetServerResponse(self, request, context):
+    def ExecutePlan(self, request, context):
+        print(f"ExecutePlan: {request}")
 
         # get the string from the incoming request
-        message = request.message
-        result = f'Hello I am up and running received "{message}" message from you'
-        result = {'message': result, 'received': True}
+        #message = request.message
+        #result = f'Hello I am up and running received "{message}" message from you'
+        #result = {'message': result, 'received': True}
 
-        return pb2.MessageResponse(**result)
+        yield pb2.ExecutePlanResponse(session_id=request.session_id)
+
+    def AnalyzePlan(self, request, context):
+        print("AnalyzePlan")
+        return pb2.AnalyzePlanResponse()
+
+    def Config(self, request, context):
+        print("Config")
+        return pb2.ConfigResponse()
+
+    def AddArtifacts(self, request, context):
+        print("AddArtifacts")
+        return pb2.AddArtifactsResponse()
+
+    def ArtifactStatus(self, request, context):
+        print("ArtifactStatus")
+        return pb2.ArtifictStatusResponse()
+
+    def Interrupt(self, request, context):
+        print("Interrupt")
+        return pb2.InterruptResponse()
+
+    def ReattachExecute(self, request, context):
+        print("ReattachExecute")
+        return pb2.ReattachExecuteResponse()
+
+    def ReleaseExecute(self, request, context):
+        print("ReleaseExecute")
+        return pb2.ReleaseExecuteResponse()
 
 
 def serve():

@@ -5,7 +5,7 @@ dependencies:
   - pip
   - pre-commit
   - protobuf >= 4.21.6
-  - grpcio
+  - grpcio >= 1.48.1
   - grpcio-tools
   - pytest >= 7.0.0
   - python >= 3.8.1
