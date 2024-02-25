@@ -1,0 +1,210 @@
+session_id: "131e09e8-d3b5-4a60-9d85-3dcfde55475a"
+user_context {
+  user_id: "davids"
+}
+plan {
+  root {
+    common {
+      plan_id: 9
+    }
+    show_string {
+      input {
+        common {
+          plan_id: 8
+        }
+        limit {
+          input {
+            common {
+              plan_id: 7
+            }
+            sort {
+              input {
+                common {
+                  plan_id: 6
+                }
+                aggregate {
+                  input {
+                    common {
+                      plan_id: 5
+                    }
+                    filter {
+                      input {
+                        common {
+                          plan_id: 4
+                        }
+                        filter {
+                          input {
+                            common {
+                              plan_id: 3
+                            }
+                            with_columns {
+                              input {
+                                common {
+                                  plan_id: 2
+                                }
+                                with_columns {
+                                  input {
+                                    common {
+                                      plan_id: 1
+                                    }
+                                    with_columns {
+                                      input {
+                                        common {
+                                          plan_id: 0
+                                        }
+                                        read {
+                                          data_source {
+                                            format: "csv"
+                                            schema: ""
+                                            options {
+                                              key: "header"
+                                              value: "true"
+                                            }
+                                            options {
+                                              key: "inferSchema"
+                                              value: "true"
+                                            }
+                                            paths: "/Users/davids/Desktop/artists.csv"
+                                          }
+                                        }
+                                      }
+                                      aliases {
+                                        expr {
+                                          unresolved_function {
+                                            function_name: "split"
+                                            arguments {
+                                              unresolved_attribute {
+                                                unparsed_identifier: "tags_lastfm"
+                                              }
+                                            }
+                                            arguments {
+                                              literal {
+                                                string: "; "
+                                              }
+                                            }
+                                            arguments {
+                                              literal {
+                                                integer: -1
+                                              }
+                                            }
+                                          }
+                                        }
+                                        name: "tags_lastfm"
+                                      }
+                                    }
+                                  }
+                                  aliases {
+                                    expr {
+                                      cast {
+                                        expr {
+                                          unresolved_attribute {
+                                            unparsed_identifier: "listeners_lastfm"
+                                          }
+                                        }
+                                        type {
+                                          integer {
+                                          }
+                                        }
+                                      }
+                                    }
+                                    name: "listeners_lastfm"
+                                  }
+                                }
+                              }
+                              aliases {
+                                expr {
+                                  cast {
+                                    expr {
+                                      unresolved_attribute {
+                                        unparsed_identifier: "ambiguous_artist"
+                                      }
+                                    }
+                                    type {
+                                      boolean {
+                                      }
+                                    }
+                                  }
+                                }
+                                name: "ambiguous_artist"
+                              }
+                            }
+                          }
+                          condition {
+                            unresolved_function {
+                              function_name: "=="
+                              arguments {
+                                unresolved_attribute {
+                                  unparsed_identifier: "ambiguous_artist"
+                                }
+                              }
+                              arguments {
+                                literal {
+                                  boolean: false
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                      condition {
+                        unresolved_function {
+                          function_name: "array_contains"
+                          arguments {
+                            unresolved_attribute {
+                              unparsed_identifier: "tags_lastfm"
+                            }
+                          }
+                          arguments {
+                            literal {
+                              string: "pop"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                  group_type: GROUP_TYPE_GROUPBY
+                  grouping_expressions {
+                    unresolved_attribute {
+                      unparsed_identifier: "artist_lastfm"
+                      plan_id: 5
+                    }
+                  }
+                  aggregate_expressions {
+                    alias {
+                      expr {
+                        unresolved_function {
+                          function_name: "sum"
+                          arguments {
+                            unresolved_attribute {
+                              unparsed_identifier: "listeners_lastfm"
+                            }
+                          }
+                        }
+                      }
+                      name: "# of Listeners"
+                    }
+                  }
+                }
+              }
+              order {
+                child {
+                  unresolved_attribute {
+                    unparsed_identifier: "# of Listeners"
+                  }
+                }
+                direction: SORT_DIRECTION_DESCENDING
+                null_ordering: SORT_NULLS_LAST
+              }
+              is_global: true
+            }
+          }
+          limit: 10
+        }
+      }
+      num_rows: 20
+      truncate: 20
+    }
+  }
+}
+client_type: "_SPARK_CONNECT_PYTHON"

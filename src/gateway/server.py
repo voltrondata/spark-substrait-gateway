@@ -1,8 +1,10 @@
 import grpc
 from concurrent import futures
-import time
+from typing import Generator
+
 import spark.connect.base_pb2_grpc as pb2_grpc
 import spark.connect.base_pb2 as pb2
+from gateway.converter.spark_to_substrait import SparkSubstraitConverter
 
 
 class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
@@ -10,9 +12,13 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
     def __init__(self, *args, **kwargs):
         pass
 
-    def ExecutePlan(self, request, context):
+    def ExecutePlan(self, request: pb2.ExecutePlanRequest, context) -> Generator[pb2.ExecutePlanResponse, None, None]:
         print(f"ExecutePlan: {request}")
-        yield pb2.ExecutePlanResponse(session_id=request.session_id)
+        convert = SparkSubstraitConverter()
+        substrait = convert.convert_plan(request.plan)
+        print(f"  as Substrait: {substrait}")
+        yield pb2.ExecutePlanResponse(session_id=request.session_id,
+                                      arrow_batch=pb2.ExecutePlanResponse.ArrowBatch(row_count=0, data=None))
 
     def AnalyzePlan(self, request, context):
         print("AnalyzePlan")
