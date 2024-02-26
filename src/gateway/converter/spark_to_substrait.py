@@ -49,5 +49,5 @@ class SparkSubstraitConverter:
     def convert_plan(self, plan: spark_pb2.Plan) -> plan_pb2.Plan:
         result = plan_pb2.Plan()
         if plan.HasField('root'):
-            self.convert_relation(plan.root)
+            result.relations.append(plan_pb2.PlanRel(root=algebra_pb2.RelRoot(input=self.convert_relation(plan.root))))
         return result
