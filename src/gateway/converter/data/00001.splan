@@ -1,6 +1,24 @@
 relations {
   root {
     input {
+      sort {
+        input {
+          aggregate {
+            input {
+              filter {
+                input {
+                  filter {
+                    input {
+                      read {
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }
