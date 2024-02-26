@@ -12,7 +12,7 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
     def __init__(self, *args, **kwargs):
         pass
 
-    def ExecutePlan(self, request: pb2.ExecutePlanRequest, context) -> Generator[pb2.ExecutePlanResponse, None, None]:
+    def ExecutePlan(self, request: pb2.ExecutePlanRequest, context: grpc.RpcContext) -> Generator[pb2.ExecutePlanResponse, None, None]:
         print(f"ExecutePlan: {request}")
         convert = SparkSubstraitConverter()
         substrait = convert.convert_plan(request.plan)
