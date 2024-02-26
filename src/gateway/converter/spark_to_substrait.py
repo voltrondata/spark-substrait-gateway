@@ -6,8 +6,26 @@ import substrait.gen.proto.algebra_pb2 as algebra_pb2
 
 class SparkSubstraitConverter:
 
+    def convert_read_named_table_relation(self, rel: spark_relations_pb2.Read) -> algebra_pb2.Rel:
+        raise NotImplementedError('named tables are not yet implemented')
+
+    def convert_read_data_source_relation(self, rel: spark_relations_pb2.Read) -> algebra_pb2.Rel:
+        local = algebra_pb2.ReadRel.LocalFiles()
+        # format (parquet, orc, text, json, csv, avro) - (dwrf, arrow)
+        # schema
+        # options
+        for p in rel.paths:
+            local.items.append(algebra_pb2.ReadRel.LocalFiles.FileOrFiles(uri_file=p))
+        return algebra_pb2.Rel(read=algebra_pb2.ReadRel(local_files=local))
+
     def convert_read_relation(self, rel: spark_relations_pb2.Read) -> algebra_pb2.Rel:
-        return algebra_pb2.Rel(read=algebra_pb2.ReadRel())
+        match rel.WhichOneof('read_type'):
+            case 'named_table':
+                return self.convert_read_named_table_relation(rel.named_table)
+            case 'data_source':
+                return self.convert_read_data_source_relation(rel.data_source)
+            case _:
+                raise ValueError(f'Unexpected read type: {rel.WhichOneof("read_type")}')
 
     def convert_filter_relation(self, rel: spark_relations_pb2.Filter) -> algebra_pb2.Rel:
         return algebra_pb2.Rel(filter=algebra_pb2.FilterRel(input=self.convert_relation(rel.input)))

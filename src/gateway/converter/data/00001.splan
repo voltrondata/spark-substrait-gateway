@@ -10,6 +10,11 @@ relations {
                   filter {
                     input {
                       read {
+                        local_files {
+                          items {
+                            uri_file: "/Users/davids/Desktop/artists.csv"
+                          }
+                        }
                       }
                     }
                   }
