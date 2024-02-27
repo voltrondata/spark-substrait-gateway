@@ -11,6 +11,7 @@ from gateway.converter.spark_to_substrait import SparkSubstraitConverter
 
 
 class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
+    """Provides the SparkConnect service."""
 
     def __init__(self, *args, **kwargs):
         pass
@@ -56,6 +57,7 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
 
 
 def serve():
+    """Starts the SparkConnect to Substrait gateway server."""
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     pb2_grpc.add_SparkConnectServiceServicer_to_server(SparkConnectService(), server)
     server.add_insecure_port('[::]:50051')
