@@ -1,24 +1,32 @@
-import grpc
+# SPDX-License-Identifier: Apache-2.0
+"""SparkConnect server that drives a backend using Substrait."""
 from concurrent import futures
 from typing import Generator
+
+import grpc
 
 import spark.connect.base_pb2_grpc as pb2_grpc
 import spark.connect.base_pb2 as pb2
 from gateway.converter.spark_to_substrait import SparkSubstraitConverter
 
 
+# pylint: disable=E1101
 class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
+    """Provides the SparkConnect service."""
 
     def __init__(self, *args, **kwargs):
         pass
 
-    def ExecutePlan(self, request: pb2.ExecutePlanRequest, context: grpc.RpcContext) -> Generator[pb2.ExecutePlanResponse, None, None]:
+    def ExecutePlan(
+            self, request: pb2.ExecutePlanRequest, context: grpc.RpcContext) -> Generator[
+        pb2.ExecutePlanResponse, None, None]:
         print(f"ExecutePlan: {request}")
         convert = SparkSubstraitConverter()
         substrait = convert.convert_plan(request.plan)
         print(f"  as Substrait: {substrait}")
-        yield pb2.ExecutePlanResponse(session_id=request.session_id,
-                                      arrow_batch=pb2.ExecutePlanResponse.ArrowBatch(row_count=0, data=None))
+        yield pb2.ExecutePlanResponse(
+            session_id=request.session_id,
+            arrow_batch=pb2.ExecutePlanResponse.ArrowBatch(row_count=0, data=None))
 
     def AnalyzePlan(self, request, context):
         print("AnalyzePlan")
@@ -28,7 +36,7 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
         print("Config")
         return pb2.ConfigResponse()
 
-    def AddArtifacts(self, request, context):
+    def AddArtifacts(self, request_iterator, context):
         print("AddArtifacts")
         return pb2.AddArtifactsResponse()
 
@@ -50,6 +58,7 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
 
 
 def serve():
+    """Starts the SparkConnect to Substrait gateway server."""
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     pb2_grpc.add_SparkConnectServiceServicer_to_server(SparkConnectService(), server)
     server.add_insecure_port('[::]:50051')
