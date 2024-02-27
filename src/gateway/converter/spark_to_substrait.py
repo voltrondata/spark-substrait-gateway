@@ -7,13 +7,16 @@ import spark.connect.base_pb2 as spark_pb2
 import spark.connect.relations_pb2 as spark_relations_pb2
 
 
-# pylint: disable=E1101
+# pylint: disable=E1101,fixme
 class SparkSubstraitConverter:
+    """Converts SparkConnect plans to Substrait plans."""
 
     def convert_read_named_table_relation(self, rel: spark_relations_pb2.Read) -> algebra_pb2.Rel:
+        """Converts a read named table relation to a Substrait relation."""
         raise NotImplementedError('named tables are not yet implemented')
 
     def convert_read_data_source_relation(self, rel: spark_relations_pb2.Read) -> algebra_pb2.Rel:
+        """Converts a read data source relation into a Substrait relation."""
         local = algebra_pb2.ReadRel.LocalFiles()
         match rel.format:
             case 'parquest':
@@ -41,6 +44,7 @@ class SparkSubstraitConverter:
         return algebra_pb2.Rel(read=algebra_pb2.ReadRel(local_files=local))
 
     def convert_read_relation(self, rel: spark_relations_pb2.Read) -> algebra_pb2.Rel:
+        """Converts a read relation into a Substrait relation."""
         match rel.WhichOneof('read_type'):
             case 'named_table':
                 return self.convert_read_named_table_relation(rel.named_table)
@@ -50,29 +54,37 @@ class SparkSubstraitConverter:
                 raise ValueError(f'Unexpected read type: {rel.WhichOneof("read_type")}')
 
     def convert_filter_relation(self, rel: spark_relations_pb2.Filter) -> algebra_pb2.Rel:
+        """Converts a filter relation into a Substrait relation."""
         return algebra_pb2.Rel(filter=algebra_pb2.FilterRel(input=self.convert_relation(rel.input)))
 
     def convert_sort_relation(self, rel: spark_relations_pb2.Sort) -> algebra_pb2.Rel:
+        """Converts a sort relation into a Substrait relation."""
         return algebra_pb2.Rel(sort=algebra_pb2.SortRel(input=self.convert_relation(rel.input)))
 
     def convert_limit_relation(self, rel: spark_relations_pb2.Limit) -> algebra_pb2.Rel:
+        """Converts a limit relation into a Substrait FetchRel relation."""
         return algebra_pb2.Rel(
             fetch=algebra_pb2.FetchRel(input=self.convert_relation(rel.input), count=rel.limit))
 
     def convert_aggregate_relation(self, rel: spark_relations_pb2.Aggregate) -> algebra_pb2.Rel:
+        """Converts an aggregate relation into a Substrait relation."""
         return algebra_pb2.Rel(
             aggregate=algebra_pb2.AggregateRel(input=self.convert_relation(rel.input)))
 
     def convert_show_string_relation(self, rel: spark_relations_pb2.ShowString) -> algebra_pb2.Rel:
+        """Converts a show string relation into a Substrait project relation."""
         # TODO -- Implement.
         return self.convert_relation(rel.input)
 
     def convert_with_columns_relation(
             self, rel: spark_relations_pb2.WithColumns) -> algebra_pb2.Rel:
+        """Converts a with columns relation into a Substrait project relation."""
         return algebra_pb2.Rel(
             project=algebra_pb2.ProjectRel(input=self.convert_relation(rel.input)))
 
+    # pylint: disable=too-many-return-statements
     def convert_relation(self, rel: spark_relations_pb2.Relation) -> algebra_pb2.Rel:
+        """Converts a Spark relation into a Substrait one."""
         match rel.WhichOneof('rel_type'):
             case 'read':
                 return self.convert_read_relation(rel.read)
@@ -92,6 +104,7 @@ class SparkSubstraitConverter:
                 raise ValueError(f'Unexpected rel type: {rel.WhichOneof("rel_type")}')
 
     def convert_plan(self, plan: spark_pb2.Plan) -> plan_pb2.Plan:
+        """Converts a Spark plan into a Substrait plan."""
         result = plan_pb2.Plan()
         if plan.HasField('root'):
             result.relations.append(plan_pb2.PlanRel(
