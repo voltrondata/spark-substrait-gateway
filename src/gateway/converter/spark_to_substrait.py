@@ -60,9 +60,9 @@ class SparkSubstraitConverter:
 
     def convert_filter_relation(self, rel: spark_relations_pb2.Filter) -> algebra_pb2.Rel:
         """Converts a filter relation into a Substrait relation."""
-        filter = algebra_pb2.FilterRel(input=self.convert_relation(rel.input))
-        filter.condition.CopyFrom(self.convert_expression(filter.condition))
-        return algebra_pb2.Rel(filter=filter)
+        f = algebra_pb2.FilterRel(input=self.convert_relation(rel.input))
+        f.condition.CopyFrom(self.convert_expression(rel.condition))
+        return algebra_pb2.Rel(filter=f)
 
     def convert_sort_relation(self, rel: spark_relations_pb2.Sort) -> algebra_pb2.Rel:
         """Converts a sort relation into a Substrait relation."""
@@ -70,14 +70,14 @@ class SparkSubstraitConverter:
         for order in rel.order:
             if order.direction == spark_expressions_pb2.Expression.SortOrder.SORT_DIRECTION_ASCENDING:
                 if order.null_ordering == spark_expressions_pb2.Expression.SortOrder.SORT_NULLS_FIRST:
-                    direction=algebra_pb2.SortField.SORT_DIRECTION_ASC_NULLS_FIRST
+                    direction = algebra_pb2.SortField.SORT_DIRECTION_ASC_NULLS_FIRST
                 else:
-                    direction=algebra_pb2.SortField.SORT_DIRECTION_ASC_NULLS_LAST
+                    direction = algebra_pb2.SortField.SORT_DIRECTION_ASC_NULLS_LAST
             else:
                 if order.null_ordering == spark_expressions_pb2.Expression.SortOrder.SORT_NULLS_FIRST:
-                    direction=algebra_pb2.SortField.SORT_DIRECTION_DESC_NULLS_FIRST
+                    direction = algebra_pb2.SortField.SORT_DIRECTION_DESC_NULLS_FIRST
                 else:
-                    direction=algebra_pb2.SortField.SORT_DIRECTION_DESC_NULLS_LAST
+                    direction = algebra_pb2.SortField.SORT_DIRECTION_DESC_NULLS_LAST
             sort.sorts.append(algebra_pb2.SortField(
                 expr=self.convert_expression(order.child),
                 direction=direction))
