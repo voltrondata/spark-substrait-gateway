@@ -1,7 +1,8 @@
+from substrait.gen.proto import plan_pb2
+from substrait.gen.proto import algebra_pb2
+
 import spark.connect.base_pb2 as spark_pb2
 import spark.connect.relations_pb2 as spark_relations_pb2
-import substrait.gen.proto.plan_pb2 as plan_pb2
-import substrait.gen.proto.algebra_pb2 as algebra_pb2
 
 
 class SparkSubstraitConverter:
@@ -24,7 +25,7 @@ class SparkSubstraitConverter:
                 # TODO -- Implement CSV once Substrait has support.
                 pass
             case 'avro':
-               raise NotImplementedError('the only supported formats are parquet and orc')
+                raise NotImplementedError('the only supported formats are parquet and orc')
             case 'arrow':
                 local.parquet = algebra_pb2.ReadRel.ArrowReadOptions()
             case 'dwrf':
@@ -52,17 +53,20 @@ class SparkSubstraitConverter:
         return algebra_pb2.Rel(sort=algebra_pb2.SortRel(input=self.convert_relation(rel.input)))
 
     def convert_limit_relation(self, rel: spark_relations_pb2.Limit) -> algebra_pb2.Rel:
-        return algebra_pb2.Rel(fetch=algebra_pb2.FetchRel(input=self.convert_relation(rel.input), count=rel.limit))
+        return algebra_pb2.Rel(
+            fetch=algebra_pb2.FetchRel(input=self.convert_relation(rel.input), count=rel.limit))
 
     def convert_aggregate_relation(self, rel: spark_relations_pb2.Aggregate) -> algebra_pb2.Rel:
-        return algebra_pb2.Rel(aggregate=algebra_pb2.AggregateRel(input=self.convert_relation(rel.input)))
+        return algebra_pb2.Rel(
+            aggregate=algebra_pb2.AggregateRel(input=self.convert_relation(rel.input)))
 
     def convert_show_string_relation(self, rel: spark_relations_pb2.ShowString) -> algebra_pb2.Rel:
         # TODO -- Implement.
         return self.convert_relation(rel.input)
 
     def convert_with_columns_relation(self, rel: spark_relations_pb2.WithColumns) -> algebra_pb2.Rel:
-        return algebra_pb2.Rel(project=algebra_pb2.ProjectRel(input=self.convert_relation(rel.input)))
+        return algebra_pb2.Rel(
+            project=algebra_pb2.ProjectRel(input=self.convert_relation(rel.input)))
 
     def convert_relation(self, rel: spark_relations_pb2.Relation) -> algebra_pb2.Rel:
         match rel.WhichOneof('rel_type'):
