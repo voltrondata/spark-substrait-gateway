@@ -66,8 +66,22 @@ class SparkSubstraitConverter:
 
     def convert_sort_relation(self, rel: spark_relations_pb2.Sort) -> algebra_pb2.Rel:
         """Converts a sort relation into a Substrait relation."""
-        # TODO -- Implement.
-        return algebra_pb2.Rel(sort=algebra_pb2.SortRel(input=self.convert_relation(rel.input)))
+        sort = algebra_pb2.SortRel(input=self.convert_relation(rel.input))
+        for order in rel.order:
+            if order.direction == spark_expressions_pb2.Expression.SortOrder.SORT_DIRECTION_ASCENDING:
+                if order.null_ordering == spark_expressions_pb2.Expression.SortOrder.SORT_NULLS_FIRST:
+                    direction=algebra_pb2.SortField.SORT_DIRECTION_ASC_NULLS_FIRST
+                else:
+                    direction=algebra_pb2.SortField.SORT_DIRECTION_ASC_NULLS_LAST
+            else:
+                if order.null_ordering == spark_expressions_pb2.Expression.SortOrder.SORT_NULLS_FIRST:
+                    direction=algebra_pb2.SortField.SORT_DIRECTION_DESC_NULLS_FIRST
+                else:
+                    direction=algebra_pb2.SortField.SORT_DIRECTION_DESC_NULLS_LAST
+            sort.sorts.append(algebra_pb2.SortField(
+                expr=self.convert_expression(order.child),
+                direction=direction))
+        return algebra_pb2.Rel(sort=sort)
 
     def convert_limit_relation(self, rel: spark_relations_pb2.Limit) -> algebra_pb2.Rel:
         """Converts a limit relation into a Substrait FetchRel relation."""

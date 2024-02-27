@@ -62,6 +62,11 @@ relations {
                 }
               }
             }
+            sorts {
+              expr {
+              }
+              direction: SORT_DIRECTION_DESC_NULLS_LAST
+            }
           }
         }
         count: 10
