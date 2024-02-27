@@ -60,10 +60,13 @@ class SparkSubstraitConverter:
 
     def convert_filter_relation(self, rel: spark_relations_pb2.Filter) -> algebra_pb2.Rel:
         """Converts a filter relation into a Substrait relation."""
-        return algebra_pb2.Rel(filter=algebra_pb2.FilterRel(input=self.convert_relation(rel.input)))
+        filter = algebra_pb2.FilterRel(input=self.convert_relation(rel.input))
+        filter.condition.CopyFrom(self.convert_expression(filter.condition))
+        return algebra_pb2.Rel(filter=filter)
 
     def convert_sort_relation(self, rel: spark_relations_pb2.Sort) -> algebra_pb2.Rel:
         """Converts a sort relation into a Substrait relation."""
+        # TODO -- Implement.
         return algebra_pb2.Rel(sort=algebra_pb2.SortRel(input=self.convert_relation(rel.input)))
 
     def convert_limit_relation(self, rel: spark_relations_pb2.Limit) -> algebra_pb2.Rel:
@@ -73,12 +76,13 @@ class SparkSubstraitConverter:
 
     def convert_aggregate_relation(self, rel: spark_relations_pb2.Aggregate) -> algebra_pb2.Rel:
         """Converts an aggregate relation into a Substrait relation."""
+        # TODO -- Implement.
         return algebra_pb2.Rel(
             aggregate=algebra_pb2.AggregateRel(input=self.convert_relation(rel.input)))
 
     def convert_show_string_relation(self, rel: spark_relations_pb2.ShowString) -> algebra_pb2.Rel:
         """Converts a show string relation into a Substrait project relation."""
-        # TODO -- Implement.
+        # TODO -- Implement using num_rows, truncate, and vertical.
         return self.convert_relation(rel.input)
 
     def convert_with_columns_relation(

@@ -52,7 +52,11 @@ relations {
                             }
                           }
                         }
+                        condition {
+                        }
                       }
+                    }
+                    condition {
                     }
                   }
                 }
