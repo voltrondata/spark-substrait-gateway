@@ -16,9 +16,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
-        conda init
-        conda env update --file environment.yml
-        conda activate spark-substrait-gateway-env
+        conda env update --file environment.yml -name spark-substrait-gateway-env
         python -m pip install --upgrade pip
         pip install pylint
     - name: Analysing the code with pylint
