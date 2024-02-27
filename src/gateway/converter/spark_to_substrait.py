@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+"""Routines to convert SparkConnect plans to Substrait plans."""
 from substrait.gen.proto import plan_pb2
 from substrait.gen.proto import algebra_pb2
 
@@ -64,7 +66,8 @@ class SparkSubstraitConverter:
         # TODO -- Implement.
         return self.convert_relation(rel.input)
 
-    def convert_with_columns_relation(self, rel: spark_relations_pb2.WithColumns) -> algebra_pb2.Rel:
+    def convert_with_columns_relation(
+            self, rel: spark_relations_pb2.WithColumns) -> algebra_pb2.Rel:
         return algebra_pb2.Rel(
             project=algebra_pb2.ProjectRel(input=self.convert_relation(rel.input)))
 
@@ -90,6 +93,7 @@ class SparkSubstraitConverter:
     def convert_plan(self, plan: spark_pb2.Plan) -> plan_pb2.Plan:
         result = plan_pb2.Plan()
         if plan.HasField('root'):
-            result.relations.append(plan_pb2.PlanRel(root=algebra_pb2.RelRoot(input=self.convert_relation(plan.root))))
+            result.relations.append(plan_pb2.PlanRel(
+                root=algebra_pb2.RelRoot(input=self.convert_relation(plan.root))))
         # TODO -- Add the extension_uris and extensions we referenced to result.
         return result

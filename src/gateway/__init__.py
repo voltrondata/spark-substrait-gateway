@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 try:
     from ._version import __version__  # noqa: F401
 except ImportError:
