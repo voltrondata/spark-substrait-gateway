@@ -12,10 +12,25 @@ relations {
                       filter {
                         input {
                           project {
+                            common {
+                              emit {
+                                output_mapping: 0
+                              }
+                            }
                             input {
                               project {
+                                common {
+                                  emit {
+                                    output_mapping: 0
+                                  }
+                                }
                                 input {
                                   project {
+                                    common {
+                                      emit {
+                                        output_mapping: 0
+                                      }
+                                    }
                                     input {
                                       read {
                                         local_files {
@@ -25,9 +40,15 @@ relations {
                                         }
                                       }
                                     }
+                                    expressions {
+                                    }
                                   }
                                 }
+                                expressions {
+                                }
                               }
+                            }
+                            expressions {
                             }
                           }
                         }

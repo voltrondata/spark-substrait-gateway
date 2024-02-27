@@ -4,12 +4,17 @@ from substrait.gen.proto import plan_pb2
 from substrait.gen.proto import algebra_pb2
 
 import spark.connect.base_pb2 as spark_pb2
+import spark.connect.expressions_pb2 as spark_expressions_pb2
 import spark.connect.relations_pb2 as spark_relations_pb2
 
 
 # pylint: disable=E1101,fixme
 class SparkSubstraitConverter:
     """Converts SparkConnect plans to Substrait plans."""
+
+    def convert_expression(self, expr: spark_expressions_pb2.Expression) -> algebra_pb2.Expression:
+        """Converts a SparkConnect expression to a Substrait expression."""
+        return algebra_pb2.Expression()
 
     def convert_read_named_table_relation(self, rel: spark_relations_pb2.Read) -> algebra_pb2.Rel:
         """Converts a read named table relation to a Substrait relation."""
@@ -79,8 +84,13 @@ class SparkSubstraitConverter:
     def convert_with_columns_relation(
             self, rel: spark_relations_pb2.WithColumns) -> algebra_pb2.Rel:
         """Converts a with columns relation into a Substrait project relation."""
-        return algebra_pb2.Rel(
-            project=algebra_pb2.ProjectRel(input=self.convert_relation(rel.input)))
+        project = algebra_pb2.ProjectRel(input=self.convert_relation(rel.input))
+        num_emitted_fields = 0
+        for alias in rel.aliases:
+            # TODO -- Handle the output columns correctly.
+            project.expressions.append(self.convert_expression(alias.expr))
+            project.common.emit.output_mapping.append(num_emitted_fields)
+        return algebra_pb2.Rel(project=project)
 
     # pylint: disable=too-many-return-statements
     def convert_relation(self, rel: spark_relations_pb2.Relation) -> algebra_pb2.Rel:
