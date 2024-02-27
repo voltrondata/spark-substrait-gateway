@@ -18,6 +18,7 @@ test_case_paths = [f for f in test_case_directory.iterdir() if f.name.endswith('
 test_case_names = [os.path.basename(p).removesuffix('.spark') for p in test_case_paths]
 
 
+# pylint: disable=E1101
 @pytest.mark.parametrize(
     'path',
     test_case_paths,

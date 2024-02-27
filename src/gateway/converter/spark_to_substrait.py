@@ -7,6 +7,7 @@ import spark.connect.base_pb2 as spark_pb2
 import spark.connect.relations_pb2 as spark_relations_pb2
 
 
+# pylint: disable=E1101
 class SparkSubstraitConverter:
 
     def convert_read_named_table_relation(self, rel: spark_relations_pb2.Read) -> algebra_pb2.Rel:

@@ -10,6 +10,7 @@ import spark.connect.base_pb2 as pb2
 from gateway.converter.spark_to_substrait import SparkSubstraitConverter
 
 
+# pylint: disable=E1101
 class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
     """Provides the SparkConnect service."""
 
