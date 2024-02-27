@@ -1,5 +1,7 @@
-import pytest
+# SPDX-License-Identifier: Apache-2.0
+"""Configuration for pytest."""
 
 
 def pytest_addoption(parser):
-    parser.addoption(f"--rebuild_goldens", action="store", default=False)
+    """Adds the rebuild goldens command line option to pytest."""
+    parser.addoption("--rebuild_goldens", action="store", default=False)

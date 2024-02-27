@@ -34,3 +34,6 @@ unfixable = [
   "F401",  # unused imports
   "T201",  # print statements
 ]
+
+[tool.pylint.MASTER]
+ignore-paths = '^src/spark/connect/.*$'
