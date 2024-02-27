@@ -1,4 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
+"""The spark to substrait gateway server module.."""
+
 try:
     from ._version import __version__  # noqa: F401
 except ImportError:
