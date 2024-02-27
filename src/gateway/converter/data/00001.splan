@@ -1,18 +1,34 @@
 relations {
   root {
     input {
-      sort {
+      fetch {
         input {
-          aggregate {
+          sort {
             input {
-              filter {
+              aggregate {
                 input {
                   filter {
                     input {
-                      read {
-                        local_files {
-                          items {
-                            uri_file: "/Users/davids/Desktop/artists.csv"
+                      filter {
+                        input {
+                          project {
+                            input {
+                              project {
+                                input {
+                                  project {
+                                    input {
+                                      read {
+                                        local_files {
+                                          items {
+                                            uri_file: "/Users/davids/Desktop/artists.csv"
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
                           }
                         }
                       }
@@ -23,6 +39,7 @@ relations {
             }
           }
         }
+        count: 10
       }
     }
   }

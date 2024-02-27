@@ -32,7 +32,6 @@ class SparkSubstraitConverter:
             case _:
                 raise NotImplementedError(f'Unexpected file format: {rel.format}')
         # TODO -- Handle the schema.
-        # options
         for p in rel.paths:
             local.items.append(algebra_pb2.ReadRel.LocalFiles.FileOrFiles(uri_file=p))
         return algebra_pb2.Rel(read=algebra_pb2.ReadRel(local_files=local))
@@ -53,8 +52,7 @@ class SparkSubstraitConverter:
         return algebra_pb2.Rel(sort=algebra_pb2.SortRel(input=self.convert_relation(rel.input)))
 
     def convert_limit_relation(self, rel: spark_relations_pb2.Limit) -> algebra_pb2.Rel:
-        # TODO -- Implement.
-        return self.convert_relation(rel.input)
+        return algebra_pb2.Rel(fetch=algebra_pb2.FetchRel(input=self.convert_relation(rel.input), count=rel.limit))
 
     def convert_aggregate_relation(self, rel: spark_relations_pb2.Aggregate) -> algebra_pb2.Rel:
         return algebra_pb2.Rel(aggregate=algebra_pb2.AggregateRel(input=self.convert_relation(rel.input)))
@@ -64,8 +62,7 @@ class SparkSubstraitConverter:
         return self.convert_relation(rel.input)
 
     def convert_with_columns_relation(self, rel: spark_relations_pb2.WithColumns) -> algebra_pb2.Rel:
-        # TODO -- Implement.
-        return self.convert_relation(rel.input)
+        return algebra_pb2.Rel(project=algebra_pb2.ProjectRel(input=self.convert_relation(rel.input)))
 
     def convert_relation(self, rel: spark_relations_pb2.Relation) -> algebra_pb2.Rel:
         match rel.WhichOneof('rel_type'):
