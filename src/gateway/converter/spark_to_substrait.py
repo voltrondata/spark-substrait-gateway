@@ -11,8 +11,27 @@ class SparkSubstraitConverter:
 
     def convert_read_data_source_relation(self, rel: spark_relations_pb2.Read) -> algebra_pb2.Rel:
         local = algebra_pb2.ReadRel.LocalFiles()
-        # format (parquet, orc, text, json, csv, avro) - (dwrf, arrow)
-        # schema
+        match rel.format:
+            case 'parquest':
+                local.parquet = algebra_pb2.ReadRel.ParquetReadOptions()
+            case 'orc':
+                local.parquet = algebra_pb2.ReadRel.OrcReadOptions()
+            case 'text':
+                raise NotImplementedError('the only supported formats are parquet and orc')
+            case 'json':
+                raise NotImplementedError('the only supported formats are parquet and orc')
+            case 'csv':
+                # TODO -- Implement CSV once Substrait has support.
+                pass
+            case 'avro':
+               raise NotImplementedError('the only supported formats are parquet and orc')
+            case 'arrow':
+                local.parquet = algebra_pb2.ReadRel.ArrowReadOptions()
+            case 'dwrf':
+                local.parquet = algebra_pb2.ReadRel.DwrfReadOptions()
+            case _:
+                raise NotImplementedError(f'Unexpected file format: {rel.format}')
+        # TODO -- Handle the schema.
         # options
         for p in rel.paths:
             local.items.append(algebra_pb2.ReadRel.LocalFiles.FileOrFiles(uri_file=p))
