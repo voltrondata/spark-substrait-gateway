@@ -16,6 +16,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
+        conda init
         conda env update --file environment.yml
         conda activate spark-substrait-gateway-env
         python -m pip install --upgrade pip
