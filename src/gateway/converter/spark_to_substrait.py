@@ -16,6 +16,11 @@ class SparkSubstraitConverter:
         """Converts a SparkConnect expression to a Substrait expression."""
         return algebra_pb2.Expression()
 
+    def convert_expression_to_aggregate_function(self,
+                                                 expr: spark_expressions_pb2.Expression) -> algebra_pb2.AggregateFunction:
+        """Converts a SparkConnect expression to a Substrait expression."""
+        return algebra_pb2.AggregateFunction()
+
     def convert_read_named_table_relation(self, rel: spark_relations_pb2.Read) -> algebra_pb2.Rel:
         """Converts a read named table relation to a Substrait relation."""
         raise NotImplementedError('named tables are not yet implemented')
@@ -90,9 +95,15 @@ class SparkSubstraitConverter:
 
     def convert_aggregate_relation(self, rel: spark_relations_pb2.Aggregate) -> algebra_pb2.Rel:
         """Converts an aggregate relation into a Substrait relation."""
-        # TODO -- Implement.
-        return algebra_pb2.Rel(
-            aggregate=algebra_pb2.AggregateRel(input=self.convert_relation(rel.input)))
+        aggregate = algebra_pb2.AggregateRel(input=self.convert_relation(rel.input))
+        for grouping in rel.grouping_expressions:
+            aggregate.groupings.append(
+                algebra_pb2.AggregateRel.Grouping(grouping_expressions=[self.convert_expression(grouping)]))
+        for expr in rel.aggregate_expressions:
+            aggregate.measures.append(
+                algebra_pb2.AggregateRel.Measure(measure=self.convert_expression_to_aggregate_function(expr))
+            )
+        return algebra_pb2.Rel(aggregate=aggregate)
 
     def convert_show_string_relation(self, rel: spark_relations_pb2.ShowString) -> algebra_pb2.Rel:
         """Converts a show string relation into a Substrait project relation."""

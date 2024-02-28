@@ -60,6 +60,14 @@ relations {
                     }
                   }
                 }
+                groupings {
+                  grouping_expressions {
+                  }
+                }
+                measures {
+                  measure {
+                  }
+                }
               }
             }
             sorts {
