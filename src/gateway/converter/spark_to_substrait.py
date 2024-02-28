@@ -4,7 +4,7 @@ from substrait.gen.proto import plan_pb2
 from substrait.gen.proto import algebra_pb2
 
 import spark.connect.base_pb2 as spark_pb2
-import spark.connect.expressions_pb2 as spark_expressions_pb2
+import spark.connect.expressions_pb2 as spark_exprs_pb2
 import spark.connect.relations_pb2 as spark_relations_pb2
 
 
@@ -12,12 +12,13 @@ import spark.connect.relations_pb2 as spark_relations_pb2
 class SparkSubstraitConverter:
     """Converts SparkConnect plans to Substrait plans."""
 
-    def convert_expression(self, expr: spark_expressions_pb2.Expression) -> algebra_pb2.Expression:
+    def convert_expression(self, expr: spark_exprs_pb2.Expression) -> algebra_pb2.Expression:
         """Converts a SparkConnect expression to a Substrait expression."""
         return algebra_pb2.Expression()
 
-    def convert_expression_to_aggregate_function(self,
-                                                 expr: spark_expressions_pb2.Expression) -> algebra_pb2.AggregateFunction:
+    def convert_expression_to_aggregate_function(
+            self,
+            expr: spark_exprs_pb2.Expression) -> algebra_pb2.AggregateFunction:
         """Converts a SparkConnect expression to a Substrait expression."""
         return algebra_pb2.AggregateFunction()
 
@@ -73,13 +74,13 @@ class SparkSubstraitConverter:
         """Converts a sort relation into a Substrait relation."""
         sort = algebra_pb2.SortRel(input=self.convert_relation(rel.input))
         for order in rel.order:
-            if order.direction == spark_expressions_pb2.Expression.SortOrder.SORT_DIRECTION_ASCENDING:
-                if order.null_ordering == spark_expressions_pb2.Expression.SortOrder.SORT_NULLS_FIRST:
+            if order.direction == spark_exprs_pb2.Expression.SortOrder.SORT_DIRECTION_ASCENDING:
+                if order.null_ordering == spark_exprs_pb2.Expression.SortOrder.SORT_NULLS_FIRST:
                     direction = algebra_pb2.SortField.SORT_DIRECTION_ASC_NULLS_FIRST
                 else:
                     direction = algebra_pb2.SortField.SORT_DIRECTION_ASC_NULLS_LAST
             else:
-                if order.null_ordering == spark_expressions_pb2.Expression.SortOrder.SORT_NULLS_FIRST:
+                if order.null_ordering == spark_exprs_pb2.Expression.SortOrder.SORT_NULLS_FIRST:
                     direction = algebra_pb2.SortField.SORT_DIRECTION_DESC_NULLS_FIRST
                 else:
                     direction = algebra_pb2.SortField.SORT_DIRECTION_DESC_NULLS_LAST
