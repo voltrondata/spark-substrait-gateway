@@ -4,12 +4,23 @@ from substrait.gen.proto import plan_pb2
 from substrait.gen.proto import algebra_pb2
 
 import spark.connect.base_pb2 as spark_pb2
+import spark.connect.expressions_pb2 as spark_exprs_pb2
 import spark.connect.relations_pb2 as spark_relations_pb2
 
 
 # pylint: disable=E1101,fixme
 class SparkSubstraitConverter:
     """Converts SparkConnect plans to Substrait plans."""
+
+    def convert_expression(self, expr: spark_exprs_pb2.Expression) -> algebra_pb2.Expression:
+        """Converts a SparkConnect expression to a Substrait expression."""
+        return algebra_pb2.Expression()
+
+    def convert_expression_to_aggregate_function(
+            self,
+            expr: spark_exprs_pb2.Expression) -> algebra_pb2.AggregateFunction:
+        """Converts a SparkConnect expression to a Substrait expression."""
+        return algebra_pb2.AggregateFunction()
 
     def convert_read_named_table_relation(self, rel: spark_relations_pb2.Read) -> algebra_pb2.Rel:
         """Converts a read named table relation to a Substrait relation."""
@@ -55,11 +66,28 @@ class SparkSubstraitConverter:
 
     def convert_filter_relation(self, rel: spark_relations_pb2.Filter) -> algebra_pb2.Rel:
         """Converts a filter relation into a Substrait relation."""
-        return algebra_pb2.Rel(filter=algebra_pb2.FilterRel(input=self.convert_relation(rel.input)))
+        f = algebra_pb2.FilterRel(input=self.convert_relation(rel.input))
+        f.condition.CopyFrom(self.convert_expression(rel.condition))
+        return algebra_pb2.Rel(filter=f)
 
     def convert_sort_relation(self, rel: spark_relations_pb2.Sort) -> algebra_pb2.Rel:
         """Converts a sort relation into a Substrait relation."""
-        return algebra_pb2.Rel(sort=algebra_pb2.SortRel(input=self.convert_relation(rel.input)))
+        sort = algebra_pb2.SortRel(input=self.convert_relation(rel.input))
+        for order in rel.order:
+            if order.direction == spark_exprs_pb2.Expression.SortOrder.SORT_DIRECTION_ASCENDING:
+                if order.null_ordering == spark_exprs_pb2.Expression.SortOrder.SORT_NULLS_FIRST:
+                    direction = algebra_pb2.SortField.SORT_DIRECTION_ASC_NULLS_FIRST
+                else:
+                    direction = algebra_pb2.SortField.SORT_DIRECTION_ASC_NULLS_LAST
+            else:
+                if order.null_ordering == spark_exprs_pb2.Expression.SortOrder.SORT_NULLS_FIRST:
+                    direction = algebra_pb2.SortField.SORT_DIRECTION_DESC_NULLS_FIRST
+                else:
+                    direction = algebra_pb2.SortField.SORT_DIRECTION_DESC_NULLS_LAST
+            sort.sorts.append(algebra_pb2.SortField(
+                expr=self.convert_expression(order.child),
+                direction=direction))
+        return algebra_pb2.Rel(sort=sort)
 
     def convert_limit_relation(self, rel: spark_relations_pb2.Limit) -> algebra_pb2.Rel:
         """Converts a limit relation into a Substrait FetchRel relation."""
@@ -68,19 +96,33 @@ class SparkSubstraitConverter:
 
     def convert_aggregate_relation(self, rel: spark_relations_pb2.Aggregate) -> algebra_pb2.Rel:
         """Converts an aggregate relation into a Substrait relation."""
-        return algebra_pb2.Rel(
-            aggregate=algebra_pb2.AggregateRel(input=self.convert_relation(rel.input)))
+        aggregate = algebra_pb2.AggregateRel(input=self.convert_relation(rel.input))
+        for grouping in rel.grouping_expressions:
+            aggregate.groupings.append(
+                algebra_pb2.AggregateRel.Grouping(
+                    grouping_expressions=[self.convert_expression(grouping)]))
+        for expr in rel.aggregate_expressions:
+            aggregate.measures.append(
+                algebra_pb2.AggregateRel.Measure(
+                    measure=self.convert_expression_to_aggregate_function(expr))
+            )
+        return algebra_pb2.Rel(aggregate=aggregate)
 
     def convert_show_string_relation(self, rel: spark_relations_pb2.ShowString) -> algebra_pb2.Rel:
         """Converts a show string relation into a Substrait project relation."""
-        # TODO -- Implement.
+        # TODO -- Implement using num_rows, truncate, and vertical.
         return self.convert_relation(rel.input)
 
     def convert_with_columns_relation(
             self, rel: spark_relations_pb2.WithColumns) -> algebra_pb2.Rel:
         """Converts a with columns relation into a Substrait project relation."""
-        return algebra_pb2.Rel(
-            project=algebra_pb2.ProjectRel(input=self.convert_relation(rel.input)))
+        project = algebra_pb2.ProjectRel(input=self.convert_relation(rel.input))
+        num_emitted_fields = 0
+        for alias in rel.aliases:
+            # TODO -- Handle the output columns correctly.
+            project.expressions.append(self.convert_expression(alias.expr))
+            project.common.emit.output_mapping.append(num_emitted_fields)
+        return algebra_pb2.Rel(project=project)
 
     # pylint: disable=too-many-return-statements
     def convert_relation(self, rel: spark_relations_pb2.Relation) -> algebra_pb2.Rel:

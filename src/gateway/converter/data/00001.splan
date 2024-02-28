@@ -12,10 +12,25 @@ relations {
                       filter {
                         input {
                           project {
+                            common {
+                              emit {
+                                output_mapping: 0
+                              }
+                            }
                             input {
                               project {
+                                common {
+                                  emit {
+                                    output_mapping: 0
+                                  }
+                                }
                                 input {
                                   project {
+                                    common {
+                                      emit {
+                                        output_mapping: 0
+                                      }
+                                    }
                                     input {
                                       read {
                                         local_files {
@@ -25,17 +40,40 @@ relations {
                                         }
                                       }
                                     }
+                                    expressions {
+                                    }
                                   }
+                                }
+                                expressions {
                                 }
                               }
                             }
+                            expressions {
+                            }
                           }
+                        }
+                        condition {
                         }
                       }
                     }
+                    condition {
+                    }
+                  }
+                }
+                groupings {
+                  grouping_expressions {
+                  }
+                }
+                measures {
+                  measure {
                   }
                 }
               }
+            }
+            sorts {
+              expr {
+              }
+              direction: SORT_DIRECTION_DESC_NULLS_LAST
             }
           }
         }
