@@ -18,7 +18,7 @@ jobs:
       run: |
         $CONDA/bin/conda env update --file environment.yml --name base
         python -m pip install --upgrade pip
-        conda install pylint
+        conda install pylint">=3.1.0"
     - name: Analysing the code with pylint
       run: |
         $CONDA/bin/pylint $(git ls-files '*.py')
