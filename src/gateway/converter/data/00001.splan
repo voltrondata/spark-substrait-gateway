@@ -1,3 +1,36 @@
+extension_uris {
+  extension_uri_anchor: 1
+  uri: "/functions_string.yaml"
+}
+extension_uris {
+  extension_uri_anchor: 2
+  uri: "/functions_comparison.yaml"
+}
+extension_uris {
+  extension_uri_anchor: 3
+  uri: "/functions_set.yaml"
+}
+extensions {
+  extension_function {
+    extension_uri_reference: 2
+    function_anchor: 2
+    name: "equal:str_str"
+  }
+}
+extensions {
+  extension_function {
+    extension_uri_reference: 3
+    function_anchor: 3
+    name: "index_in:str_liststr"
+  }
+}
+extensions {
+  extension_function {
+    extension_uri_reference: 1
+    function_anchor: 1
+    name: "string_split:str_str"
+  }
+}
 relations {
   root {
     input {
@@ -41,27 +74,96 @@ relations {
                                       }
                                     }
                                     expressions {
+                                      scalar_function {
+                                        function_reference: 1
+                                        arguments {
+                                          value {
+                                            selection {
+                                            }
+                                          }
+                                        }
+                                        arguments {
+                                          value {
+                                            literal {
+                                              string: "; "
+                                            }
+                                          }
+                                        }
+                                        arguments {
+                                          value {
+                                            literal {
+                                              i32: -1
+                                            }
+                                          }
+                                        }
+                                      }
                                     }
                                   }
                                 }
                                 expressions {
+                                  cast {
+                                    input {
+                                      selection {
+                                      }
+                                    }
+                                  }
                                 }
                               }
                             }
                             expressions {
+                              cast {
+                                input {
+                                  selection {
+                                  }
+                                }
+                              }
                             }
                           }
                         }
                         condition {
+                          scalar_function {
+                            function_reference: 2
+                            arguments {
+                              value {
+                                selection {
+                                }
+                              }
+                            }
+                            arguments {
+                              value {
+                                literal {
+                                  boolean: false
+                                }
+                              }
+                            }
+                          }
                         }
                       }
                     }
                     condition {
+                      scalar_function {
+                        function_reference: 3
+                        arguments {
+                          value {
+                            selection {
+                            }
+                          }
+                        }
+                        arguments {
+                          value {
+                            literal {
+                              string: "pop"
+                            }
+                          }
+                        }
+                      }
                     }
                   }
                 }
                 groupings {
                   grouping_expressions {
+                    selection {
+                    }
                   }
                 }
                 measures {
@@ -72,6 +174,8 @@ relations {
             }
             sorts {
               expr {
+                selection {
+                }
               }
               direction: SORT_DIRECTION_DESC_NULLS_LAST
             }

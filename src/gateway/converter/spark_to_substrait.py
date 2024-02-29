@@ -1,25 +1,204 @@
 # SPDX-License-Identifier: Apache-2.0
 """Routines to convert SparkConnect plans to Substrait plans."""
+import operator
+from typing import Dict
+
 from substrait.gen.proto import plan_pb2
 from substrait.gen.proto import algebra_pb2
+from substrait.gen.proto.extensions import extensions_pb2
 
+from gateway.converter.spark_functions import ExtensionFunction, lookup_spark_function
 import spark.connect.base_pb2 as spark_pb2
 import spark.connect.expressions_pb2 as spark_exprs_pb2
 import spark.connect.relations_pb2 as spark_relations_pb2
 
 
-# pylint: disable=E1101,fixme
+# pylint: disable=E1101,fixme,too-many-public-methods
 class SparkSubstraitConverter:
     """Converts SparkConnect plans to Substrait plans."""
 
-    def convert_expression(self, _: spark_exprs_pb2.Expression) -> algebra_pb2.Expression:
+    def __init__(self):
+        self._function_uris: Dict[str, int] = {}
+        self._functions: Dict[str, ExtensionFunction] = {}
+
+    def lookup_function_by_name(self, name: str) -> int:
+        """Finds the function reference for a given Spark function name."""
+        if name in self._functions:
+            return self._functions.get(name).anchor
+        func = lookup_spark_function(name)
+        if not func:
+            raise LookupError(f'function name {name} does not have a known Substrait conversion')
+        func.anchor = len(self._functions) + 1
+        self._functions[name] = func
+        if not self._function_uris.get(func.uri):
+            self._function_uris[func.uri] = len(self._function_uris) + 1
+        return self._functions.get(name).anchor
+
+    def convert_boolean_literal(
+            self, boolean: bool) -> algebra_pb2.Expression.Literal:
+        """Transforms a boolean into a Substrait expression literal."""
+        return algebra_pb2.Expression.Literal(boolean=boolean)
+
+    def convert_short_literal(
+            self, i: int) -> algebra_pb2.Expression.Literal:
+        """Transforms a short integer into a Substrait expression literal."""
+        return algebra_pb2.Expression.Literal(i16=i)
+
+    def convert_integer_literal(
+            self, i: int) -> algebra_pb2.Expression.Literal:
+        """Transforms an integer into a Substrait expression literal."""
+        return algebra_pb2.Expression.Literal(i32=i)
+
+    def convert_float_literal(
+            self, f: float) -> algebra_pb2.Expression.Literal:
+        """Transforms a float into a Substrait expression literal."""
+        return algebra_pb2.Expression.Literal(fp32=f)
+
+    def convert_double_literal(
+            self, d: float) -> algebra_pb2.Expression.Literal:
+        """Transforms a double into a Substrait expression literal."""
+        return algebra_pb2.Expression.Literal(fp64=d)
+
+    def convert_string_literal(
+            self, s: str) -> algebra_pb2.Expression.Literal:
+        """Transforms a string into a Substrait expression literal."""
+        return algebra_pb2.Expression.Literal(string=s)
+
+    def convert_literal_expression(
+            self, literal: spark_exprs_pb2.Expression.Literal) -> algebra_pb2.Expression:
+        """Converts a Spark literal into a Substrait literal."""
+        match literal.WhichOneof('literal_type'):
+            case 'null':
+                # TODO -- Finish with the type implementation.
+                result = algebra_pb2.Expression.Literal()
+            case 'binary':
+                result = algebra_pb2.Expression.Literal()
+            case 'boolean':
+                result = self.convert_boolean_literal(literal.boolean)
+            case 'byte':
+                result = algebra_pb2.Expression.Literal()
+            case 'short':
+                result = self.convert_short_literal(literal.short)
+            case 'integer':
+                result = self.convert_integer_literal(literal.integer)
+            case 'long':
+                result = algebra_pb2.Expression.Literal()
+            case 'float':
+                result = self.convert_float_literal(literal.float)
+            case 'double':
+                result = self.convert_double_literal(literal.double)
+            case 'decimal':
+                result = algebra_pb2.Expression.Literal()
+            case 'string':
+                result = self.convert_string_literal(literal.string)
+            case 'date':
+                result = algebra_pb2.Expression.Literal()
+            case 'timestamp':
+                result = algebra_pb2.Expression.Literal()
+            case 'timestamp_ntz':
+                result = algebra_pb2.Expression.Literal()
+            case 'calendar_interval':
+                result = algebra_pb2.Expression.Literal()
+            case 'year_month_interval':
+                result = algebra_pb2.Expression.Literal()
+            case 'day_time_interval':
+                result = algebra_pb2.Expression.Literal()
+            case 'array':
+                result = algebra_pb2.Expression.Literal()
+            case _:
+                raise NotImplementedError(
+                    f'Unexpected literal type: {literal.WhichOneof('literal_type')}')
+        return algebra_pb2.Expression(literal=result)
+
+    def convert_unresolved_attribute(
+            self,
+            _: spark_exprs_pb2.Expression.UnresolvedAttribute) -> algebra_pb2.Expression:
+        """Converts a Spark unresolved attribute into a Substrait field reference."""
+        # TODO -- Implement.
+        return algebra_pb2.Expression(selection=algebra_pb2.Expression.FieldReference())
+
+    def convert_unresolved_function(
+            self,
+            unresolved_function:
+            spark_exprs_pb2.Expression.UnresolvedFunction) -> algebra_pb2.Expression:
+        """Converts a Spark unresolved function into a Substrait scalar function."""
+        func = algebra_pb2.Expression.ScalarFunction()
+        func.function_reference = self.lookup_function_by_name(unresolved_function.function_name)
+        for arg in unresolved_function.arguments:
+            func.arguments.append(
+                algebra_pb2.FunctionArgument(value=self.convert_expression(arg)))
+        if unresolved_function.is_distinct:
+            raise NotImplementedError(
+                'Treating arguments as distinct is not supported for unresolved functions.')
+        # TODO -- Calculate the output_type.
+        return algebra_pb2.Expression(scalar_function=func)
+
+    def convert_alias_expression(
+            self, alias: spark_exprs_pb2.Expression.Alias) -> algebra_pb2.Expression:
+        """Converts a Spark alias into a Substrait expression."""
+        # TODO -- Utilize the alias name.
+        return self.convert_expression(alias.expr)
+
+    def convert_cast_expression(
+            self, cast: spark_exprs_pb2.Expression.Cast) -> algebra_pb2.Expression:
+        """Converts a Spark cast expression into a Substrait cast expression."""
+        # TODO -- Implement type handling.
+        return algebra_pb2.Expression(
+            cast=algebra_pb2.Expression.Cast(input=self.convert_expression(cast.expr)))
+
+    def convert_expression(self, expr: spark_exprs_pb2.Expression) -> algebra_pb2.Expression:
         """Converts a SparkConnect expression to a Substrait expression."""
-        return algebra_pb2.Expression()
+        match expr.WhichOneof('expr_type'):
+            case 'literal':
+                result = self.convert_literal_expression(expr.literal)
+            case 'unresolved_attribute':
+                result = self.convert_unresolved_attribute(expr.unresolved_attribute)
+            case 'unresolved_function':
+                result = self.convert_unresolved_function(expr.unresolved_function)
+            case 'expression_string':
+                raise NotImplementedError(
+                    'expression_string expression type not supported')
+            case 'unresolved_star':
+                raise NotImplementedError(
+                    'unresolved_star expression type not supported')
+            case 'alias':
+                result = self.convert_alias_expression(expr.alias)
+            case 'cast':
+                result = self.convert_cast_expression(expr.cast)
+            case 'unresolved_regex':
+                raise NotImplementedError(
+                    'unresolved_regex expression type not supported')
+            case 'sort_order':
+                raise NotImplementedError(
+                    'sort_order expression type not supported')
+            case 'lambda_function':
+                raise NotImplementedError(
+                    'lambda_function expression type not supported')
+            case 'window':
+                raise NotImplementedError(
+                    'window expression type not supported')
+            case 'unresolved_extract_value':
+                raise NotImplementedError(
+                    'unresolved_extract_value expression type not supported')
+            case 'update_fields':
+                raise NotImplementedError(
+                    'update_fields expression type not supported')
+            case 'unresolved_named_lambda_variable':
+                raise NotImplementedError(
+                    'unresolved_named_lambda_variable expression type not supported')
+            case 'common_inline_user_defined_function':
+                raise NotImplementedError(
+                    'common_inline_user_defined_function expression type not supported')
+            case _:
+                raise NotImplementedError(
+                    f'Unexpected expression type: {expr.WhichOneof("expr_type")}')
+        return result
 
     def convert_expression_to_aggregate_function(
             self,
             _: spark_exprs_pb2.Expression) -> algebra_pb2.AggregateFunction:
         """Converts a SparkConnect expression to a Substrait expression."""
+        # TODO -- Implement.
         return algebra_pb2.AggregateFunction()
 
     def convert_read_named_table_relation(self, rel: spark_relations_pb2.Read) -> algebra_pb2.Rel:
@@ -151,5 +330,13 @@ class SparkSubstraitConverter:
         if plan.HasField('root'):
             result.relations.append(plan_pb2.PlanRel(
                 root=algebra_pb2.RelRoot(input=self.convert_relation(plan.root))))
-        # TODO -- Add the extension_uris and extensions we referenced to result.
+        for uri in sorted(self._function_uris.items(), key=operator.itemgetter(1)):
+            result.extension_uris.append(
+                extensions_pb2.SimpleExtensionURI(extension_uri_anchor=uri[1],
+                                                  uri=uri[0]))
+        for f in sorted(self._functions.values()):
+            result.extensions.append(extensions_pb2.SimpleExtensionDeclaration(
+                extension_function=extensions_pb2.SimpleExtensionDeclaration.ExtensionFunction(
+                    extension_uri_reference=self._function_uris.get(f.uri),
+                    function_anchor=f.anchor, name=f.name)))
         return result
