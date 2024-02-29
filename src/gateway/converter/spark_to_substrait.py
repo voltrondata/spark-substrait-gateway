@@ -12,13 +12,13 @@ import spark.connect.relations_pb2 as spark_relations_pb2
 class SparkSubstraitConverter:
     """Converts SparkConnect plans to Substrait plans."""
 
-    def convert_expression(self, expr: spark_exprs_pb2.Expression) -> algebra_pb2.Expression:
+    def convert_expression(self, _: spark_exprs_pb2.Expression) -> algebra_pb2.Expression:
         """Converts a SparkConnect expression to a Substrait expression."""
         return algebra_pb2.Expression()
 
     def convert_expression_to_aggregate_function(
             self,
-            expr: spark_exprs_pb2.Expression) -> algebra_pb2.AggregateFunction:
+            _: spark_exprs_pb2.Expression) -> algebra_pb2.AggregateFunction:
         """Converts a SparkConnect expression to a Substrait expression."""
         return algebra_pb2.AggregateFunction()
 
@@ -50,8 +50,8 @@ class SparkSubstraitConverter:
             case _:
                 raise NotImplementedError(f'Unexpected file format: {rel.format}')
         # TODO -- Handle the schema.
-        for p in rel.paths:
-            local.items.append(algebra_pb2.ReadRel.LocalFiles.FileOrFiles(uri_file=p))
+        for path in rel.paths:
+            local.items.append(algebra_pb2.ReadRel.LocalFiles.FileOrFiles(uri_file=path))
         return algebra_pb2.Rel(read=algebra_pb2.ReadRel(local_files=local))
 
     def convert_read_relation(self, rel: spark_relations_pb2.Read) -> algebra_pb2.Rel:
@@ -66,9 +66,9 @@ class SparkSubstraitConverter:
 
     def convert_filter_relation(self, rel: spark_relations_pb2.Filter) -> algebra_pb2.Rel:
         """Converts a filter relation into a Substrait relation."""
-        f = algebra_pb2.FilterRel(input=self.convert_relation(rel.input))
-        f.condition.CopyFrom(self.convert_expression(rel.condition))
-        return algebra_pb2.Rel(filter=f)
+        filter_rel = algebra_pb2.FilterRel(input=self.convert_relation(rel.input))
+        filter_rel.condition.CopyFrom(self.convert_expression(rel.condition))
+        return algebra_pb2.Rel(filter=filter_rel)
 
     def convert_sort_relation(self, rel: spark_relations_pb2.Sort) -> algebra_pb2.Rel:
         """Converts a sort relation into a Substrait relation."""

@@ -27,13 +27,13 @@ test_case_names = [os.path.basename(p).removesuffix('.spark') for p in test_case
 def test_plan_conversion(request, path):
     """Test the conversion of a Spark plan to a Substrait plan."""
     # Read the Spark plan to convert.
-    with open(path, "rb") as f:
-        plan_prototext = f.read()
+    with open(path, "rb") as file:
+        plan_prototext = file.read()
     spark_plan = text_format.Parse(plan_prototext, spark_base_pb2.Plan())
 
     # The expected result is in the corresponding Substrait plan.
-    with open(path.with_suffix('.splan'), "rb") as f:
-        splan_prototext = f.read()
+    with open(path.with_suffix('.splan'), "rb") as file:
+        splan_prototext = file.read()
     substrait_plan = text_format.Parse(splan_prototext, plan_pb2.Plan())
 
     convert = SparkSubstraitConverter()
@@ -41,8 +41,8 @@ def test_plan_conversion(request, path):
 
     if request.config.getoption('rebuild_goldens'):
         if substrait != substrait_plan:
-            with open(path.with_suffix('.splan'), "wt", encoding='utf-8') as f:
-                f.write(text_format.MessageToString(substrait))
+            with open(path.with_suffix('.splan'), "wt", encoding='utf-8') as file:
+                file.write(text_format.MessageToString(substrait))
         return
 
     assert substrait == substrait_plan

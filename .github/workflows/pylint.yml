@@ -16,9 +16,9 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
-        conda env update --file environment.yml
+        $CONDA/bin/conda env update --file environment.yml --name base
         python -m pip install --upgrade pip
-        pip install pylint
+        conda install pylint
     - name: Analysing the code with pylint
       run: |
-        pylint $(git ls-files '*.py')
+        $CONDA/bin/pylint $(git ls-files '*.py')
