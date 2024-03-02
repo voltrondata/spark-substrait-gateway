@@ -209,10 +209,10 @@ class SparkSubstraitConverter:
         """Converts a read data source relation into a Substrait relation."""
         local = algebra_pb2.ReadRel.LocalFiles()
         match rel.format:
-            case 'parquest':
+            case 'parquet':
                 local.parquet = algebra_pb2.ReadRel.ParquetReadOptions()
             case 'orc':
-                local.parquet = algebra_pb2.ReadRel.OrcReadOptions()
+                local.orc = algebra_pb2.ReadRel.OrcReadOptions()
             case 'text':
                 raise NotImplementedError('the only supported formats are parquet and orc')
             case 'json':

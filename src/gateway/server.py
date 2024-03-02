@@ -29,12 +29,18 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
             arrow_batch=pb2.ExecutePlanResponse.ArrowBatch(row_count=0, data=None))
 
     def AnalyzePlan(self, request, context):
-        print("AnalyzePlan")
-        return pb2.AnalyzePlanResponse()
+        print(f"AnalyzePlan: {request}")
+        return pb2.AnalyzePlanResponse(session_id=request.session_id)
 
     def Config(self, request, context):
-        print("Config")
-        return pb2.ConfigResponse()
+        print(f"Config: {request}")
+        response = pb2.ConfigResponse(session_id=request.session_id)
+        match request.operation.WhichOneof('op_type'):
+            case 'set':
+                response.pairs.extend(request.operation.set.pairs)
+            case 'get_with_default':
+                response.pairs.extend(request.operation.get_with_default.pairs)
+        return response
 
     def AddArtifacts(self, request_iterator, context):
         print("AddArtifacts")
