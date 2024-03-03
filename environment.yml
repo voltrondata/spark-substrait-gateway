@@ -12,3 +12,5 @@ dependencies:
   - setuptools >= 61.0.0
   - setuptools_scm >= 6.2.0
   - python-substrait
+  - mypy-protobuf
+  - types-protobuf

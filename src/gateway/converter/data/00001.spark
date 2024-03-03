@@ -49,17 +49,9 @@ root {
                                       }
                                       read {
                                         data_source {
-                                          format: "csv"
-                                          schema: ""
-                                          options {
-                                            key: "header"
-                                            value: "true"
-                                          }
-                                          options {
-                                            key: "inferSchema"
-                                            value: "true"
-                                          }
-                                          paths: "/Users/davids/Desktop/artists.csv"
+                                          format: "parquet"
+                                          schema: "{\"fields\":[{\"metadata\":{},\"name\":\"mbid\",\"nullable\":false,\"type\":\"string\"},{\"metadata\":{},\"name\":\"artist_mb\",\"nullable\":true,\"type\":\"string\"},{\"metadata\":{},\"name\":\"artist_lastfm\",\"nullable\":true,\"type\":\"string\"},{\"metadata\":{},\"name\":\"country_mb\",\"nullable\":true,\"type\":\"string\"},{\"metadata\":{},\"name\":\"country_lastfm\",\"nullable\":true,\"type\":\"string\"},{\"metadata\":{},\"name\":\"tags_mb\",\"nullable\":true,\"type\":\"string\"},{\"metadata\":{},\"name\":\"tags_lastfm\",\"nullable\":true,\"type\":\"string\"},{\"metadata\":{},\"name\":\"listeners_lastfm\",\"nullable\":true,\"type\":\"integer\"},{\"metadata\":{},\"name\":\"scrobbles_lastfm\",\"nullable\":true,\"type\":\"integer\"},{\"metadata\":{},\"name\":\"ambiguous_artist\",\"nullable\":true,\"type\":\"boolean\"}],\"type\":\"struct\"}"
+                                          paths: "/Users/davids/Desktop/artists.parquet"
                                         }
                                       }
                                     }

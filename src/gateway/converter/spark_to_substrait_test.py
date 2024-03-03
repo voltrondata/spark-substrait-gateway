@@ -7,8 +7,9 @@ from google.protobuf import text_format
 import pytest
 from substrait.gen.proto import plan_pb2
 
-from gateway.converter.spark_to_substrait import SparkSubstraitConverter
 from spark.connect import base_pb2 as spark_base_pb2
+
+from gateway.converter.spark_to_substrait import SparkSubstraitConverter
 
 
 test_case_directory = Path(os.path.dirname(os.path.realpath(__file__))) / 'data'

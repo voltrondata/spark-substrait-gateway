@@ -35,14 +35,34 @@ relations {
   root {
     input {
       fetch {
+        common {
+          direct {
+          }
+        }
         input {
           sort {
+            common {
+              direct {
+              }
+            }
             input {
               aggregate {
+                common {
+                  direct {
+                  }
+                }
                 input {
                   filter {
+                    common {
+                      direct {
+                      }
+                    }
                     input {
                       filter {
+                        common {
+                          direct {
+                          }
+                        }
                         input {
                           project {
                             common {
@@ -66,9 +86,79 @@ relations {
                                     }
                                     input {
                                       read {
+                                        common {
+                                          direct {
+                                          }
+                                        }
+                                        base_schema {
+                                          names: "mbid"
+                                          names: "artist_mb"
+                                          names: "artist_lastfm"
+                                          names: "country_mb"
+                                          names: "country_lastfm"
+                                          names: "tags_mb"
+                                          names: "tags_lastfm"
+                                          names: "listeners_lastfm"
+                                          names: "scrobbles_lastfm"
+                                          names: "ambiguous_artist"
+                                          struct {
+                                            types {
+                                              string {
+                                                nullability: NULLABILITY_REQUIRED
+                                              }
+                                            }
+                                            types {
+                                              string {
+                                                nullability: NULLABILITY_NULLABLE
+                                              }
+                                            }
+                                            types {
+                                              string {
+                                                nullability: NULLABILITY_NULLABLE
+                                              }
+                                            }
+                                            types {
+                                              string {
+                                                nullability: NULLABILITY_NULLABLE
+                                              }
+                                            }
+                                            types {
+                                              string {
+                                                nullability: NULLABILITY_NULLABLE
+                                              }
+                                            }
+                                            types {
+                                              string {
+                                                nullability: NULLABILITY_NULLABLE
+                                              }
+                                            }
+                                            types {
+                                              string {
+                                                nullability: NULLABILITY_NULLABLE
+                                              }
+                                            }
+                                            types {
+                                              i32 {
+                                                nullability: NULLABILITY_NULLABLE
+                                              }
+                                            }
+                                            types {
+                                              i32 {
+                                                nullability: NULLABILITY_NULLABLE
+                                              }
+                                            }
+                                            types {
+                                              bool {
+                                                nullability: NULLABILITY_NULLABLE
+                                              }
+                                            }
+                                          }
+                                        }
                                         local_files {
                                           items {
-                                            uri_file: "/Users/davids/Desktop/artists.csv"
+                                            uri_file: "/Users/davids/Desktop/artists.parquet"
+                                            parquet {
+                                            }
                                           }
                                         }
                                       }
@@ -79,6 +169,13 @@ relations {
                                         arguments {
                                           value {
                                             selection {
+                                              direct_reference {
+                                                struct_field {
+                                                  field: 9999
+                                                }
+                                              }
+                                              root_reference {
+                                              }
                                             }
                                           }
                                         }
@@ -104,6 +201,13 @@ relations {
                                   cast {
                                     input {
                                       selection {
+                                        direct_reference {
+                                          struct_field {
+                                            field: 9999
+                                          }
+                                        }
+                                        root_reference {
+                                        }
                                       }
                                     }
                                   }
@@ -114,6 +218,13 @@ relations {
                               cast {
                                 input {
                                   selection {
+                                    direct_reference {
+                                      struct_field {
+                                        field: 9999
+                                      }
+                                    }
+                                    root_reference {
+                                    }
                                   }
                                 }
                               }
@@ -126,6 +237,13 @@ relations {
                             arguments {
                               value {
                                 selection {
+                                  direct_reference {
+                                    struct_field {
+                                      field: 9999
+                                    }
+                                  }
+                                  root_reference {
+                                  }
                                 }
                               }
                             }
@@ -146,6 +264,13 @@ relations {
                         arguments {
                           value {
                             selection {
+                              direct_reference {
+                                struct_field {
+                                  field: 9999
+                                }
+                              }
+                              root_reference {
+                              }
                             }
                           }
                         }
@@ -163,6 +288,13 @@ relations {
                 groupings {
                   grouping_expressions {
                     selection {
+                      direct_reference {
+                        struct_field {
+                          field: 9999
+                        }
+                      }
+                      root_reference {
+                      }
                     }
                   }
                 }
@@ -175,6 +307,13 @@ relations {
             sorts {
               expr {
                 selection {
+                  direct_reference {
+                    struct_field {
+                      field: 9999
+                    }
+                  }
+                  root_reference {
+                  }
                 }
               }
               direction: SORT_DIRECTION_DESC_NULLS_LAST

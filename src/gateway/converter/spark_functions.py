@@ -9,6 +9,7 @@ class ExtensionFunction:
     uri: str
     name: str
     output_type: str
+    anchor: int
 
     def __init__(self, uri: str, name: str):
         self.uri = uri

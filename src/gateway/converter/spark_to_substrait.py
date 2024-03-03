@@ -1,16 +1,21 @@
 # SPDX-License-Identifier: Apache-2.0
 """Routines to convert SparkConnect plans to Substrait plans."""
+from collections import defaultdict
+import json
 import operator
-from typing import Dict
+from typing import Dict, Optional
 
 from substrait.gen.proto import plan_pb2
 from substrait.gen.proto import algebra_pb2
+from substrait.gen.proto import type_pb2
 from substrait.gen.proto.extensions import extensions_pb2
 
-from gateway.converter.spark_functions import ExtensionFunction, lookup_spark_function
 import spark.connect.base_pb2 as spark_pb2
 import spark.connect.expressions_pb2 as spark_exprs_pb2
 import spark.connect.relations_pb2 as spark_relations_pb2
+
+from gateway.converter.spark_functions import ExtensionFunction, lookup_spark_function
+from gateway.converter.symbol_table import PlanMetadata
 
 
 # pylint: disable=E1101,fixme,too-many-public-methods
@@ -20,6 +25,8 @@ class SparkSubstraitConverter:
     def __init__(self):
         self._function_uris: Dict[str, int] = {}
         self._functions: Dict[str, ExtensionFunction] = {}
+        self._current_plan_id: int = None
+        self._plan_metadata: Dict[int, PlanMetadata] = defaultdict(PlanMetadata)
 
     def lookup_function_by_name(self, name: str) -> int:
         """Finds the function reference for a given Spark function name."""
@@ -115,7 +122,10 @@ class SparkSubstraitConverter:
             _: spark_exprs_pb2.Expression.UnresolvedAttribute) -> algebra_pb2.Expression:
         """Converts a Spark unresolved attribute into a Substrait field reference."""
         # TODO -- Implement.
-        return algebra_pb2.Expression(selection=algebra_pb2.Expression.FieldReference())
+        return algebra_pb2.Expression(selection=algebra_pb2.Expression.FieldReference(
+            direct_reference=algebra_pb2.Expression.ReferenceSegment(
+                struct_field=algebra_pb2.Expression.ReferenceSegment.StructField(field=9999)),
+            root_reference=algebra_pb2.Expression.FieldReference.RootReference()))
 
     def convert_unresolved_function(
             self,
@@ -205,53 +215,96 @@ class SparkSubstraitConverter:
         """Converts a read named table relation to a Substrait relation."""
         raise NotImplementedError('named tables are not yet implemented')
 
+    def convert_schema(self, schema_str: str) -> Optional[type_pb2.NamedStruct]:
+        """Converts the Spark JSON schema string into a Subtrait named type structure."""
+        if not schema_str:
+            return None
+        # TODO -- Deal with potential denial of service due to malformed JSON.
+        schema_data = json.loads(schema_str)
+        schema = type_pb2.NamedStruct()
+        for field in schema_data.get('fields'):
+            schema.names.append(field.get('name'))
+            if field.get('nullable'):
+                nullability = type_pb2.Type.NULLABILITY_NULLABLE
+            else:
+                nullability = type_pb2.Type.NULLABILITY_REQUIRED
+            match field.get('type'):
+                case 'boolean':
+                    field_type = type_pb2.Type(bool=type_pb2.Type.Boolean(nullability=nullability))
+                case 'short':
+                    field_type = type_pb2.Type(i16=type_pb2.Type.I16(nullability=nullability))
+                case 'integer':
+                    field_type = type_pb2.Type(i32=type_pb2.Type.I32(nullability=nullability))
+                case 'long':
+                    field_type = type_pb2.Type(i64=type_pb2.Type.I64(nullability=nullability))
+                case 'string':
+                    field_type = type_pb2.Type(string=type_pb2.Type.String(nullability=nullability))
+                case _:
+                    raise NotImplementedError(f'Unexpected field type: {field.get("type")}')
+
+            schema.struct.types.append(field_type)
+        return schema
+
     def convert_read_data_source_relation(self, rel: spark_relations_pb2.Read) -> algebra_pb2.Rel:
         """Converts a read data source relation into a Substrait relation."""
         local = algebra_pb2.ReadRel.LocalFiles()
-        match rel.format:
-            case 'parquet':
-                local.parquet = algebra_pb2.ReadRel.ParquetReadOptions()
-            case 'orc':
-                local.orc = algebra_pb2.ReadRel.OrcReadOptions()
-            case 'text':
-                raise NotImplementedError('the only supported formats are parquet and orc')
-            case 'json':
-                raise NotImplementedError('the only supported formats are parquet and orc')
-            case 'csv':
-                # TODO -- Implement CSV once Substrait has support.
-                pass
-            case 'avro':
-                raise NotImplementedError('the only supported formats are parquet and orc')
-            case 'arrow':
-                local.parquet = algebra_pb2.ReadRel.ArrowReadOptions()
-            case 'dwrf':
-                local.parquet = algebra_pb2.ReadRel.DwrfReadOptions()
-            case _:
-                raise NotImplementedError(f'Unexpected file format: {rel.format}')
-        # TODO -- Handle the schema.
+        schema = self.convert_schema(rel.schema)
         for path in rel.paths:
-            local.items.append(algebra_pb2.ReadRel.LocalFiles.FileOrFiles(uri_file=path))
-        return algebra_pb2.Rel(read=algebra_pb2.ReadRel(local_files=local))
+            file_or_files = algebra_pb2.ReadRel.LocalFiles.FileOrFiles(uri_file=path)
+            match rel.format:
+                case 'parquet':
+                    file_or_files.parquet.CopyFrom(
+                        algebra_pb2.ReadRel.LocalFiles.FileOrFiles.ParquetReadOptions())
+                case 'orc':
+                    file_or_files.orc.CopyFrom(
+                        algebra_pb2.ReadRel.LocalFiles.FileOrFiles.OrcReadOptions())
+                case 'text':
+                    raise NotImplementedError('the only supported formats are parquet and orc')
+                case 'json':
+                    raise NotImplementedError('the only supported formats are parquet and orc')
+                case 'csv':
+                    # TODO -- Implement CSV once Substrait has support.
+                    pass
+                case 'avro':
+                    raise NotImplementedError('the only supported formats are parquet and orc')
+                case 'arrow':
+                    file_or_files.parquet.CopyFrom(
+                        algebra_pb2.ReadRel.LocalFiles.FileOrFiles.ArrowReadOptions())
+                case 'dwrf':
+                    file_or_files.parquet.CopyFrom(
+                        algebra_pb2.ReadRel.LocalFiles.FileOrFiles.DwrfReadOptions())
+                case _:
+                    raise NotImplementedError(f'Unexpected file format: {rel.format}')
+            local.items.append(file_or_files)
+        return algebra_pb2.Rel(read=algebra_pb2.ReadRel(base_schema=schema, local_files=local))
+
+    def create_common_relation(self) -> algebra_pb2.RelCommon:
+        """Creates the common metadata relation used by all relations."""
+        return algebra_pb2.RelCommon(direct=algebra_pb2.RelCommon.Direct())
 
     def convert_read_relation(self, rel: spark_relations_pb2.Read) -> algebra_pb2.Rel:
         """Converts a read relation into a Substrait relation."""
         match rel.WhichOneof('read_type'):
             case 'named_table':
-                return self.convert_read_named_table_relation(rel.named_table)
+                result = self.convert_read_named_table_relation(rel.named_table)
             case 'data_source':
-                return self.convert_read_data_source_relation(rel.data_source)
+                result = self.convert_read_data_source_relation(rel.data_source)
             case _:
                 raise ValueError(f'Unexpected read type: {rel.WhichOneof("read_type")}')
+        result.read.common.CopyFrom(self.create_common_relation())
+        return result
 
     def convert_filter_relation(self, rel: spark_relations_pb2.Filter) -> algebra_pb2.Rel:
         """Converts a filter relation into a Substrait relation."""
         filter_rel = algebra_pb2.FilterRel(input=self.convert_relation(rel.input))
+        filter_rel.common.CopyFrom(self.create_common_relation())
         filter_rel.condition.CopyFrom(self.convert_expression(rel.condition))
         return algebra_pb2.Rel(filter=filter_rel)
 
     def convert_sort_relation(self, rel: spark_relations_pb2.Sort) -> algebra_pb2.Rel:
         """Converts a sort relation into a Substrait relation."""
         sort = algebra_pb2.SortRel(input=self.convert_relation(rel.input))
+        sort.common.CopyFrom(self.create_common_relation())
         for order in rel.order:
             if order.direction == spark_exprs_pb2.Expression.SortOrder.SORT_DIRECTION_ASCENDING:
                 if order.null_ordering == spark_exprs_pb2.Expression.SortOrder.SORT_NULLS_FIRST:
@@ -271,11 +324,13 @@ class SparkSubstraitConverter:
     def convert_limit_relation(self, rel: spark_relations_pb2.Limit) -> algebra_pb2.Rel:
         """Converts a limit relation into a Substrait FetchRel relation."""
         return algebra_pb2.Rel(
-            fetch=algebra_pb2.FetchRel(input=self.convert_relation(rel.input), count=rel.limit))
+            fetch=algebra_pb2.FetchRel(common=self.create_common_relation(),
+                                       input=self.convert_relation(rel.input), count=rel.limit))
 
     def convert_aggregate_relation(self, rel: spark_relations_pb2.Aggregate) -> algebra_pb2.Rel:
         """Converts an aggregate relation into a Substrait relation."""
         aggregate = algebra_pb2.AggregateRel(input=self.convert_relation(rel.input))
+        aggregate.common.CopyFrom(self.create_common_relation())
         for grouping in rel.grouping_expressions:
             aggregate.groupings.append(
                 algebra_pb2.AggregateRel.Grouping(
@@ -296,6 +351,7 @@ class SparkSubstraitConverter:
             self, rel: spark_relations_pb2.WithColumns) -> algebra_pb2.Rel:
         """Converts a with columns relation into a Substrait project relation."""
         project = algebra_pb2.ProjectRel(input=self.convert_relation(rel.input))
+        project.common.CopyFrom(self.create_common_relation())
         num_emitted_fields = 0
         for alias in rel.aliases:
             # TODO -- Handle the output columns correctly.
@@ -303,26 +359,29 @@ class SparkSubstraitConverter:
             project.common.emit.output_mapping.append(num_emitted_fields)
         return algebra_pb2.Rel(project=project)
 
-    # pylint: disable=too-many-return-statements
     def convert_relation(self, rel: spark_relations_pb2.Relation) -> algebra_pb2.Rel:
         """Converts a Spark relation into a Substrait one."""
+        if self._current_plan_id is not None:
+            self._plan_metadata[rel.common.plan_id].parent_plan_id = self._current_plan_id
+        self._current_plan_id = rel.common.plan_id
         match rel.WhichOneof('rel_type'):
             case 'read':
-                return self.convert_read_relation(rel.read)
+                result = self.convert_read_relation(rel.read)
             case 'filter':
-                return self.convert_filter_relation(rel.filter)
+                result = self.convert_filter_relation(rel.filter)
             case 'sort':
-                return self.convert_sort_relation(rel.sort)
+                result = self.convert_sort_relation(rel.sort)
             case 'limit':
-                return self.convert_limit_relation(rel.limit)
+                result = self.convert_limit_relation(rel.limit)
             case 'aggregate':
-                return self.convert_aggregate_relation(rel.aggregate)
+                result = self.convert_aggregate_relation(rel.aggregate)
             case 'show_string':
-                return self.convert_show_string_relation(rel.show_string)
+                result = self.convert_show_string_relation(rel.show_string)
             case 'with_columns':
-                return self.convert_with_columns_relation(rel.with_columns)
+                result = self.convert_with_columns_relation(rel.with_columns)
             case _:
                 raise ValueError(f'Unexpected rel type: {rel.WhichOneof("rel_type")}')
+        return result
 
     def convert_plan(self, plan: spark_pb2.Plan) -> plan_pb2.Plan:
         """Converts a Spark plan into a Substrait plan."""
