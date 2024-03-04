@@ -46,7 +46,6 @@ class SparkSubstraitConverter:
         current_symbol = self._symbol_table.get_symbol(self._current_plan_id)
         current_symbol.input_fields.extend(source_symbol.output_fields)
         current_symbol.output_fields.extend(current_symbol.input_fields)
-        # TODO -- Handle aggregate field references and common filters.
 
     def find_field_by_name(self, field_name: str) -> Optional[int]:
         """Looks up the field name in the current set of field references."""
@@ -138,8 +137,10 @@ class SparkSubstraitConverter:
         """Converts a Spark unresolved attribute into a Substrait field reference."""
         field_reference = self.find_field_by_name(attr.unparsed_identifier)
         if field_reference is None:
-            # TODO -- Raise an error once aggregate is implemented.
-            pass
+            raise ValueError(
+                f'could not locate field named {attr.unparsed_identifier} in plan id '
+                f'{self._current_plan_id}')
+
         return algebra_pb2.Expression(selection=algebra_pb2.Expression.FieldReference(
             direct_reference=algebra_pb2.Expression.ReferenceSegment(
                 struct_field=algebra_pb2.Expression.ReferenceSegment.StructField(
@@ -225,10 +226,23 @@ class SparkSubstraitConverter:
 
     def convert_expression_to_aggregate_function(
             self,
-            _: spark_exprs_pb2.Expression) -> algebra_pb2.AggregateFunction:
+            expr: spark_exprs_pb2.Expression) -> algebra_pb2.AggregateFunction:
         """Converts a SparkConnect expression to a Substrait expression."""
-        # TODO -- Implement.
-        return algebra_pb2.AggregateFunction()
+        func = algebra_pb2.AggregateFunction()
+        expression = self.convert_expression(expr)
+        match expression.WhichOneof('rex_type'):
+            case 'scalar_function':
+                function = expression.scalar_function
+            case 'window_function':
+                function = expression.window_function
+            case _:
+                raise NotImplementedError(
+                    'only functions of type unresolved function are supported in aggregate '
+                    'relations')
+        func.arguments.extend(function.arguments)
+        func.options.extend(function.options)
+        func.output_type.CopyFrom(function.output_type)
+        return func
 
     def convert_read_named_table_relation(self, rel: spark_relations_pb2.Read) -> algebra_pb2.Rel:
         """Converts a read named table relation to a Substrait relation."""
@@ -365,6 +379,8 @@ class SparkSubstraitConverter:
                 algebra_pb2.AggregateRel.Measure(
                     measure=self.convert_expression_to_aggregate_function(expr))
             )
+            symbol = self._symbol_table.get_symbol(self._current_plan_id)
+            symbol.output_fields.extend(expr.alias.name)
         return algebra_pb2.Rel(aggregate=aggregate)
 
     def convert_show_string_relation(self, rel: spark_relations_pb2.ShowString) -> algebra_pb2.Rel:

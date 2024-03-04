@@ -10,6 +10,10 @@ extension_uris {
   extension_uri_anchor: 3
   uri: "/functions_set.yaml"
 }
+extension_uris {
+  extension_uri_anchor: 4
+  uri: "/functions_arithmetic.yaml"
+}
 extensions {
   extension_function {
     extension_uri_reference: 2
@@ -29,6 +33,13 @@ extensions {
     extension_uri_reference: 1
     function_anchor: 1
     name: "string_split:str_str"
+  }
+}
+extensions {
+  extension_function {
+    extension_uri_reference: 4
+    function_anchor: 4
+    name: "sum:int"
   }
 }
 relations {
@@ -300,6 +311,21 @@ relations {
                 }
                 measures {
                   measure {
+                    output_type {
+                    }
+                    arguments {
+                      value {
+                        selection {
+                          direct_reference {
+                            struct_field {
+                              field: 7
+                            }
+                          }
+                          root_reference {
+                          }
+                        }
+                      }
+                    }
                   }
                 }
               }
@@ -309,6 +335,7 @@ relations {
                 selection {
                   direct_reference {
                     struct_field {
+                      field: 10
                     }
                   }
                   root_reference {

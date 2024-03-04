@@ -22,7 +22,8 @@ class ExtensionFunction:
 SPARK_SUBSTRAIT_MAPPING = {
     'split': ExtensionFunction('/functions_string.yaml', 'string_split:str_str'),
     '==': ExtensionFunction('/functions_comparison.yaml', 'equal:str_str'),
-    'array_contains': ExtensionFunction('/functions_set.yaml', 'index_in:str_liststr')
+    'array_contains': ExtensionFunction('/functions_set.yaml', 'index_in:str_liststr'),
+    'sum': ExtensionFunction('/functions_arithmetic.yaml', 'sum:int')
 }
 
 
