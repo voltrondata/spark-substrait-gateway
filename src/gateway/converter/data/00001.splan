@@ -171,7 +171,7 @@ relations {
                                             selection {
                                               direct_reference {
                                                 struct_field {
-                                                  field: 9999
+                                                  field: 6
                                                 }
                                               }
                                               root_reference {
@@ -203,7 +203,7 @@ relations {
                                       selection {
                                         direct_reference {
                                           struct_field {
-                                            field: 9999
+                                            field: 7
                                           }
                                         }
                                         root_reference {
@@ -220,7 +220,7 @@ relations {
                                   selection {
                                     direct_reference {
                                       struct_field {
-                                        field: 9999
+                                        field: 9
                                       }
                                     }
                                     root_reference {
@@ -239,7 +239,7 @@ relations {
                                 selection {
                                   direct_reference {
                                     struct_field {
-                                      field: 9999
+                                      field: 9
                                     }
                                   }
                                   root_reference {
@@ -266,7 +266,7 @@ relations {
                             selection {
                               direct_reference {
                                 struct_field {
-                                  field: 9999
+                                  field: 6
                                 }
                               }
                               root_reference {
@@ -290,7 +290,7 @@ relations {
                     selection {
                       direct_reference {
                         struct_field {
-                          field: 9999
+                          field: 2
                         }
                       }
                       root_reference {
@@ -309,7 +309,6 @@ relations {
                 selection {
                   direct_reference {
                     struct_field {
-                      field: 9999
                     }
                   }
                   root_reference {
