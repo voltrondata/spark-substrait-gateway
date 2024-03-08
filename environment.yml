@@ -14,3 +14,10 @@ dependencies:
   - python-substrait
   - mypy-protobuf
   - types-protobuf
+  - pip:
+    - adbc_driver_manager
+    - pyarrow
+    - duckdb
+    - datafusion
+    - pyspark
+    - substrait-validator

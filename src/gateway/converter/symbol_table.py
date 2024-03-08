@@ -8,14 +8,18 @@ from typing import Optional, List, Dict
 class PlanMetadata:
     """Tracks various information about a specific plan id."""
     plan_id: int
+    type: Optional[str]
     parent_plan_id: Optional[int]
     input_fields: List[str]  # And maybe type
+    generated_fields: List[str]
     output_fields: List[str]
 
     def __init__(self, plan_id: int):
         self.plan_id = plan_id
+        self.symbol_type = None
         self.parent_plan_id = None
         self.input_fields = []
+        self.generated_fields = []
         self.output_fields = []
 
 
@@ -26,9 +30,11 @@ class SymbolTable:
     def __init__(self):
         self._symbols = {}
 
-    def add_symbol(self, plan_id: int, parent: Optional[int]):
+    # pylint: disable=E1101
+    def add_symbol(self, plan_id: int, parent: Optional[int], symbol_type: Optional[str]):
         """Creates a new symbol and returns it."""
         symbol = PlanMetadata(plan_id)
+        symbol.symbol_type = symbol_type
         symbol.parent_plan_id = parent
         self._symbols[plan_id] = symbol
         return symbol
