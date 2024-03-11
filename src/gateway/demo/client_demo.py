@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-'''A PySpark client that can send sample queries to the gateway.'''
+"""A PySpark client that can send sample queries to the gateway."""
 import atexit
 from pathlib import Path
 

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-'''Routines to create a fake mystream database for testing.'''
+"""Routines to create a fake mystream database for testing."""
 from pathlib import Path
 
 import pyarrow

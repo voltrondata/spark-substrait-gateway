@@ -20,7 +20,7 @@ popd || exit
 
 VERSION=${VERSION//v/}
 
-sed -i "s#__spark_hash__.*#__spark_hash__ = \"$SPARK_HASH\"#g" src/gateway/__init__.py
-sed -i "s#__spark_version__.*#__spark_version__ = \"$SPARK_VERSION\"#g" src/gateway/__init__.py
+sed -i "" "s#__spark_hash__.*#__spark_hash__ = \"$SPARK_HASH\"#g" src/gateway/__init__.py
+sed -i "" "s#__spark_version__.*#__spark_version__ = \"$SPARK_VERSION\"#g" src/gateway/__init__.py
 
 ./gen_proto.sh

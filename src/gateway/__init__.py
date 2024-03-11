@@ -6,6 +6,6 @@ try:
 except ImportError:
     pass
 
-__spark_version__ = "0.42.1"
-__spark_hash__ = "4734478"
-__minimum_spark_version__ = "0.30.0"
+__spark_version__ = "v3.5.1"
+__spark_hash__ = "fd86f85e181"
+__minimum_spark_version__ = "3.5.0"

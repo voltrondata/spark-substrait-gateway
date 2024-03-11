@@ -28,7 +28,7 @@ def show_string(table: pyarrow.lib.Table) -> bytes:
     return buffer.getvalue()
 
 
-# pylint: disable=E1101
+# pylint: disable=E1101,fixme
 class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
     """Provides the SparkConnect service."""
 
@@ -52,6 +52,7 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
             session_id=request.session_id,
             arrow_batch=pb2.ExecutePlanResponse.ArrowBatch(row_count=results.num_rows,
                                                            data=show_string(results)))
+        # TODO -- When spark 3.4.0 support is not required, yield a ResultComplete message here.
 
     def AnalyzePlan(self, request, context):
         print(f"AnalyzePlan: {request}")
@@ -73,15 +74,18 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
 
     def ArtifactStatus(self, request, context):
         print("ArtifactStatus")
-        return pb2.ArtifactStatusResponse()
+        return pb2.ArtifactStatusesResponse()
 
     def Interrupt(self, request, context):
         print("Interrupt")
         return pb2.InterruptResponse()
 
-    def ReattachExecute(self, request, context):
+    def ReattachExecute(self, request: pb2.ReattachExecuteRequest, context: grpc.RpcContext) -> \
+    Generator[pb2.ExecutePlanResponse, None, None]:
         print("ReattachExecute")
-        return pb2.ReattachExecuteResponse()
+        yield pb2.ExecutePlanResponse(
+           session_id=request.session_id,
+           result_complete=pb2.ExecutePlanResponse.ResultComplete())
 
     def ReleaseExecute(self, request, context):
         print("ReleaseExecute")
