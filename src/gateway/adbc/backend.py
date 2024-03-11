@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Will eventually provide client access to an ADBC backend."""
+from pathlib import Path
+
 import adbc_driver_duckdb.dbapi
 import duckdb
 import pyarrow
@@ -12,6 +14,7 @@ from substrait.gen.proto import plan_pb2
 from gateway.adbc.backend_options import BackendOptions, Backend
 
 
+# pylint: disable=fixme
 class AdbcBackend:
     """Provides methods for contacting an ADBC backend via Substrait."""
 
@@ -28,7 +31,8 @@ class AdbcBackend:
 
     def execute_with_duckdb(self, plan: 'plan_pb2.Plan') -> pyarrow.lib.Table:
         """Executes the given Substrait plan against DuckDB."""
-        con = duckdb.connect()
+        con = duckdb.connect(config={'max_memory': '100GB',
+                                     'temp_directory': str(Path('.').absolute())})
         con.install_extension('substrait')
         con.load_extension('substrait')
         plan_data = plan.SerializeToString()
@@ -46,7 +50,8 @@ class AdbcBackend:
     def execute_with_datafusion(self, plan: 'plan_pb2.Plan') -> pyarrow.lib.Table:
         """Executes the given Substrait plan against Datafusion."""
         ctx = SessionContext()
-        ctx.register_parquet("demotable", '/Users/davids/Desktop/artists.parquet')
+        # TODO -- Handle registration by scanning and then rewriting the plan.
+        ctx.register_parquet("demotable", 'artists.parquet')
 
         plan_data = plan.SerializeToString()
         substrait_plan = ds.substrait.serde.deserialize_bytes(plan_data)
