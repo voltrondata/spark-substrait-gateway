@@ -37,4 +37,3 @@ unfixable = [
 
 [tool.pylint.MASTER]
 extension-pkg-allow-list = ["pyarrow.lib"]
-ignore-paths = '^src/spark/connect/.*$'

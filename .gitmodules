@@ -1,3 +1,0 @@
-[submodule "third_party/spark"]
-	path = third_party/spark
-	url = git@github.com:apache/spark.git
