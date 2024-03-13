@@ -51,7 +51,15 @@ SPARK_SUBSTRAIT_MAPPING = {
     'regexp_extract_all': ExtensionFunction(
         '/functions_string.yaml', 'regexp_match:str_binary_str', type_pb2.Type(
             list=type_pb2.Type.List(type=type_pb2.Type(string=type_pb2.Type.String(
-                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED)))))
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))))),
+    'substring': ExtensionFunction(
+        '/functions_string.yaml', 'substring:str_int_int', type_pb2.Type(
+            string=type_pb2.Type.String(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'count': ExtensionFunction(
+        '/functions_aggregate_generic.yaml', 'count:any', type_pb2.Type(
+            i64=type_pb2.Type.I64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED)))
 }
 
 

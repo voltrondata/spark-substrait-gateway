@@ -40,4 +40,4 @@ spark = SparkSession.builder.remote("sc://localhost:50051").getOrCreate()
 # Use the spark session normally.
 ```
 
-You'll find that the [usage examples on the Spark website](https://spark.apache.org/docs/latest/spark-connect-overview.html#use-spark-connect-in-standalone-applications) also apply to the gateway without any modification.
+You'll find that the [usage examples on the Spark website](https://spark.apache.org/docs/latest/spark-connect-overview.html#use-spark-connect-in-standalone-applications) also apply to the gateway without any modification.  You may also run the provided demo located at ```src/gateway/demo/client_demo.py```.

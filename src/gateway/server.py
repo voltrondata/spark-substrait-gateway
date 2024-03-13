@@ -28,6 +28,16 @@ def show_string(table: pyarrow.lib.Table) -> bytes:
     return buffer.getvalue()
 
 
+def batch_to_bytes(batch: pyarrow.RecordBatch, schema: pyarrow.Schema) -> bytes:
+    """Serializes a RecordBatch into a bytes."""
+    result_table = pyarrow.Table.from_batches(batches=[batch])
+    buffer = io.BytesIO()
+    stream = pyarrow.RecordBatchStreamWriter(buffer, schema)
+    stream.write_table(result_table)
+    stream.close()
+    return buffer.getvalue()
+
+
 # pylint: disable=E1101,fixme
 class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
     """Provides the SparkConnect service."""
@@ -48,10 +58,19 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
         results = backend.execute(substrait, self._options.backend)
         print(f"  results are: {results}")
 
-        yield pb2.ExecutePlanResponse(
-            session_id=request.session_id,
-            arrow_batch=pb2.ExecutePlanResponse.ArrowBatch(row_count=results.num_rows,
-                                                           data=show_string(results)))
+        if not self._options.implement_show_string and request.plan.root.WhichOneof(
+                'rel_type') == 'show_string':
+            yield pb2.ExecutePlanResponse(
+                session_id=request.session_id,
+                arrow_batch=pb2.ExecutePlanResponse.ArrowBatch(row_count=results.num_rows,
+                                                               data=show_string(results)))
+            return
+
+        for batch in results.to_batches():
+            yield pb2.ExecutePlanResponse(session_id=request.session_id,
+                                          arrow_batch=pb2.ExecutePlanResponse.ArrowBatch(
+                                              row_count=batch.num_rows,
+                                              data=batch_to_bytes(batch, results.schema)))
         # TODO -- When spark 3.4.0 support is not required, yield a ResultComplete message here.
 
     def AnalyzePlan(self, request, context):
@@ -80,26 +99,30 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
         print("Interrupt")
         return pb2.InterruptResponse()
 
-    def ReattachExecute(self, request: pb2.ReattachExecuteRequest, context: grpc.RpcContext) -> \
-    Generator[pb2.ExecutePlanResponse, None, None]:
+    def ReattachExecute(
+            self, request: pb2.ReattachExecuteRequest, context: grpc.RpcContext) -> Generator[
+        pb2.ExecutePlanResponse, None, None]:
         print("ReattachExecute")
         yield pb2.ExecutePlanResponse(
-           session_id=request.session_id,
-           result_complete=pb2.ExecutePlanResponse.ResultComplete())
+            session_id=request.session_id,
+            result_complete=pb2.ExecutePlanResponse.ResultComplete())
 
     def ReleaseExecute(self, request, context):
         print("ReleaseExecute")
         return pb2.ReleaseExecuteResponse()
 
 
-def serve():
+def serve(port: int, wait: bool = True):
     """Starts the SparkConnect to Substrait gateway server."""
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     pb2_grpc.add_SparkConnectServiceServicer_to_server(SparkConnectService(), server)
-    server.add_insecure_port('[::]:50051')
+    server.add_insecure_port(f'[::]:{port}')
     server.start()
-    server.wait_for_termination()
+    if wait:
+        server.wait_for_termination()
+        return None
+    return server
 
 
 if __name__ == '__main__':
-    serve()
+    serve(50051)
