@@ -22,7 +22,6 @@ def _create_local_spark_session():
         .getOrCreate()
     )
     yield spark
-    print("stopping the local spark session")
     spark.stop()
 
 
@@ -37,7 +36,6 @@ def _create_gateway_session():
         .getOrCreate()
     )
     yield spark
-    print("stopping the gateway session")
     spark.stop()
 
 
