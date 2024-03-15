@@ -34,7 +34,6 @@ class ConversionOptions:
 def datafusion():
     """Standard options to connect to a Datafusion backend."""
     options = ConversionOptions(backend=BackendOptions(Backend.DATAFUSION))
-    options.use_named_table_workaround = True
     return options
 
 

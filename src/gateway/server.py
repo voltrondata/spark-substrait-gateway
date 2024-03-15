@@ -10,7 +10,7 @@ import pyarrow
 import pyspark.sql.connect.proto.base_pb2_grpc as pb2_grpc
 import pyspark.sql.connect.proto.base_pb2 as pb2
 
-from gateway.converter.conversion_options import duck_db
+from gateway.converter.conversion_options import duck_db, datafusion
 from gateway.converter.spark_to_substrait import SparkSubstraitConverter
 from gateway.adbc.backend import AdbcBackend
 
@@ -86,6 +86,16 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
         response = pb2.ConfigResponse(session_id=request.session_id)
         match request.operation.WhichOneof('op_type'):
             case 'set':
+                for pair in request.operation.set.pairs:
+                    if pair.key == 'spark-substrait-gateway.backend':
+                        # Set the server backend for all connections (including ongoing ones).
+                        match pair.value:
+                            case 'duckdb':
+                                self._options = duck_db()
+                            case 'datafusion':
+                                self._options = datafusion()
+                            case _:
+                                raise ValueError(f'Unknown backend: {pair.value}')
                 response.pairs.extend(request.operation.set.pairs)
             case 'get_with_default':
                 response.pairs.extend(request.operation.get_with_default.pairs)

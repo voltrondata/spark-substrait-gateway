@@ -10,6 +10,7 @@ from pyarrow import substrait
 from substrait.gen.proto import plan_pb2
 
 from gateway.adbc.backend_options import BackendOptions, Backend
+from gateway.converter.replace_local_files import ReplaceLocalFilesWithNamedTable
 
 
 # pylint: disable=fixme
@@ -26,6 +27,29 @@ class AdbcBackend:
             cur.adbc_statement.set_substrait_plan(plan_data)
             tbl = cur.fetch_arrow_table()
             return tbl
+
+    # pylint: disable=import-outside-toplevel
+    def execute_with_datafusion(self, plan: 'plan_pb2.Plan') -> pyarrow.lib.Table:
+        """Executes the given Substrait plan against Datafusion."""
+        import datafusion
+        import datafusion.substrait
+
+        ctx = datafusion.SessionContext()
+
+        file_groups = ReplaceLocalFilesWithNamedTable().visit_plan(plan)
+        for files in file_groups:
+            for file in files[1]:
+                ctx.register_parquet(files[0], file)
+
+        plan_data = plan.SerializeToString()
+        substrait_plan = datafusion.substrait.substrait.serde.deserialize_bytes(plan_data)
+        logical_plan = datafusion.substrait.substrait.consumer.from_substrait_plan(
+            ctx, substrait_plan
+        )
+
+        # Create a DataFrame from a deserialized logical plan
+        df_result = ctx.create_dataframe_from_logical_plan(logical_plan)
+        return df_result.to_arrow_table()
 
     def execute_with_duckdb(self, plan: 'plan_pb2.Plan') -> pyarrow.lib.Table:
         """Executes the given Substrait plan against DuckDB."""
@@ -51,7 +75,7 @@ class AdbcBackend:
             case Backend.ARROW:
                 return self.execute_with_arrow(plan)
             case Backend.DATAFUSION:
-                raise ValueError('Datafusion support has been temporarily removed (see #16).')
+                return self.execute_with_datafusion(plan)
             case Backend.DUCKDB:
                 if options.use_adbc:
                     return self.execute_with_duckdb_over_adbc(plan)

@@ -25,13 +25,14 @@ def _create_local_spark_session():
     spark.stop()
 
 
-def _create_gateway_session():
+def _create_gateway_session(backend: str):
     """Creates a local gateway session for testing."""
     spark = (
         SparkSession
         .builder
         .remote('sc://localhost:50052')
         .config("spark.driver.bindAddress", "127.0.0.1")
+        .config("spark-substrait-gateway.backend", backend)
         .appName('gateway')
         .getOrCreate()
     )
@@ -68,14 +69,18 @@ def schema_users():
 
 
 @pytest.fixture(scope='module',
-                params=['spark', pytest.param('gateway-over-duckdb', marks=pytest.mark.xfail)])
+                params=['spark',
+                        pytest.param('gateway-over-duckdb', marks=pytest.mark.xfail),
+                        pytest.param('gateway-over-datafusion', marks=pytest.mark.xfail)])
 def spark_session(request):
     """Provides spark sessions connecting to various backends."""
     match request.param:
         case 'spark':
             session_generator = _create_local_spark_session()
+        case 'gateway-over-datafusion':
+            session_generator = _create_gateway_session('datafusion')
         case 'gateway-over-duckdb':
-            session_generator = _create_gateway_session()
+            session_generator = _create_gateway_session('duckdb')
         case _:
             raise NotImplementedError(f'No such session implemented: {request.param}')
     yield from session_generator
