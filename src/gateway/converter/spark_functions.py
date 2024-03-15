@@ -25,8 +25,8 @@ class ExtensionFunction:
         self.output_type = output_type
         self.max_args = max_args
 
-    def __lt__(self, obj):
-        return ((self.uri) < (obj.uri) and (self.name) < (obj.name))
+    def __lt__(self, obj) -> bool:
+        return self.uri < obj.uri and self.name < obj.name
 
 
 # pylint: disable=E1101

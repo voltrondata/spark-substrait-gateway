@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""A library to search Substrait plan for local filess."""
+"""A library to search Substrait plan for local files."""
 from typing import Any, List, Tuple
 
 from substrait.gen.proto import algebra_pb2, plan_pb2
@@ -9,7 +9,7 @@ from gateway.converter.substrait_plan_visitor import SubstraitPlanVisitor
 
 # pylint: disable=no-member
 class ReplaceLocalFilesWithNamedTable(SubstraitPlanVisitor):
-    """Finds all local files in a Substrait plan."""
+    """Replaces all of the local file instances with named tables."""
 
     def __init__(self):
         self._file_groups: List[Tuple[str, List[str]]] = []

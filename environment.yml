@@ -12,7 +12,7 @@ dependencies:
   - python >= 3.8.1
   - setuptools >= 61.0.0
   - setuptools_scm >= 6.2.0
-  - python-substrait
+  - python-substrait >= 0.14.1
   - mypy-protobuf
   - types-protobuf
   - Faker
