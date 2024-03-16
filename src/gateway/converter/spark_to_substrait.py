@@ -29,6 +29,8 @@ class SparkSubstraitConverter:
         self._current_plan_id: Optional[int] = None  # The relation currently being processed.
         self._symbol_table = SymbolTable()
         self._conversion_options = options
+        self._seen_generated_names = {}
+
 
     def lookup_function_by_name(self, name: str) -> ExtensionFunction:
         """Finds the function reference for a given Spark function name."""
@@ -423,6 +425,14 @@ class SparkSubstraitConverter:
                                      count=rel.limit)
         return algebra_pb2.Rel(fetch=fetch)
 
+    def determine_expression_name(self, expr: spark_exprs_pb2.Expression) -> Optional[str]:
+        """Determines the name of the expression."""
+        if expr.HasField('alias'):
+            return expr.alias.name[0]
+        self._seen_generated_names.setdefault('aggregate_expression', 0)
+        self._seen_generated_names['aggregate_expression'] += 1
+        return f'aggregate_expression{self._seen_generated_names["aggregate_expression"]}'
+
     def convert_aggregate_relation(self, rel: spark_relations_pb2.Aggregate) -> algebra_pb2.Rel:
         """Converts an aggregate relation into a Substrait relation."""
         aggregate = algebra_pb2.AggregateRel(input=self.convert_relation(rel.input))
@@ -440,7 +450,7 @@ class SparkSubstraitConverter:
                 algebra_pb2.AggregateRel.Measure(
                     measure=self.convert_expression_to_aggregate_function(expr))
             )
-            symbol.generated_fields.append(expr.alias.name[0])
+            symbol.generated_fields.append(self.determine_expression_name(expr))
         symbol.output_fields.clear()
         symbol.output_fields.extend(symbol.generated_fields)
         return algebra_pb2.Rel(aggregate=aggregate)

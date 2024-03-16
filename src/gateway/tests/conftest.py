@@ -27,7 +27,7 @@ def _create_local_spark_session():
 
 def _create_gateway_session(backend: str):
     """Creates a local gateway session for testing."""
-    spark = (
+    spark_gateway = (
         SparkSession
         .builder
         .remote('sc://localhost:50052')
@@ -36,8 +36,8 @@ def _create_gateway_session(backend: str):
         .appName('gateway')
         .getOrCreate()
     )
-    yield spark
-    spark.stop()
+    yield spark_gateway
+    spark_gateway.stop()
 
 
 @pytest.fixture(scope='session', autouse=True)
