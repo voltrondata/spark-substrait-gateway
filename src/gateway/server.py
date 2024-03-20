@@ -13,7 +13,7 @@ import pyspark.sql.connect.proto.base_pb2 as pb2
 from gateway.converter.conversion_options import duck_db, datafusion
 from gateway.converter.spark_to_substrait import SparkSubstraitConverter
 from gateway.adbc.backend import AdbcBackend
-
+from gateway.converter.sql_to_substrait import SqlConverter
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -56,7 +56,13 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
         pb2.ExecutePlanResponse, None, None]:
         _LOGGER.info('ExecutePlan: %s', request)
         convert = SparkSubstraitConverter(self._options)
-        substrait = convert.convert_plan(request.plan)
+        match request.plan.WhichOneof('op_type'):
+            case 'root':
+                substrait = convert.convert_plan(request.plan)
+            case 'command':
+                substrait = SqlConverter().convert_sql(request.plan.command.sql_command)
+            case _:
+                raise ValueError(f'Unknown plan type: {request.plan}')
         _LOGGER.debug('  as Substrait: %s', substrait)
         backend = AdbcBackend()
         results = backend.execute(substrait, self._options.backend)

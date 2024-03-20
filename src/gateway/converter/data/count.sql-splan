@@ -1,0 +1,77 @@
+extensions {
+  extension_function {
+    function_anchor: 1
+    name: "count"
+  }
+}
+relations {
+  root {
+    input {
+      project {
+        input {
+          aggregate {
+            input {
+              read {
+                base_schema {
+                  names: "user_id"
+                  names: "name"
+                  names: "paid_for_service"
+                  struct {
+                    types {
+                      varchar {
+                        length: 13
+                        nullability: NULLABILITY_NULLABLE
+                      }
+                    }
+                    types {
+                      varchar {
+                        length: 21
+                        nullability: NULLABILITY_NULLABLE
+                      }
+                    }
+                    types {
+                      bool {
+                        nullability: NULLABILITY_NULLABLE
+                      }
+                    }
+                    nullability: NULLABILITY_REQUIRED
+                  }
+                }
+                named_table {
+                  names: "users"
+                }
+              }
+            }
+            groupings {
+            }
+            measures {
+              measure {
+                function_reference: 1
+                output_type {
+                  i64 {
+                    nullability: NULLABILITY_NULLABLE
+                  }
+                }
+              }
+            }
+          }
+        }
+        expressions {
+          selection {
+            direct_reference {
+              struct_field {
+              }
+            }
+            root_reference {
+            }
+          }
+        }
+      }
+    }
+    names: "count_star()"
+  }
+}
+version {
+  minor_number: 39
+  producer: "DuckDB"
+}
