@@ -289,7 +289,7 @@ class SparkSubstraitConverter:
         raise NotImplementedError('named tables are not yet implemented')
 
     def convert_schema(self, schema_str: str) -> Optional[type_pb2.NamedStruct]:
-        """Converts the Spark JSON schema string into a Subtrait named type structure."""
+        """Converts the Spark JSON schema string into a Substrait named type structure."""
         if not schema_str:
             return None
         # TODO -- Deal with potential denial of service due to malformed JSON.

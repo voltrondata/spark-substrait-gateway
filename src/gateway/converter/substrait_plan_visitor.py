@@ -714,8 +714,7 @@ class SubstraitPlanVisitor:
         if rel.HasField('advanced_extension'):
             self.visit_advanced_extension(rel.advanced_extension)
 
-    def visit_expand_relation(
-            self, rel: algebra_pb2.ExpandRel) -> Any:
+    def visit_expand_relation(self, rel: algebra_pb2.ExpandRel) -> Any:
         """Visits an expand relation."""
         if rel.HasField('common'):
             return self.visit_relation_common(rel.common)

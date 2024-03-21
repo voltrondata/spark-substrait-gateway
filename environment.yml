@@ -19,8 +19,9 @@ dependencies:
   - pip:
     - adbc_driver_manager
     - pyarrow
-    - duckdb
+    - duckdb == 0.10.1
     - datafusion
     - pyspark
     - pandas >= 1.0.5
+    - pyhamcrest
     - substrait-validator

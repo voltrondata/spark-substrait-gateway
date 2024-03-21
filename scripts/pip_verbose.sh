@@ -1,3 +1,3 @@
 #!/bin/bash
-/usr/local/miniconda/bin/python -m pip "$@" -v
+python -m pip "$@" -v
 

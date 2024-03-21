@@ -18,14 +18,12 @@ relations {
                   names: "paid_for_service"
                   struct {
                     types {
-                      varchar {
-                        length: 13
+                      string {
                         nullability: NULLABILITY_NULLABLE
                       }
                     }
                     types {
-                      varchar {
-                        length: 21
+                      string {
                         nullability: NULLABILITY_NULLABLE
                       }
                     }

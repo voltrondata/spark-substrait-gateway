@@ -1,0 +1,68 @@
+{
+  "relations": [
+    {
+      "root": {
+        "input": {
+          "project": {
+            "input": {
+              "read": {
+                "common": {
+                  "direct": {}
+                },
+                "baseSchema": {
+                  "names": [
+                    "r_regionkey",
+                    "r_name",
+                    "r_comment"
+                  ],
+                  "struct": {
+                    "types": [
+                      {
+                        "i32": {
+                          "nullability": "NULLABILITY_REQUIRED"
+                        }
+                      },
+                      {
+                        "string": {
+                          "nullability": "NULLABILITY_REQUIRED"
+                        }
+                      },
+                      {
+                        "string": {
+                          "nullability": "NULLABILITY_NULLABLE"
+                        }
+                      }
+                    ],
+                    "nullability": "NULLABILITY_REQUIRED"
+                  }
+                },
+                "namedTable": {
+                  "names": [
+                    "#2"
+                  ]
+                }
+              }
+            },
+            "expressions": [
+              {
+                "cast": {
+                  "type": {
+                    "fixedChar": {
+                      "length": 25,
+                      "nullability": "NULLABILITY_REQUIRED"
+                    }
+                  },
+                  "input": {
+                    "literal": {
+                      "fixedChar": "DELIVER IN PERSON"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

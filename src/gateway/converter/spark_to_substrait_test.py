@@ -18,7 +18,7 @@ substrait_test_case_paths = [f for f in test_case_directory.iterdir() if f.suffi
 
 substrait_test_case_names = [p.stem for p in substrait_test_case_paths]
 
-sql_test_case_paths = [f for f in test_case_directory.iterdir() if f.suffix == 'sql']
+sql_test_case_paths = [f for f in test_case_directory.iterdir() if f.suffix == '.sql']
 
 sql_test_case_names = [p.stem for p in sql_test_case_paths]
 
