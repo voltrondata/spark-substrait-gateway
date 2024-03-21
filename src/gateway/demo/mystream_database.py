@@ -51,7 +51,7 @@ def get_mystream_schema(name: str) -> pyarrow.Schema:
 # pylint: disable=fixme,line-too-long
 def make_users_database():
     """Constructs the users table."""
-    fake = Faker()
+    fake = Faker(['en_US'])
     rows = []
     # TODO -- Make the number of users, the uniqueness of userids, and the density of paid customers configurable.
     for _ in range(100):

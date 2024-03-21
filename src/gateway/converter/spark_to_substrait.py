@@ -4,6 +4,7 @@ import json
 import operator
 from typing import Dict, Optional
 
+import pyarrow
 from substrait.gen.proto import plan_pb2
 from substrait.gen.proto import algebra_pb2
 from substrait.gen.proto import type_pb2
@@ -30,7 +31,6 @@ class SparkSubstraitConverter:
         self._symbol_table = SymbolTable()
         self._conversion_options = options
         self._seen_generated_names = {}
-
 
     def lookup_function_by_name(self, name: str) -> ExtensionFunction:
         """Finds the function reference for a given Spark function name."""
@@ -510,10 +510,63 @@ class SparkSubstraitConverter:
             for _ in symbol.output_fields:
                 project.common.emit.output_mapping.append(field_number)
                 field_number += 1
+        if (self._conversion_options.use_project_emit_workaround or
+                self._conversion_options.use_project_emit_workaround3):
             for _ in rel.aliases:
                 project.common.emit.output_mapping.append(field_number)
                 field_number += 1
         return algebra_pb2.Rel(project=project)
+
+    def convert_to_df_relation(self, rel: spark_relations_pb2.ToDF) -> algebra_pb2.Rel:
+        """Converts a to dataframe relation into a Substrait project relation."""
+        input_rel = self.convert_relation(rel.input)
+        project = algebra_pb2.ProjectRel(input=input_rel)
+        self.update_field_references(rel.input.common.plan_id)
+        symbol = self._symbol_table.get_symbol(self._current_plan_id)
+        if len(rel.column_names) != len(symbol.input_fields):
+            raise ValueError('column_names does not match the number of input fields at '
+                             f'plan id {self._current_plan_id}')
+        symbol.output_fields.clear()
+        for field_name in rel.column_names:
+            symbol.output_fields.append(field_name)
+        project.common.CopyFrom(self.create_common_relation())
+        return algebra_pb2.Rel(project=project)
+
+    def convert_arrow_to_literal(self, val: pyarrow.Scalar) -> algebra_pb2.Expression.Literal:
+        """Converts an Arrow scalar into a Substrait literal."""
+        literal = algebra_pb2.Expression.Literal()
+        if isinstance(val, pyarrow.BooleanScalar):
+            literal.boolean = val.as_py()
+        elif isinstance(val, pyarrow.StringScalar):
+            literal.string = val.as_py()
+        else:
+            raise NotImplementedError(
+                f'Conversion from arrow type {val.type} not yet implemented.')
+        return literal
+
+    def convert_arrow_data_to_virtual_table(self, data: bytes) -> algebra_pb2.ReadRel.VirtualTable:
+        """Converts a Spark local relation into a virtual table."""
+        table = algebra_pb2.ReadRel.VirtualTable()
+        # use Pyarrow to convert the bytes into an arrow structure
+        with pyarrow.ipc.open_stream(data) as arrow:
+            for batch in arrow.iter_batches_with_custom_metadata():
+                for row_number in range(batch.batch.num_rows):
+                    values = algebra_pb2.Expression.Literal.Struct()
+                    for item in batch.batch.columns:
+                        values.fields.append(self.convert_arrow_to_literal(item[row_number]))
+                    table.values.append(values)
+        return table
+
+    def convert_local_relation(self, rel: spark_relations_pb2.LocalRelation) -> algebra_pb2.Rel:
+        """Converts a Spark local relation into a virtual table."""
+        read = algebra_pb2.ReadRel(virtual_table=self.convert_arrow_data_to_virtual_table(rel.data))
+        schema = self.convert_schema(rel.schema)
+        symbol = self._symbol_table.get_symbol(self._current_plan_id)
+        for field_name in schema.names:
+            symbol.output_fields.append(field_name)
+        read.base_schema.CopyFrom(schema)
+        read.common.CopyFrom(self.create_common_relation())
+        return algebra_pb2.Rel(read=read)
 
     def convert_relation(self, rel: spark_relations_pb2.Relation) -> algebra_pb2.Rel:
         """Converts a Spark relation into a Substrait one."""
@@ -536,8 +589,12 @@ class SparkSubstraitConverter:
                 result = self.convert_show_string_relation(rel.show_string)
             case 'with_columns':
                 result = self.convert_with_columns_relation(rel.with_columns)
+            case 'to_df':
+                result = self.convert_to_df_relation(rel.to_df)
+            case 'local_relation':
+                result = self.convert_local_relation(rel.local_relation)
             case _:
-                raise ValueError(f'Unexpected rel type: {rel.WhichOneof("rel_type")}')
+                raise ValueError(f'Unexpected Spark plan rel_type: {rel.WhichOneof("rel_type")}')
         self._current_plan_id = old_plan_id
         return result
 
