@@ -41,7 +41,9 @@ def test_plan_conversion(request, path):
         splan_prototext = file.read()
     substrait_plan = text_format.Parse(splan_prototext, plan_pb2.Plan())
 
-    convert = SparkSubstraitConverter(duck_db())
+    options = duck_db()
+    options.implement_show_string = False
+    convert = SparkSubstraitConverter(options)
     substrait = convert.convert_plan(spark_plan)
 
     if request.config.getoption('rebuild_goldens'):

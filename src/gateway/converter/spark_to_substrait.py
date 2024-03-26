@@ -2,21 +2,25 @@
 """Routines to convert SparkConnect plans to Substrait plans."""
 import json
 import operator
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 import pyarrow
-from substrait.gen.proto import plan_pb2
-from substrait.gen.proto import algebra_pb2
-from substrait.gen.proto import type_pb2
-from substrait.gen.proto.extensions import extensions_pb2
-
 import pyspark.sql.connect.proto.base_pb2 as spark_pb2
 import pyspark.sql.connect.proto.expressions_pb2 as spark_exprs_pb2
 import pyspark.sql.connect.proto.relations_pb2 as spark_relations_pb2
 import pyspark.sql.connect.proto.types_pb2 as spark_types_pb2
+from substrait.gen.proto import algebra_pb2
+from substrait.gen.proto import plan_pb2
+from substrait.gen.proto import type_pb2
+from substrait.gen.proto.extensions import extensions_pb2
 
 from gateway.converter.conversion_options import ConversionOptions
 from gateway.converter.spark_functions import ExtensionFunction, lookup_spark_function
+from gateway.converter.substrait_builder import field_reference, cast_operation, string_type, \
+    project_relation, strlen, concat, fetch_relation, join_relation, aggregate_relation, \
+    max_agg_function, string_literal, flatten, repeat_function, \
+    least_function, greatest_function, bigint_literal, lpad_function, string_concat_agg_function, \
+    if_then_else_operation, greater_function, minus_function
 from gateway.converter.symbol_table import SymbolTable
 
 
@@ -133,15 +137,15 @@ class SparkSubstraitConverter:
                 result = algebra_pb2.Expression.Literal()
             case _:
                 raise NotImplementedError(
-                    f'Unexpected literal type: {literal.WhichOneof('literal_type')}')
+                    f'Unexpected literal type: {literal.WhichOneof("literal_type")}')
         return algebra_pb2.Expression(literal=result)
 
     def convert_unresolved_attribute(
             self,
             attr: spark_exprs_pb2.Expression.UnresolvedAttribute) -> algebra_pb2.Expression:
         """Converts a Spark unresolved attribute into a Substrait field reference."""
-        field_reference = self.find_field_by_name(attr.unparsed_identifier)
-        if field_reference is None:
+        field_ref = self.find_field_by_name(attr.unparsed_identifier)
+        if field_ref is None:
             raise ValueError(
                 f'could not locate field named {attr.unparsed_identifier} in plan id '
                 f'{self._current_plan_id}')
@@ -149,7 +153,7 @@ class SparkSubstraitConverter:
         return algebra_pb2.Expression(selection=algebra_pb2.Expression.FieldReference(
             direct_reference=algebra_pb2.Expression.ReferenceSegment(
                 struct_field=algebra_pb2.Expression.ReferenceSegment.StructField(
-                    field=field_reference)),
+                    field=field_ref)),
             root_reference=algebra_pb2.Expression.FieldReference.RootReference()))
 
     def convert_unresolved_function(
@@ -211,7 +215,7 @@ class SparkSubstraitConverter:
                 cast_rel.type.CopyFrom(self.convert_type_str(cast.type_str))
             case _:
                 raise NotImplementedError(
-                    f'unknown cast_to_type {cast.WhichOneof('cast_to_type')}'
+                    f'unknown cast_to_type {cast.WhichOneof("cast_to_type")}'
                 )
         return algebra_pb2.Expression(cast=cast_rel)
 
@@ -364,16 +368,20 @@ class SparkSubstraitConverter:
             local.items.append(file_or_files)
         return algebra_pb2.Rel(read=algebra_pb2.ReadRel(base_schema=schema, local_files=local))
 
-    def create_common_relation(self) -> algebra_pb2.RelCommon:
+    def create_common_relation(self, emit_overrides=None) -> algebra_pb2.RelCommon:
         """Creates the common metadata relation used by all relations."""
         if not self._conversion_options.use_emits_instead_of_direct:
             return algebra_pb2.RelCommon(direct=algebra_pb2.RelCommon.Direct())
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         emit = algebra_pb2.RelCommon.Emit()
-        field_number = 0
-        for _ in symbol.output_fields:
-            emit.output_mapping.append(field_number)
-            field_number += 1
+        if emit_overrides:
+            for field_number in emit_overrides:
+                emit.output_mapping.append(field_number)
+        else:
+            field_number = 0
+            for _ in symbol.output_fields:
+                emit.output_mapping.append(field_number)
+                field_number += 1
         return algebra_pb2.RelCommon(emit=emit)
 
     def convert_read_relation(self, rel: spark_relations_pb2.Read) -> algebra_pb2.Rel:
@@ -455,31 +463,188 @@ class SparkSubstraitConverter:
         symbol.output_fields.extend(symbol.generated_fields)
         return algebra_pb2.Rel(aggregate=aggregate)
 
+    # pylint: disable=too-many-locals,pointless-string-statement
     def convert_show_string_relation(self, rel: spark_relations_pb2.ShowString) -> algebra_pb2.Rel:
-        """Converts a show string relation into a Substrait project relation."""
+        """Converts a show string relation into a Substrait subplan."""
         if not self._conversion_options.implement_show_string:
             result = self.convert_relation(rel.input)
             self.update_field_references(rel.input.common.plan_id)
             return result
 
-        # TODO -- Implement using num_rows by wrapping the input in a fetch relation.
+        if rel.vertical:
+            raise NotImplementedError('vertical show strings are not yet implemented')
 
-        # TODO -- Implement what happens if truncate is not set or less than two.
-        # TODO -- Implement what happens when rel.vertical is true.
+        if rel.truncate < 3:
+            raise NotImplementedError(
+                'show_string values of truncate of less than 3 not yet implemented')
+
+        """
+        The subplan implementing the show_string relation has this flow:
+
+        Input -> Fetch1 -> Project1 -> Aggregate1 -> Project2 -> Project3
+        Fetch1 + Aggregate1 -> Join1
+        Join1 -> Project4 -> Aggregate2
+        Project3 + Aggregate2 -> Join2
+        Join2 -> Project5
+
+        Input - The plan to run the show_string on.
+        Fetch1 - Restricts the input to the number of rows (if needed).
+        Project1 - Finds the length of each column of the remaining rows.
+        Aggregate1 - Finds the maximum length of each column.
+        Project2 - Uses the best of truncate, column name length, and max length.
+        Project3 - Constructs the header and the footer based on the lines.
+        Join1 - Combines the original rows with the maximum lengths.
+        Project4 - Combines all of the columns for each row into a single string.
+        Aggregate2 - Combines all the strings into the body of the result.
+        Join2 - Combines the header and footer along with the body of the result.
+        Project5 - Organizes the header, footer, and body in the right order.
+        """
+
+        # Find the functions we'll need.
+        strlen_func = self.lookup_function_by_name('length')
+        max_func = self.lookup_function_by_name('max')
+        string_concat_func = self.lookup_function_by_name('string_agg')
+        concat_func = self.lookup_function_by_name('concat')
+        repeat_func = self.lookup_function_by_name('repeat')
+        lpad_func = self.lookup_function_by_name('lpad')
+        least_func = self.lookup_function_by_name('least')
+        greatest_func = self.lookup_function_by_name('greatest')
+        greater_func = self.lookup_function_by_name('>')
+        minus_func = self.lookup_function_by_name('-')
+
+        # Get the input and restrict it to the number of requested rows if necessary.
         input_rel = self.convert_relation(rel.input)
+        if rel.num_rows > 0:
+            input_rel = fetch_relation(input_rel, rel.num_rows)
+
+        # Now that we've processed the input, do the bookkeeping.
         self.update_field_references(rel.input.common.plan_id)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
-        # TODO -- Pull the columns from symbol.input_fields.
-        # TODO -- Use string_agg to aggregate all of the column input into a single string.
-        # TODO -- Use a project to output a single field with the table info in it.
+
+        # Find the length of each column in every row.
+        project1 = project_relation(
+            input_rel,
+            [strlen(strlen_func, cast_operation(field_reference(column_number), string_type())) for
+             column_number in range(len(symbol.input_fields))])
+
+        # Find the maximum width of each column (for the rows in that we will display).
+        aggregate1 = aggregate_relation(
+            project1,
+            measures=[
+                max_agg_function(max_func, column_number)
+                for column_number in range(len(symbol.input_fields))])
+
+        # Find the maximum we will use based on the truncate, max size, and column name length.
+        project2 = project_relation(
+            aggregate1,
+            [greatest_function(greatest_func,
+                               least_function(least_func, field_reference(column_number),
+                                              bigint_literal(rel.truncate)),
+                               strlen(strlen_func,
+                                      string_literal(symbol.input_fields[column_number]))) for
+             column_number in range(len(symbol.input_fields))])
+
+        def field_header_fragment(field_number: int) -> List[algebra_pb2.Expression]:
+            return [string_literal('|'),
+                    lpad_function(lpad_func, string_literal(symbol.input_fields[field_number]),
+                                  field_reference(field_number))]
+
+        def field_line_fragment(field_number: int) -> List[algebra_pb2.Expression]:
+            return [string_literal('+'),
+                    repeat_function(repeat_func, '-', field_reference(field_number))]
+
+        def field_body_fragment(field_number: int) -> List[algebra_pb2.Expression]:
+            return [string_literal('|'),
+                    if_then_else_operation(
+                        greater_function(greater_func,
+                                         strlen(strlen_func,
+                                                cast_operation(
+                                                    field_reference(field_number),
+                                                    string_type())),
+                                         field_reference(
+                                             field_number + len(symbol.input_fields))),
+                        concat(concat_func,
+                               [lpad_function(lpad_func, field_reference(field_number),
+                                              minus_function(minus_func, field_reference(
+                                                  field_number + len(symbol.input_fields)),
+                                                             bigint_literal(3))),
+                                string_literal('...')]),
+                        lpad_function(lpad_func, field_reference(field_number),
+                                      field_reference(
+                                          field_number + len(symbol.input_fields))),
+
+                    )]
+
+        def header_line(fields: List[str]) -> List[algebra_pb2.Expression]:
+            return [concat(concat_func,
+                           flatten([
+                               field_header_fragment(field_number) for field_number in
+                               range(len(fields))
+                           ]) + [
+                               string_literal('|\n'),
+                           ])]
+
+        def full_line(fields: List[str]) -> List[algebra_pb2.Expression]:
+            return [concat(concat_func,
+                           flatten([
+                               field_line_fragment(field_number) for field_number in
+                               range(len(fields))
+                           ]) + [
+                               string_literal('+\n'),
+                           ])]
+
+        # Construct the header and footer lines.
+        project3 = project_relation(project2, [
+            concat(concat_func,
+                   full_line(symbol.input_fields) +
+                   header_line(symbol.input_fields) +
+                   full_line(symbol.input_fields))] +
+                                    full_line(symbol.input_fields))
+
+        # Combine the original rows with the maximum lengths we are using.
+        join1 = join_relation(input_rel, project2)
+
+        # Construct the body of the result row by row.
+        project4 = project_relation(join1, [
+            concat(concat_func,
+                   flatten([field_body_fragment(field_number) for field_number in
+                            range(len(symbol.input_fields))
+                            ]) + [
+                       string_literal('|\n'),
+                   ]
+                   ),
+        ])
+
+        # Merge all of the rows of the result body into a single string.
+        aggregate2 = aggregate_relation(project4, measures=[
+            string_concat_agg_function(string_concat_func, 0)])
+
+        # Create one row with the header, the body, and the footer in it.
+        join2 = join_relation(project3, aggregate2)
+
+        symbol = self._symbol_table.get_symbol(self._current_plan_id)
         symbol.output_fields.clear()
         symbol.output_fields.append('show_string')
 
-        project = algebra_pb2.ProjectRel(input=input_rel)
-        project.expressions.append(
-            algebra_pb2.Expression(literal=self.convert_string_literal('hiya')))
-        project.common.emit.output_mapping.append(len(symbol.input_fields))
-        return algebra_pb2.Rel(project=project)
+        def compute_row_count_footer(num_rows: int) -> str:
+            if num_rows == 1:
+                return 'only showing top 1 row\n'
+            if num_rows < 20:
+                return f'only showing top {num_rows} rows\n'
+            return ''
+
+        # Combine the header, body, and footer into the final result.
+        project5 = project_relation(join2, [
+            concat(concat_func, [
+                field_reference(0),
+                field_reference(2),
+                field_reference(1),
+            ] + [string_literal(
+                compute_row_count_footer(rel.num_rows)) if rel.num_rows else None
+                 ]),
+        ])
+        project5.project.common.emit.output_mapping.append(len(symbol.input_fields))
+        return project5
 
     def convert_with_columns_relation(
             self, rel: spark_relations_pb2.WithColumns) -> algebra_pb2.Rel:
@@ -544,7 +709,8 @@ class SparkSubstraitConverter:
                 f'Conversion from arrow type {val.type} not yet implemented.')
         return literal
 
-    def convert_arrow_data_to_virtual_table(self, data: bytes) -> algebra_pb2.ReadRel.VirtualTable:
+    def convert_arrow_data_to_virtual_table(self,
+                                            data: bytes) -> algebra_pb2.ReadRel.VirtualTable:
         """Converts a Spark local relation into a virtual table."""
         table = algebra_pb2.ReadRel.VirtualTable()
         # use Pyarrow to convert the bytes into an arrow structure
@@ -559,7 +725,8 @@ class SparkSubstraitConverter:
 
     def convert_local_relation(self, rel: spark_relations_pb2.LocalRelation) -> algebra_pb2.Rel:
         """Converts a Spark local relation into a virtual table."""
-        read = algebra_pb2.ReadRel(virtual_table=self.convert_arrow_data_to_virtual_table(rel.data))
+        read = algebra_pb2.ReadRel(
+            virtual_table=self.convert_arrow_data_to_virtual_table(rel.data))
         schema = self.convert_schema(rel.schema)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         for field_name in schema.names:
@@ -594,7 +761,8 @@ class SparkSubstraitConverter:
             case 'local_relation':
                 result = self.convert_local_relation(rel.local_relation)
             case _:
-                raise ValueError(f'Unexpected Spark plan rel_type: {rel.WhichOneof("rel_type")}')
+                raise ValueError(
+                    f'Unexpected Spark plan rel_type: {rel.WhichOneof("rel_type")}')
         self._current_plan_id = old_plan_id
         return result
 

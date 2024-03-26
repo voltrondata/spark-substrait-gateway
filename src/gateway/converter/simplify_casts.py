@@ -60,7 +60,7 @@ class SimplifyCasts(SubstraitPlanVisitor):
                 return rel.extension_single.input
             case _:
                 raise NotImplementedError('Finding single inputs of relations with type '
-                                          f'{rel.WhichOneof('rel_type')} are not implemented')
+                                          f'{rel.WhichOneof("rel_type")} are not implemented')
 
     @staticmethod
     def replace_single_input(rel: algebra_pb2.Rel, new_input: algebra_pb2.Rel):
@@ -80,7 +80,7 @@ class SimplifyCasts(SubstraitPlanVisitor):
                 rel.extension_single.input.CopyFrom(new_input)
             case _:
                 raise NotImplementedError('Modifying inputs of relations with type '
-                                          f'{rel.WhichOneof('rel_type')} are not implemented')
+                                          f'{rel.WhichOneof("rel_type")} are not implemented')
 
     def update_field_references(self, plan_id: int) -> None:
         """Uses the field references using the specified portion of the plan."""
