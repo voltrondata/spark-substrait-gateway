@@ -31,8 +31,8 @@ jobs:
           export PIP_INTEROP_ENABLED=compatible
           export PIP_SCRIPT=scripts/pip_verbose.sh
           $CONDA/bin/conda env update --file environment.yml --name base
-          python -m pip install --upgrade pip
-          python -m pip install ".[test]"
+          $PIP_SCRIPT install --upgrade pip
+          $PIP_SCRIPT install ".[test]"
       - name: Run tests
         run: |
           $CONDA/bin/pytest

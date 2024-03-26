@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for the Spark to Substrait Gateway server."""
+from hamcrest import assert_that, equal_to
 from pyspark.sql.functions import col, substring
 from pyspark.testing import assertDataFrameEqual
 
@@ -15,6 +16,20 @@ class TestDataFrameAPI:
 
     # pylint: disable=singleton-comparison
     def test_filter_with_show(self, users_dataframe, capsys):
+        expected = '''+-------------+---------------+----------------+
+|      user_id|           name|paid_for_service|
++-------------+---------------+----------------+
+|user669344115|   Joshua Brown|            true|
+|user282427709|Michele Carroll|            true|
++-------------+---------------+----------------+
+
+'''
+        users_dataframe.filter(col('paid_for_service') == True).limit(2).show()
+        outcome = capsys.readouterr().out
+        assert_that(outcome, equal_to(expected))
+
+    # pylint: disable=singleton-comparison
+    def test_filter_with_show_with_limit(self, users_dataframe, capsys):
         expected = '''+-------------+------------+----------------+
 |      user_id|        name|paid_for_service|
 +-------------+------------+----------------+
@@ -25,7 +40,20 @@ only showing top 1 row
 '''
         users_dataframe.filter(col('paid_for_service') == True).show(1)
         outcome = capsys.readouterr().out
-        assert outcome == expected
+        assert_that(outcome, equal_to(expected))
+
+    # pylint: disable=singleton-comparison
+    def test_filter_with_show_and_truncate(self, users_dataframe, capsys):
+        expected = '''+----------+----------+----------------+
+|   user_id|      name|paid_for_service|
++----------+----------+----------------+
+|user669...|Joshua ...|            true|
++----------+----------+----------------+
+
+'''
+        users_dataframe.filter(col('paid_for_service') == True).limit(1).show(truncate=10)
+        outcome = capsys.readouterr().out
+        assert_that(outcome, equal_to(expected))
 
     def test_count(self, users_dataframe):
         outcome = users_dataframe.count()
