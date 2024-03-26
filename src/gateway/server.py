@@ -9,6 +9,7 @@ import grpc
 import pyarrow
 import pyspark.sql.connect.proto.base_pb2_grpc as pb2_grpc
 import pyspark.sql.connect.proto.base_pb2 as pb2
+from pyspark.sql.connect.proto import types_pb2
 
 from gateway.converter.conversion_options import duck_db, datafusion
 from gateway.converter.spark_to_substrait import SparkSubstraitConverter
@@ -42,6 +43,27 @@ def batch_to_bytes(batch: pyarrow.RecordBatch, schema: pyarrow.Schema) -> bytes:
     return buffer.getvalue()
 
 
+# pylint: disable=E1101
+def convert_pyarrow_schema_to_spark(schema: pyarrow.Schema) -> types_pb2.DataType:
+    """Converts a PyArrow schema to a SparkConnect DataType.Struct schema."""
+    fields = []
+    for field in schema:
+        if field.type == pyarrow.bool_():
+            data_type = types_pb2.DataType(boolean=types_pb2.DataType.Boolean())
+        elif field.type == pyarrow.int64():
+            data_type = types_pb2.DataType(long=types_pb2.DataType.Long())
+        elif field.type == pyarrow.string():
+            data_type = types_pb2.DataType(string=types_pb2.DataType.String())
+        else:
+            raise ValueError(
+                f'Unsupported arrow schema to Spark schema conversion type: {field.type}')
+
+        struct_field = types_pb2.DataType.StructField(name=field.name, data_type=data_type)
+        fields.append(struct_field)
+
+    return types_pb2.DataType(struct=types_pb2.DataType.Struct(fields=fields))
+
+
 # pylint: disable=E1101,fixme
 class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
     """Provides the SparkConnect service."""
@@ -72,15 +94,25 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
                 'rel_type') == 'show_string':
             yield pb2.ExecutePlanResponse(
                 session_id=request.session_id,
-                arrow_batch=pb2.ExecutePlanResponse.ArrowBatch(row_count=results.num_rows,
-                                                               data=show_string(results)))
+                arrow_batch=pb2.ExecutePlanResponse.ArrowBatch(
+                    row_count=results.num_rows,
+                    data=show_string(results)),
+                schema=types_pb2.DataType(struct=types_pb2.DataType.Struct(
+                    fields=[types_pb2.DataType.StructField(
+                        name='show_string',
+                        data_type=types_pb2.DataType(string=types_pb2.DataType.String()))]
+                )),
+            )
             return
 
         for batch in results.to_batches():
-            yield pb2.ExecutePlanResponse(session_id=request.session_id,
-                                          arrow_batch=pb2.ExecutePlanResponse.ArrowBatch(
-                                              row_count=batch.num_rows,
-                                              data=batch_to_bytes(batch, results.schema)))
+            yield pb2.ExecutePlanResponse(
+                session_id=request.session_id,
+                arrow_batch=pb2.ExecutePlanResponse.ArrowBatch(
+                    row_count=batch.num_rows,
+                    data=batch_to_bytes(batch, results.schema)),
+                schema=convert_pyarrow_schema_to_spark(results.schema),
+            )
         # TODO -- When spark 3.4.0 support is not required, yield a ResultComplete message here.
 
     def AnalyzePlan(self, request, context):

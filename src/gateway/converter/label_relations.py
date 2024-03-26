@@ -55,7 +55,7 @@ def get_common_section(rel: algebra_pb2.Rel) -> algebra_pb2.RelCommon:
             result = rel.expand.common
         case _:
             raise NotImplementedError('Finding the common section for type '
-                                      f'{rel.WhichOneof('rel_type')} is not implemented')
+                                      f'{rel.WhichOneof("rel_type")} is not implemented')
     return result
 
 
