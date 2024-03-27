@@ -13,6 +13,10 @@ from gateway.adbc.backend_options import BackendOptions, Backend
 from gateway.converter.replace_local_files import ReplaceLocalFilesWithNamedTable
 
 
+def _import(handle):
+    return pyarrow.RecordBatchReader._import_from_c(handle.address)
+
+
 # pylint: disable=fixme
 class AdbcBackend:
     """Provides methods for contacting an ADBC backend via Substrait."""
@@ -23,10 +27,12 @@ class AdbcBackend:
     def execute_with_duckdb_over_adbc(self, plan: 'plan_pb2.Plan') -> pyarrow.lib.Table:
         """Executes the given Substrait plan against DuckDB using ADBC."""
         with adbc_driver_duckdb.dbapi.connect() as conn, conn.cursor() as cur:
+            cur.execute("LOAD substrait;")
             plan_data = plan.SerializeToString()
             cur.adbc_statement.set_substrait_plan(plan_data)
-            tbl = cur.fetch_arrow_table()
-            return tbl
+            res = cur.adbc_statement.execute_query()
+            table = _import(res[0]).read_all()
+            return table
 
     # pylint: disable=import-outside-toplevel
     def execute_with_datafusion(self, plan: 'plan_pb2.Plan') -> pyarrow.lib.Table:

@@ -69,17 +69,17 @@ only showing top 1 row
         assertDataFrameEqual(outcome, expected)
 
     def test_with_column(self, users_dataframe, spark_session):
-        expected = spark_session.createDataFrame(
-            data=[('user849118289', 'Brooke Jones', False)],
-            schema=['user_id', 'name', 'paid_for_service'])
+        expected = [
+            Row(user_id='user849118289', name='Brooke Jones', paid_for_service=False),
+        ]
         outcome = users_dataframe.withColumn(
             'user_id', col('user_id')).limit(1).collect()
         assertDataFrameEqual(outcome, expected)
 
     def test_cast(self, users_dataframe, spark_session):
-        expected = spark_session.createDataFrame(
-            data=[(849, 'Brooke Jones', False)],
-            schema=['user_id', 'name', 'paid_for_service'])
+        expected = [
+            Row(user_id=849, name='Brooke Jones', paid_for_service=False),
+        ]
         outcome = users_dataframe.withColumn(
             'user_id',
             substring(col('user_id'), 5, 3).cast('integer')).limit(1).collect()

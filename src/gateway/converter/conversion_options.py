@@ -23,6 +23,7 @@ class ConversionOptions:
         self.use_project_emit_workaround = False
         self.use_project_emit_workaround2 = False
         self.use_project_emit_workaround3 = False
+        self.track_column_names_for_with_column = True
         self.use_emits_instead_of_direct = False
 
         self.return_names_with_types = False
@@ -42,5 +43,4 @@ def duck_db():
     """Standard options to connect to a DuckDB backend."""
     options = ConversionOptions(backend=BackendOptions(Backend.DUCKDB))
     options.return_names_with_types = True
-    options.use_project_emit_workaround3 = False
     return options
