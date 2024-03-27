@@ -653,50 +653,26 @@ class SparkSubstraitConverter:
         project = algebra_pb2.ProjectRel(input=input_rel)
         self.update_field_references(rel.input.common.plan_id)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
-        if self._conversion_options.track_column_names_for_with_column:
-            remapped = False
-            mapping = list(range(len(symbol.input_fields)))
+        remapped = False
+        mapping = list(range(len(symbol.input_fields)))
         field_number = len(symbol.input_fields)
-        if self._conversion_options.use_project_emit_workaround:
-            field_number = 0
-            for _ in symbol.output_fields:
-                project.expressions.append(algebra_pb2.Expression(
-                    selection=algebra_pb2.Expression.FieldReference(
-                        direct_reference=algebra_pb2.Expression.ReferenceSegment(
-                            struct_field=algebra_pb2.Expression.ReferenceSegment.StructField(
-                                field=field_number)))))
-            field_number += 1
         for alias in rel.aliases:
             name = alias.name[0]
             project.expressions.append(self.convert_expression(alias.expr))
-            if self._conversion_options.track_column_names_for_with_column:
-                if name in symbol.input_fields:
-                    remapped = True
-                    mapping[symbol.input_fields.index(name)] = len(symbol.input_fields) + (
-                        len(project.expressions)) - 1
-                    continue
-                else:
-                    mapping.append(field_number + len(symbol.input_fields))
-                    field_number += 1
-            # TODO -- Add unique intermediate names if none are provided.
-            symbol.generated_fields.append(name)
-            symbol.output_fields.append(name)
+            if name in symbol.input_fields:
+                remapped = True
+                mapping[symbol.input_fields.index(name)] = len(symbol.input_fields) + (
+                    len(project.expressions)) - 1
+            else:
+                mapping.append(field_number + len(symbol.input_fields))
+                field_number += 1
+                # TODO -- Add unique intermediate names if none are provided.
+                symbol.generated_fields.append(name)
+                symbol.output_fields.append(name)
         project.common.CopyFrom(self.create_common_relation())
-        if (self._conversion_options.use_project_emit_workaround or
-                self._conversion_options.use_project_emit_workaround2):
-            field_number = 0
-            for _ in symbol.output_fields:
-                project.common.emit.output_mapping.append(field_number)
-                field_number += 1
-        if self._conversion_options.use_project_emit_workaround3:
-            field_number = 0
-            for _ in rel.aliases:
-                project.common.emit.output_mapping.append(field_number)
-                field_number += 1
-        if self._conversion_options.track_column_names_for_with_column:
-            if remapped:
-                for item in mapping:
-                    project.common.emit.output_mapping.append(item)
+        if remapped:
+            for item in mapping:
+                project.common.emit.output_mapping.append(item)
         return algebra_pb2.Rel(project=project)
 
     def convert_to_df_relation(self, rel: spark_relations_pb2.ToDF) -> algebra_pb2.Rel:

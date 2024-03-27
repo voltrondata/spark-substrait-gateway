@@ -13,6 +13,7 @@ from gateway.adbc.backend_options import BackendOptions, Backend
 from gateway.converter.replace_local_files import ReplaceLocalFilesWithNamedTable
 
 
+# pylint: disable=protected-access
 def _import(handle):
     return pyarrow.RecordBatchReader._import_from_c(handle.address)
 

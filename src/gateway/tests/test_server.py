@@ -60,7 +60,7 @@ only showing top 1 row
         outcome = users_dataframe.count()
         assert outcome == 100
 
-    def test_limit(self, users_dataframe, spark_session):
+    def test_limit(self, users_dataframe):
         expected = [
             Row(user_id='user849118289', name='Brooke Jones', paid_for_service=False),
             Row(user_id='user954079192', name='Collin Frank', paid_for_service=False),
@@ -68,7 +68,7 @@ only showing top 1 row
         outcome = users_dataframe.limit(2).collect()
         assertDataFrameEqual(outcome, expected)
 
-    def test_with_column(self, users_dataframe, spark_session):
+    def test_with_column(self, users_dataframe):
         expected = [
             Row(user_id='user849118289', name='Brooke Jones', paid_for_service=False),
         ]
@@ -76,7 +76,7 @@ only showing top 1 row
             'user_id', col('user_id')).limit(1).collect()
         assertDataFrameEqual(outcome, expected)
 
-    def test_cast(self, users_dataframe, spark_session):
+    def test_cast(self, users_dataframe):
         expected = [
             Row(user_id=849, name='Brooke Jones', paid_for_service=False),
         ]
