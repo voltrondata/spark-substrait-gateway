@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for the Spark to Substrait Gateway server."""
 from hamcrest import assert_that, equal_to
+from pyspark import Row
 from pyspark.sql.functions import col, substring
 from pyspark.testing import assertDataFrameEqual
 
@@ -60,10 +61,10 @@ only showing top 1 row
         assert outcome == 100
 
     def test_limit(self, users_dataframe, spark_session):
-        expected = spark_session.createDataFrame(
-            data=[('user849118289', 'Brooke Jones', False),
-                  ('user954079192', 'Collin Frank', False)],
-            schema=['user_id', 'name', 'paid_for_service'])
+        expected = [
+            Row(user_id='user849118289', name='Brooke Jones', paid_for_service=False),
+            Row(user_id='user954079192', name='Collin Frank', paid_for_service=False),
+        ]
         outcome = users_dataframe.limit(2).collect()
         assertDataFrameEqual(outcome, expected)
 
