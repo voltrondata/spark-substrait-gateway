@@ -657,6 +657,8 @@ class SparkSubstraitConverter:
         mapping = list(range(len(symbol.input_fields)))
         field_number = len(symbol.input_fields)
         for alias in rel.aliases:
+            if len(alias.name) != 1:
+                raise ValueError('every column alias must have exactly one name')
             name = alias.name[0]
             project.expressions.append(self.convert_expression(alias.expr))
             if name in symbol.input_fields:
@@ -664,9 +666,8 @@ class SparkSubstraitConverter:
                 mapping[symbol.input_fields.index(name)] = len(symbol.input_fields) + (
                     len(project.expressions)) - 1
             else:
-                mapping.append(field_number + len(symbol.input_fields))
+                mapping.append(field_number)
                 field_number += 1
-                # TODO -- Add unique intermediate names if none are provided.
                 symbol.generated_fields.append(name)
                 symbol.output_fields.append(name)
         project.common.CopyFrom(self.create_common_relation())
