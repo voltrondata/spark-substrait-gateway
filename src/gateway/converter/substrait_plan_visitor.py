@@ -722,8 +722,7 @@ class SubstraitPlanVisitor:
             return self.visit_relation(rel.input)
         for field in rel.fields:
             return self.visit_expand_field(field)
-        if rel.HasField('advanced_extension'):
-            return self.visit_advanced_extension(rel.advanced_extension)
+        # ExpandRel does not have an advanced_extension like other relations do.
 
     def visit_relation(self, rel: algebra_pb2.Rel) -> Any:
         """Visits a Substrait relation."""
