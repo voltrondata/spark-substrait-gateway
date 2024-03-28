@@ -44,28 +44,40 @@ class AdbcBackend:
         ctx = datafusion.SessionContext()
 
         file_groups = ReplaceLocalFilesWithNamedTable().visit_plan(plan)
+        registered_tables = set()
         for files in file_groups:
+            table_name = files[0]
             for file in files[1]:
-                ctx.register_parquet(files[0], file)
+                if table_name not in registered_tables:
+                    ctx.register_parquet(table_name, file)
+                registered_tables.add(files[0])
 
-        plan_data = plan.SerializeToString()
-        substrait_plan = datafusion.substrait.substrait.serde.deserialize_bytes(plan_data)
-        logical_plan = datafusion.substrait.substrait.consumer.from_substrait_plan(
-            ctx, substrait_plan
-        )
+        try:
+            plan_data = plan.SerializeToString()
+            substrait_plan = datafusion.substrait.substrait.serde.deserialize_bytes(plan_data)
+            logical_plan = datafusion.substrait.substrait.consumer.from_substrait_plan(
+                ctx, substrait_plan
+            )
 
-        # Create a DataFrame from a deserialized logical plan
-        df_result = ctx.create_dataframe_from_logical_plan(logical_plan)
-        return df_result.to_arrow_table()
+            # Create a DataFrame from a deserialized logical plan
+            df_result = ctx.create_dataframe_from_logical_plan(logical_plan)
+            return df_result.to_arrow_table()
+        finally:
+            for table_name in registered_tables:
+                ctx.deregister_table(table_name)
 
     def execute_with_duckdb(self, plan: 'plan_pb2.Plan') -> pyarrow.lib.Table:
         """Executes the given Substrait plan against DuckDB."""
         con = duckdb.connect(config={'max_memory': '100GB',
+                                     "allow_unsigned_extensions": "true",
                                      'temp_directory': str(Path('.').absolute())})
         con.install_extension('substrait')
         con.load_extension('substrait')
         plan_data = plan.SerializeToString()
-        query_result = con.from_substrait(proto=plan_data)
+        try:
+            query_result = con.from_substrait(proto=plan_data)
+        except Exception as err:
+            raise ValueError(f'DuckDB Execution Error: {err}') from err
         df = query_result.df()
         return pyarrow.Table.from_pandas(df=df)
 
