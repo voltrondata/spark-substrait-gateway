@@ -418,7 +418,7 @@ class SubstraitPlanVisitor:
 
     def visit_mask_expression(self, expression: algebra_pb2.Expression.MaskExpression) -> Any:
         """Visits a mask expression."""
-        if expression.HasField('has_select'):
+        if expression.HasField('select'):
             self.visit_struct_select(expression.select)
 
     def visit_virtual_table(self, table: algebra_pb2.ReadRel.VirtualTable) -> Any:
