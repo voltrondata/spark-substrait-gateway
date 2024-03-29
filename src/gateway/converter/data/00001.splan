@@ -77,19 +77,49 @@ relations {
                         input {
                           project {
                             common {
-                              direct {
+                              emit {
+                                output_mapping: 0
+                                output_mapping: 1
+                                output_mapping: 2
+                                output_mapping: 3
+                                output_mapping: 4
+                                output_mapping: 5
+                                output_mapping: 6
+                                output_mapping: 7
+                                output_mapping: 8
+                                output_mapping: 10
                               }
                             }
                             input {
                               project {
                                 common {
-                                  direct {
+                                  emit {
+                                    output_mapping: 0
+                                    output_mapping: 1
+                                    output_mapping: 2
+                                    output_mapping: 3
+                                    output_mapping: 4
+                                    output_mapping: 5
+                                    output_mapping: 6
+                                    output_mapping: 10
+                                    output_mapping: 8
+                                    output_mapping: 9
                                   }
                                 }
                                 input {
                                   project {
                                     common {
-                                      direct {
+                                      emit {
+                                        output_mapping: 0
+                                        output_mapping: 1
+                                        output_mapping: 2
+                                        output_mapping: 3
+                                        output_mapping: 4
+                                        output_mapping: 5
+                                        output_mapping: 10
+                                        output_mapping: 7
+                                        output_mapping: 8
+                                        output_mapping: 9
                                       }
                                     }
                                     input {
