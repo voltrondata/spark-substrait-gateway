@@ -1,6 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
 """Validation for the Spark to Substrait plan conversion routines."""
-import os
 from pathlib import Path
 
 from google.protobuf import text_format
@@ -9,11 +8,11 @@ from substrait.gen.proto import plan_pb2
 import substrait_validator
 
 
-test_case_directory = Path(os.path.dirname(os.path.realpath(__file__))) / 'data'
+test_case_directory = Path(__file__).resolve().parent / 'data'
 
-test_case_paths = [f for f in test_case_directory.iterdir() if f.name.endswith('.splan')]
+test_case_paths = [f for f in test_case_directory.iterdir() if f.suffix == '.splan']
 
-test_case_names = [os.path.basename(p).removesuffix('.splan') for p in test_case_paths]
+test_case_names = [p.stem for p in test_case_paths]
 
 
 # pylint: disable=E1101,fixme

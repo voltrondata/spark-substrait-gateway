@@ -180,7 +180,7 @@ class SubstraitPlanVisitor:
     def visit_if_value(self, if_clause: algebra_pb2.Expression.SwitchExpression.IfValue) -> Any:
         """Visits an if value."""
         if if_clause.HasField('if'):
-            self.visit_literal(if_clause.if_)
+            self.visit_expression(getattr(if_clause, 'if'))
         if if_clause.HasField('then'):
             self.visit_expression(if_clause.then)
 
@@ -245,8 +245,8 @@ class SubstraitPlanVisitor:
         """Visits an if then."""
         for if_then_if in if_then.ifs:
             self.visit_if_value(if_then_if)
-        if if_then.HasField('else_'):
-            self.visit_expression(if_then.else_)
+        if if_then.HasField('else'):
+            self.visit_expression(getattr(if_then, 'else'))
 
     def visit_switch_expression(self, expression: algebra_pb2.Expression.SwitchExpression) -> Any:
         """Visits a switch expression."""
@@ -255,7 +255,7 @@ class SubstraitPlanVisitor:
         for if_then_if in expression.ifs:
             self.visit_if_value(if_then_if)
         if expression.HasField('else'):
-            self.visit_expression(expression.else_)
+            self.visit_expression(getattr(expression, 'else'))
 
     def visit_singular_or_list(self,
                                singular_or_list: algebra_pb2.Expression.SingularOrList) -> Any:
@@ -418,7 +418,7 @@ class SubstraitPlanVisitor:
 
     def visit_mask_expression(self, expression: algebra_pb2.Expression.MaskExpression) -> Any:
         """Visits a mask expression."""
-        if expression.HasField('has_select'):
+        if expression.HasField('select'):
             self.visit_struct_select(expression.select)
 
     def visit_virtual_table(self, table: algebra_pb2.ReadRel.VirtualTable) -> Any:
@@ -722,8 +722,7 @@ class SubstraitPlanVisitor:
             return self.visit_relation(rel.input)
         for field in rel.fields:
             return self.visit_expand_field(field)
-        if rel.HasField('advanced_extension'):
-            return self.visit_advanced_extension(rel.advanced_extension)
+        # ExpandRel does not have an advanced_extension like other relations do.
 
     def visit_relation(self, rel: algebra_pb2.Rel) -> Any:
         """Visits a Substrait relation."""
