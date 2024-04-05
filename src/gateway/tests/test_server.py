@@ -7,6 +7,7 @@ from pyspark.testing import assertDataFrameEqual
 
 
 # pylint: disable=missing-function-docstring
+# ruff: noqa: E712
 class TestDataFrameAPI:
     """Tests of the dataframe side of SparkConnect."""
 
