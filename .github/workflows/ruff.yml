@@ -1,0 +1,26 @@
+name: Ruff
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      uses: conda-incubator/setup-miniconda@v3
+      with:
+        miniforge-version: "latest"
+        activate-environment: base
+        environment-file: environment.yml
+        python-version: ${{ matrix.python }}
+        auto-activate-base: true
+    - name: Analyzing the code using ruff
+      uses: chartboost/ruff-action@v1
