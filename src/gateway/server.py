@@ -50,13 +50,16 @@ def convert_pyarrow_schema_to_spark(schema: pyarrow.Schema) -> types_pb2.DataTyp
     for field in schema:
         if field.type == pyarrow.bool_():
             data_type = types_pb2.DataType(boolean=types_pb2.DataType.Boolean())
+        elif field.type == pyarrow.int32():
+            data_type = types_pb2.DataType(integer=types_pb2.DataType.Integer())
         elif field.type == pyarrow.int64():
             data_type = types_pb2.DataType(long=types_pb2.DataType.Long())
         elif field.type == pyarrow.string():
             data_type = types_pb2.DataType(string=types_pb2.DataType.String())
         else:
-            raise ValueError(
-                f'Unsupported arrow schema to Spark schema conversion type: {field.type}')
+            raise NotImplementedError(
+                'Conversion from Arrow schema to Spark schema not yet implemented '
+                f'for type: {field.type}')
 
         struct_field = types_pb2.DataType.StructField(name=field.name, data_type=data_type)
         fields.append(struct_field)

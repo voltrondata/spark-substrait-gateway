@@ -507,8 +507,6 @@ class SparkSubstraitConverter:
         concat_func = self.lookup_function_by_name('concat')
         repeat_func = self.lookup_function_by_name('repeat')
         lpad_func = self.lookup_function_by_name('lpad')
-        least_func = self.lookup_function_by_name('least')
-        greatest_func = self.lookup_function_by_name('greatest')
         greater_func = self.lookup_function_by_name('>')
         minus_func = self.lookup_function_by_name('-')
 
@@ -537,8 +535,8 @@ class SparkSubstraitConverter:
         # Find the maximum we will use based on the truncate, max size, and column name length.
         project2 = project_relation(
             aggregate1,
-            [greatest_function(greatest_func,
-                               least_function(least_func, field_reference(column_number),
+            [greatest_function(greater_func,
+                               least_function(greater_func, field_reference(column_number),
                                               bigint_literal(rel.truncate)),
                                strlen(strlen_func,
                                       string_literal(symbol.input_fields[column_number]))) for

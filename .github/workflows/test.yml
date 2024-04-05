@@ -15,24 +15,25 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest]
-        python: ["3.12"]
+        python: ["3.10"]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           submodules: recursive
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install packages and test dependencies
+        uses: conda-incubator/setup-miniconda@v3
         with:
+          activate-environment: spark-substrait-gateway-env
+          environment-file: environment.yml
           python-version: ${{ matrix.python }}
-      - name: Install package and test dependencies
+          auto-activate-base: false
+      - name: Build
+        shell: bash -el {0}
         run: |
-          export PIP_INTEROP_ENABLED=compatible
-          export PIP_SCRIPT=scripts/pip_verbose.sh
-          $CONDA/bin/conda env update --file environment.yml --name base
-          python -m pip install --upgrade pip
-          python -m pip install ".[test]"
+          pip install -e .
       - name: Run tests
+        shell: bash -el {0}
         run: |
-          $CONDA/bin/pytest
+          pytest
