@@ -10,6 +10,7 @@ from pyarrow import substrait
 from substrait.gen.proto import plan_pb2
 
 from gateway.adbc.backend_options import BackendOptions, Backend
+from gateway.converter.rename_functions import RenameFunctions
 from gateway.converter.replace_local_files import ReplaceLocalFilesWithNamedTable
 
 
@@ -38,7 +39,6 @@ class AdbcBackend:
     # pylint: disable=import-outside-toplevel
     def execute_with_datafusion(self, plan: 'plan_pb2.Plan') -> pyarrow.lib.Table:
         """Executes the given Substrait plan against Datafusion."""
-        import datafusion
         import datafusion.substrait
 
         ctx = datafusion.SessionContext()
@@ -52,6 +52,8 @@ class AdbcBackend:
                     ctx.register_parquet(table_name, file)
                 registered_tables.add(files[0])
 
+        RenameFunctions().visit_plan(plan)
+
         try:
             plan_data = plan.SerializeToString()
             substrait_plan = datafusion.substrait.substrait.serde.deserialize_bytes(plan_data)
@@ -59,8 +61,13 @@ class AdbcBackend:
                 ctx, substrait_plan
             )
 
-            # Create a DataFrame from a deserialized logical plan
+            # Create a DataFrame from a deserialized logical plan.
             df_result = ctx.create_dataframe_from_logical_plan(logical_plan)
+            for column_number, column_name in enumerate(df_result.schema().names):
+                df_result = df_result.with_column_renamed(
+                    column_name,
+                    plan.relations[0].root.names[column_number]
+                )
             return df_result.to_arrow_table()
         finally:
             for table_name in registered_tables:
