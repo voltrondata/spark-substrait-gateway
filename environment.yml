@@ -3,6 +3,7 @@ channels:
   - conda-forge
 dependencies:
   - pip
+  - cargo
   - pre-commit
   - protobuf >= 4.21.6
   - grpcio >= 1.48.1
