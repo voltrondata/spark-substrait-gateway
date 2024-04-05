@@ -18,6 +18,7 @@ dependencies:
   - Faker
   - pip:
     - adbc_driver_manager
+    - cargo
     - pyarrow
     - duckdb == 0.10.1
     - datafusion

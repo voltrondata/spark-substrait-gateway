@@ -12,6 +12,7 @@ from gateway.demo.mystream_database import get_mystream_schema
 
 
 # pylint: disable=fixme
+# ruff: noqa: E712
 def execute_query(spark_session: SparkSession) -> None:
     """Runs a single sample query against the gateway."""
     users_location = str(Path('users.parquet').absolute())
