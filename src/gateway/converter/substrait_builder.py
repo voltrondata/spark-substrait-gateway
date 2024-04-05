@@ -124,28 +124,24 @@ def string_concat_agg_function(function_info: ExtensionFunction,
                    algebra_pb2.FunctionArgument(value=string_literal(separator))])
 
 
-def least_function(function_info: ExtensionFunction,
-                   expr1: algebra_pb2.Expression,
+def least_function(greater_function_info: ExtensionFunction, expr1: algebra_pb2.Expression,
                    expr2: algebra_pb2.Expression) -> algebra_pb2.Expression:
     """Constructs a Substrait min expression."""
-    return algebra_pb2.Expression(scalar_function=
-    algebra_pb2.Expression.ScalarFunction(
-        function_reference=function_info.anchor,
-        output_type=function_info.output_type,
-        arguments=[algebra_pb2.FunctionArgument(value=expr1),
-                   algebra_pb2.FunctionArgument(value=expr2)]))
+    return if_then_else_operation(
+        greater_function(greater_function_info, expr1, expr2),
+        expr2,
+        expr1
+    )
 
 
-def greatest_function(function_info: ExtensionFunction,
-                      expr1: algebra_pb2.Expression,
+def greatest_function(greater_function_info: ExtensionFunction, expr1: algebra_pb2.Expression,
                       expr2: algebra_pb2.Expression) -> algebra_pb2.Expression:
-    """Constructs a Substrait min expression."""
-    return algebra_pb2.Expression(scalar_function=
-    algebra_pb2.Expression.ScalarFunction(
-        function_reference=function_info.anchor,
-        output_type=function_info.output_type,
-        arguments=[algebra_pb2.FunctionArgument(value=expr1),
-                   algebra_pb2.FunctionArgument(value=expr2)]))
+    """Constructs a Substrait max expression."""
+    return if_then_else_operation(
+        greater_function(greater_function_info, expr1, expr2),
+        expr1,
+        expr2
+    )
 
 
 def greater_or_equal_function(function_info: ExtensionFunction,
@@ -200,30 +196,34 @@ def lpad_function(function_info: ExtensionFunction,
                   expression: algebra_pb2.Expression, count: algebra_pb2.Expression,
                   pad_string: str = ' ') -> algebra_pb2.AggregateFunction:
     """Constructs a Substrait concat expression."""
+    # TODO -- Avoid a cast if we don't need it.
+    cast_type = string_type()
     return algebra_pb2.Expression(scalar_function=
     algebra_pb2.Expression.ScalarFunction(
         function_reference=function_info.anchor,
         output_type=function_info.output_type,
         arguments=[
-            algebra_pb2.FunctionArgument(value=cast_operation(expression, varchar_type())),
+            algebra_pb2.FunctionArgument(value=cast_operation(expression, cast_type)),
             algebra_pb2.FunctionArgument(value=cast_operation(count, integer_type())),
             algebra_pb2.FunctionArgument(
-                value=cast_operation(string_literal(pad_string), varchar_type()))]))
+                value=cast_operation(string_literal(pad_string), cast_type))]))
 
 
 def rpad_function(function_info: ExtensionFunction,
                   expression: algebra_pb2.Expression, count: algebra_pb2.Expression,
                   pad_string: str = ' ') -> algebra_pb2.AggregateFunction:
     """Constructs a Substrait concat expression."""
+    # TODO -- Avoid a cast if we don't need it.
+    cast_type = string_type()
     return algebra_pb2.Expression(scalar_function=
     algebra_pb2.Expression.ScalarFunction(
         function_reference=function_info.anchor,
         output_type=function_info.output_type,
         arguments=[
-            algebra_pb2.FunctionArgument(value=cast_operation(expression, varchar_type())),
+            algebra_pb2.FunctionArgument(value=cast_operation(expression, cast_type)),
             algebra_pb2.FunctionArgument(value=cast_operation(count, integer_type())),
             algebra_pb2.FunctionArgument(
-                value=cast_operation(string_literal(pad_string), varchar_type()))]))
+                value=cast_operation(string_literal(pad_string), cast_type))]))
 
 
 def string_literal(val: str) -> algebra_pb2.Expression:
@@ -245,13 +245,13 @@ def string_type(required: bool = True) -> type_pb2.Type:
     return type_pb2.Type(string=type_pb2.Type.String(nullability=nullability))
 
 
-def varchar_type(required: bool = True) -> type_pb2.Type:
+def varchar_type(length: int = 1000, required: bool = True) -> type_pb2.Type:
     """Constructs a Substrait varchar type."""
     if required:
         nullability = type_pb2.Type.Nullability.NULLABILITY_REQUIRED
     else:
         nullability = type_pb2.Type.Nullability.NULLABILITY_NULLABLE
-    return type_pb2.Type(varchar=type_pb2.Type.VarChar(nullability=nullability))
+    return type_pb2.Type(varchar=type_pb2.Type.VarChar(length=length, nullability=nullability))
 
 
 def integer_type(required: bool = True) -> type_pb2.Type:

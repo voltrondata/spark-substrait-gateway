@@ -5,7 +5,7 @@ authors = [{name = "Substrait contributors", email = "substrait@googlegroups.com
 license = {text = "Apache-2.0"}
 readme = "README.md"
 requires-python = ">=3.8.1"
-dependencies = ["protobuf >= 3.20", "datafusion"]
+dependencies = ["protobuf >= 3.20", "datafusion >= 36.0.0", "pyarrow >= 15.0.2"]
 dynamic = ["version"]
 
 [tool.setuptools_scm]
@@ -29,12 +29,12 @@ respect-gitignore = true
 target-version = "py310"
 # never autoformat upstream or generated code
 exclude = ["third_party/", "src/spark/connect"]
-# do not autofix the following (will still get flagged in lint)
 
 [lint]
 unfixable = [
   "F401",  # unused imports
   "T201",  # print statements
+  "E712",  # truth comparison checks
 ]
 
 [tool.pylint.MASTER]
