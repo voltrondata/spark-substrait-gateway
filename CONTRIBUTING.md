@@ -6,6 +6,12 @@ git clone --recursive https://github.com/<your-fork>/spark-substrait-gateway.git
 cd spark-substrait-gateway
 ```
 
+## Update the submodules
+```
+git submodule init
+git submodule update --recursive
+```
+
 ## Conda env
 Create a conda environment with developer dependencies.
 ```
