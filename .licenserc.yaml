@@ -1,0 +1,25 @@
+header:
+  license:
+    spdx-id: Apache-2.0
+    content: |
+      SPDX-License-Identifier: Apache-2.0
+
+  paths-ignore:
+    - '.github'
+    - '.gitignore'
+    - '.gitmodules'
+    - '.licenserc.yaml'
+    - '.pre-commit-config.yaml'
+    - 'environment.yml'
+    - 'pyproject.toml'
+    - 'LICENSE'
+    - '**/__init__.py'
+    - '**/*.golden'
+    - '**/*.md'
+    - '**/*.json'
+    - '**/*.spark'
+    - '**/*.splan'
+    - '**/*.sql'
+    - '**/*.sql-splan'
+
+  comment: never
