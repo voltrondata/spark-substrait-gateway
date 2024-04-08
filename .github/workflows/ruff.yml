@@ -11,7 +11,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Check License Header
-      uses: apache/skywalking-eyes/header@v0.4.0
+      uses: apache/skywalking-eyes/header@v0.6.0
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
