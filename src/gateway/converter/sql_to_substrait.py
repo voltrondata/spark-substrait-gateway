@@ -6,7 +6,7 @@ import duckdb
 from substrait.gen.proto import plan_pb2
 
 
-# pylint: disable=E1101,too-few-public-methods
+# pylint: disable=E1101,too-few-public-methods,fixme
 class SqlConverter:
     """Converts SQL to a Substrait plan."""
 
@@ -18,6 +18,7 @@ class SqlConverter:
         con.install_extension('substrait')
         con.load_extension('substrait')
 
+        # TODO -- Rely on the client to register their own named tables.
         con.execute("CREATE TABLE users AS SELECT * FROM 'users.parquet'")
 
         proto_bytes = con.get_substrait(query=sql).fetchone()[0]
