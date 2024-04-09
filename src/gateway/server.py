@@ -85,7 +85,12 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
             case 'root':
                 substrait = convert.convert_plan(request.plan)
             case 'command':
-                substrait = SqlConverter().convert_sql(request.plan.command.sql_command)
+                match request.plan.command.WhichOneof('command_type'):
+                    case 'sql_command':
+                        substrait = SqlConverter().convert_sql(request.plan.command.sql_command.sql)
+                    case _:
+                        raise NotImplementedError(
+                            f'Unsupported command type: {request.plan.command.WhichOneof("command_type")}')
             case _:
                 raise ValueError(f'Unknown plan type: {request.plan}')
         _LOGGER.debug('  as Substrait: %s', substrait)

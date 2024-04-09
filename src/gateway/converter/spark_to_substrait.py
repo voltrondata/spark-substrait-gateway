@@ -309,16 +309,28 @@ class SparkSubstraitConverter:
             match field.get('type'):
                 case 'boolean':
                     field_type = type_pb2.Type(bool=type_pb2.Type.Boolean(nullability=nullability))
+                case 'byte':
+                    field_type = type_pb2.Type(i8=type_pb2.Type.I8(nullability=nullability))
                 case 'short':
                     field_type = type_pb2.Type(i16=type_pb2.Type.I16(nullability=nullability))
                 case 'integer':
                     field_type = type_pb2.Type(i32=type_pb2.Type.I32(nullability=nullability))
                 case 'long':
                     field_type = type_pb2.Type(i64=type_pb2.Type.I64(nullability=nullability))
+                case 'float':
+                    field_type = type_pb2.Type(fp32=type_pb2.Type.FP32(nullability=nullability))
+                case 'double':
+                    field_type = type_pb2.Type(fp64=type_pb2.Type.FP64(nullability=nullability))
+                case 'decimal':
+                    field_type = type_pb2.Type(
+                        decimal=type_pb2.Type.Decimal(nullability=nullability))
                 case 'string':
                     field_type = type_pb2.Type(string=type_pb2.Type.String(nullability=nullability))
+                case 'binary':
+                    field_type = type_pb2.Type(binary=type_pb2.Type.Binary(nullability=nullability))
                 case _:
-                    raise NotImplementedError(f'Unexpected field type: {field.get("type")}')
+                    raise NotImplementedError(
+                        f'Schema field type not yet implemented: {field.get("type")}')
 
             schema.struct.types.append(field_type)
         return schema
