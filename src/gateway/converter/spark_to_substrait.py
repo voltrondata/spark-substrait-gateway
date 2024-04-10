@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """Routines to convert SparkConnect plans to Substrait plans."""
+import glob
 import json
 import operator
+import pathlib
 from typing import Dict, Optional, List
 
 import adbc_driver_duckdb.dbapi
@@ -25,16 +27,21 @@ from gateway.converter.substrait_builder import field_reference, cast_operation,
     if_then_else_operation, greater_function, minus_function
 from gateway.converter.symbol_table import SymbolTable
 
-
 DUCKDB_TABLE = "duckdb_table"
 
 
-def fetch_schema_with_adbc(path):
+def fetch_schema_with_adbc(file_path: str, ext: str) -> pyarrow.Schema:
     """Fetch the arrow schema via ADBC."""
+
+    file_paths = list(pathlib.Path(file_path).glob(f'*.{ext}'))
+    if len(file_paths) > 0:
+        # We sort the files because the later partitions don't have enough data to construct a schema.
+        file_paths = sorted([str(fp) for fp in file_paths])
+        file_path = file_paths[0]
 
     with adbc_driver_duckdb.dbapi.connect() as conn, conn.cursor() as cur:
         # TODO: Support multiple paths.
-        reader = pyarrow.parquet.ParquetFile(path)
+        reader = pyarrow.parquet.ParquetFile(file_path)
         cur.adbc_ingest(DUCKDB_TABLE, reader.iter_batches(), mode="create")
         schema = conn.adbc_get_table_schema(DUCKDB_TABLE)
         cur.execute(f"DROP TABLE {DUCKDB_TABLE}")
@@ -391,8 +398,7 @@ class SparkSubstraitConverter:
         local = algebra_pb2.ReadRel.LocalFiles()
         schema = self.convert_schema(rel.schema)
         if not schema:
-            path = rel.paths[0]
-            arrow_schema = fetch_schema_with_adbc(path)
+            arrow_schema = fetch_schema_with_adbc(rel.paths[0], rel.format)
             schema = self.convert_arrow_schema(arrow_schema)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         for field_name in schema.names:
@@ -402,7 +408,11 @@ class SparkSubstraitConverter:
                 read=algebra_pb2.ReadRel(base_schema=schema,
                                          named_table=algebra_pb2.ReadRel.NamedTable(
                                              names=['demotable'])))
-        for path in rel.paths:
+        if pathlib.Path(rel.paths[0]).is_dir():
+            file_paths = glob.glob(f'{rel.paths[0]}/*{rel.format}')
+        else:
+            file_paths = rel.paths
+        for path in file_paths:
             uri_path = path
             if self._conversion_options.needs_scheme_in_path_uris:
                 if uri_path.startswith('/'):
