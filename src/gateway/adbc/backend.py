@@ -12,6 +12,7 @@ from substrait.gen.proto import plan_pb2
 from gateway.adbc.backend_options import BackendOptions, Backend
 from gateway.converter.rename_functions import RenameFunctions
 from gateway.converter.replace_local_files import ReplaceLocalFilesWithNamedTable
+from gateway.converter.sql_to_substrait import register_table, find_tpch
 
 
 # pylint: disable=protected-access
@@ -81,6 +82,18 @@ class AdbcBackend:
         con.install_extension('substrait')
         con.load_extension('substrait')
         plan_data = plan.SerializeToString()
+
+        # TODO -- Rely on the client to register their own named tables.
+        tpch_location = find_tpch()
+        register_table(con, 'customer', tpch_location / 'customer')
+        register_table(con, 'lineitem', tpch_location / 'lineitem')
+        register_table(con, 'nation', tpch_location / 'nation')
+        register_table(con, 'orders', tpch_location / 'orders')
+        register_table(con, 'part', tpch_location / 'part')
+        register_table(con, 'partsupp', tpch_location / 'partsupp')
+        register_table(con, 'region', tpch_location / 'region')
+        register_table(con, 'supplier', tpch_location / 'supplier')
+
         try:
             query_result = con.from_substrait(proto=plan_data)
         except Exception as err:

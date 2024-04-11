@@ -9,7 +9,7 @@ from substrait.gen.proto import plan_pb2
 
 from gateway.converter.conversion_options import duck_db
 from gateway.converter.spark_to_substrait import SparkSubstraitConverter
-from gateway.converter.sql_to_substrait import SqlConverter
+from gateway.converter.sql_to_substrait import convert_sql
 from gateway.demo.mystream_database import create_mystream_database, delete_mystream_database
 
 test_case_directory = Path(__file__).resolve().parent / 'data'
@@ -81,7 +81,7 @@ def test_sql_conversion(request, path):
         splan_prototext = file.read()
     substrait_plan = text_format.Parse(splan_prototext, plan_pb2.Plan())
 
-    substrait = SqlConverter().convert_sql(str(sql))
+    substrait = convert_sql(str(sql))
 
     if request.config.getoption('rebuild_goldens'):
         if substrait != substrait_plan:

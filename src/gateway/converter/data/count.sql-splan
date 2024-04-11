@@ -13,12 +13,17 @@ relations {
             input {
               read {
                 base_schema {
-                  names: "user_id"
-                  names: "name"
-                  names: "paid_for_service"
+                  names: "c_custkey"
+                  names: "c_name"
+                  names: "c_address"
+                  names: "c_nationkey"
+                  names: "c_phone"
+                  names: "c_acctbal"
+                  names: "c_mktsegment"
+                  names: "c_comment"
                   struct {
                     types {
-                      string {
+                      i64 {
                         nullability: NULLABILITY_NULLABLE
                       }
                     }
@@ -28,7 +33,32 @@ relations {
                       }
                     }
                     types {
-                      bool {
+                      string {
+                        nullability: NULLABILITY_NULLABLE
+                      }
+                    }
+                    types {
+                      i64 {
+                        nullability: NULLABILITY_NULLABLE
+                      }
+                    }
+                    types {
+                      string {
+                        nullability: NULLABILITY_NULLABLE
+                      }
+                    }
+                    types {
+                      fp64 {
+                        nullability: NULLABILITY_NULLABLE
+                      }
+                    }
+                    types {
+                      string {
+                        nullability: NULLABILITY_NULLABLE
+                      }
+                    }
+                    types {
+                      string {
                         nullability: NULLABILITY_NULLABLE
                       }
                     }
@@ -36,7 +66,7 @@ relations {
                   }
                 }
                 named_table {
-                  names: "users"
+                  names: "customer"
                 }
               }
             }

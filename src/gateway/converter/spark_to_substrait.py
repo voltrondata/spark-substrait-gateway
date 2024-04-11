@@ -20,6 +20,7 @@ from substrait.gen.proto.extensions import extensions_pb2
 
 from gateway.converter.conversion_options import ConversionOptions
 from gateway.converter.spark_functions import ExtensionFunction, lookup_spark_function
+from gateway.converter.sql_to_substrait import convert_sql
 from gateway.converter.substrait_builder import field_reference, cast_operation, string_type, \
     project_relation, strlen, concat, fetch_relation, join_relation, aggregate_relation, \
     max_agg_function, string_literal, flatten, repeat_function, \
@@ -60,6 +61,8 @@ class SparkSubstraitConverter:
         self._symbol_table = SymbolTable()
         self._conversion_options = options
         self._seen_generated_names = {}
+        self._saved_extension_uris = {}
+        self._saved_extensions = {}
 
     def lookup_function_by_name(self, name: str) -> ExtensionFunction:
         """Finds the function reference for a given Spark function name."""
@@ -804,6 +807,19 @@ class SparkSubstraitConverter:
         read.common.CopyFrom(self.create_common_relation())
         return algebra_pb2.Rel(read=read)
 
+    def convert_sql_relation(self, rel: spark_relations_pb2.SQL) -> algebra_pb2.Rel:
+        """Converts a Spark SQL relation into a Substrait relation."""
+        plan = convert_sql(rel.query)
+        symbol = self._symbol_table.get_symbol(self._current_plan_id)
+        for field_name in plan.relations[0].root.names:
+            symbol.output_fields.append(field_name)
+        # TODO -- Correctly capture all the used functions and extensions.
+        self._saved_extension_uris = plan.extension_uris
+        self._saved_extensions = plan.extensions
+        # TODO -- Merge those references into the current context.
+        # TODO -- Renumber all of the functions/extensions in the captured subplan.
+        return plan.relations[0].root.input
+
     def convert_relation(self, rel: spark_relations_pb2.Relation) -> algebra_pb2.Rel:
         """Converts a Spark relation into a Substrait one."""
         self._symbol_table.add_symbol(rel.common.plan_id, parent=self._current_plan_id,
@@ -829,6 +845,8 @@ class SparkSubstraitConverter:
                 result = self.convert_to_df_relation(rel.to_df)
             case 'local_relation':
                 result = self.convert_local_relation(rel.local_relation)
+            case 'sql':
+                result = self.convert_sql_relation(rel.sql)
             case _:
                 raise ValueError(
                     f'Unexpected Spark plan rel_type: {rel.WhichOneof("rel_type")}')
@@ -855,4 +873,7 @@ class SparkSubstraitConverter:
                 extension_function=extensions_pb2.SimpleExtensionDeclaration.ExtensionFunction(
                     extension_uri_reference=self._function_uris.get(f.uri),
                     function_anchor=f.anchor, name=f.name)))
+        # As a workaround use the saved extensions and URIs without fixing them.
+        result.extension_uris.extend(self._saved_extension_uris)
+        result.extensions.extend(self._saved_extensions)
         return result

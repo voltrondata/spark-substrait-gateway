@@ -1,1 +1,1 @@
-SELECT COUNT(*) FROM users
+SELECT COUNT(*) FROM customer
