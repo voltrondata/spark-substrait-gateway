@@ -1,19 +1,19 @@
 # SPDX-License-Identifier: Apache-2.0
 """A PySpark client that can send sample queries to the gateway."""
-from pathlib import Path
 
-from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql.functions import col
+from pyspark.sql import SparkSession, DataFrame
+
+from gateway.converter.sql_to_substrait import find_tpch
 
 USE_GATEWAY = True
 
 
 # pylint: disable=fixme
 def get_customer_database(spark_session: SparkSession) -> DataFrame:
-    location_customer = str(Path('../../../third_party/tpch/parquet/customer').resolve())
+    location_customer = str(find_tpch() / 'customer')
 
-    return spark_session.read.parquet(location_customer,
-                                      mergeSchema=False)
+    return spark_session.read.parquet(location_customer, mergeSchema=False)
 
 
 # pylint: disable=fixme
@@ -31,6 +31,10 @@ def execute_query(spark_session: SparkSession) -> None:
         .limit(10)
 
     df_result.show()
+
+    sql_results = spark_session.sql(
+        'SELECT c_custkey, c_phone, c_mktsegment FROM customer LIMIT 5').collect()
+    print(sql_results)
 
 
 if __name__ == '__main__':

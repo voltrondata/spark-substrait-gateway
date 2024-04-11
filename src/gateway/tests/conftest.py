@@ -2,8 +2,8 @@
 """Test fixtures for pytest of the gateway server."""
 from pathlib import Path
 
-from pyspark.sql import SparkSession
 from pyspark.sql.pandas.types import from_arrow_schema
+from pyspark.sql.session import SparkSession
 import pytest
 
 from gateway.demo.mystream_database import create_mystream_database, delete_mystream_database
@@ -11,12 +11,12 @@ from gateway.demo.mystream_database import get_mystream_schema
 from gateway.server import serve
 
 
-def _create_local_spark_session():
+def _create_local_spark_session() -> SparkSession:
     """Creates a local spark session for testing."""
     spark = (
         SparkSession
         .builder
-        .master('local')
+        .master('local[*]')
         .config("spark.driver.bindAddress", "127.0.0.1")
         .appName('gateway')
         .getOrCreate()
@@ -25,7 +25,7 @@ def _create_local_spark_session():
     spark.stop()
 
 
-def _create_gateway_session(backend: str):
+def _create_gateway_session(backend: str) -> SparkSession:
     """Creates a local gateway session for testing."""
     spark_gateway = (
         SparkSession
@@ -34,7 +34,7 @@ def _create_gateway_session(backend: str):
         .config("spark.driver.bindAddress", "127.0.0.1")
         .config("spark-substrait-gateway.backend", backend)
         .appName('gateway')
-        .getOrCreate()
+        .create()
     )
     yield spark_gateway
     spark_gateway.stop()
@@ -48,7 +48,7 @@ def manage_database() -> None:
     delete_mystream_database()
 
 
-@pytest.fixture(scope='module', autouse=True)
+@pytest.fixture(scope='session', autouse=True)
 def gateway_server():
     """Starts up a spark to substrait gateway service."""
     server = serve(50052, wait=False)
@@ -57,9 +57,9 @@ def gateway_server():
 
 
 @pytest.fixture(scope='session')
-def users_location():
+def users_location() -> str:
     """Provides the location of the users database."""
-    return str(Path('users.parquet').absolute())
+    return str(Path('users.parquet').resolve())
 
 
 @pytest.fixture(scope='session')
@@ -68,15 +68,21 @@ def schema_users():
     return get_mystream_schema('users')
 
 
-@pytest.fixture(scope='module',
+@pytest.fixture(scope='session',
                 params=['spark',
                         pytest.param('gateway-over-duckdb', marks=pytest.mark.xfail),
                         pytest.param('gateway-over-datafusion',
                                      marks=pytest.mark.xfail(
                                          reason='Datafusion Substrait missing in CI'))])
-def spark_session(request):
+def source(request) -> str:
+    """Provides the source (backend) to be used."""
+    return request.param
+
+
+@pytest.fixture(scope='session')
+def spark_session(source):
     """Provides spark sessions connecting to various backends."""
-    match request.param:
+    match source:
         case 'spark':
             session_generator = _create_local_spark_session()
         case 'gateway-over-datafusion':
@@ -84,7 +90,7 @@ def spark_session(request):
         case 'gateway-over-duckdb':
             session_generator = _create_gateway_session('duckdb')
         case _:
-            raise NotImplementedError(f'No such session implemented: {request.param}')
+            raise NotImplementedError(f'No such session implemented: {source}')
     yield from session_generator
 
 

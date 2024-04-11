@@ -14,7 +14,7 @@ from pyspark.sql.connect.proto import types_pb2
 from gateway.converter.conversion_options import duck_db, datafusion
 from gateway.converter.spark_to_substrait import SparkSubstraitConverter
 from gateway.adbc.backend import AdbcBackend
-from gateway.converter.sql_to_substrait import SqlConverter
+from gateway.converter.sql_to_substrait import convert_sql
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -80,14 +80,14 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
             self, request: pb2.ExecutePlanRequest, context: grpc.RpcContext) -> Generator[
         pb2.ExecutePlanResponse, None, None]:
         _LOGGER.info('ExecutePlan: %s', request)
-        convert = SparkSubstraitConverter(self._options)
         match request.plan.WhichOneof('op_type'):
             case 'root':
+                convert = SparkSubstraitConverter(self._options)
                 substrait = convert.convert_plan(request.plan)
             case 'command':
                 match request.plan.command.WhichOneof('command_type'):
                     case 'sql_command':
-                        substrait = SqlConverter().convert_sql(request.plan.command.sql_command.sql)
+                        substrait = convert_sql(request.plan.command.sql_command.sql)
                     case _:
                         raise NotImplementedError(
                             f'Unsupported command type: {request.plan.command.WhichOneof("command_type")}')
@@ -98,7 +98,8 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
         results = backend.execute(substrait, self._options.backend)
         _LOGGER.debug('  results are: %s', results)
 
-        if not self._options.implement_show_string and request.plan.root.WhichOneof(
+        if not self._options.implement_show_string and request.plan.WhichOneof(
+                'op_type') == 'root' and request.plan.root.WhichOneof(
                 'rel_type') == 'show_string':
             yield pb2.ExecutePlanResponse(
                 session_id=request.session_id,
@@ -121,7 +122,13 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
                     data=batch_to_bytes(batch, results.schema)),
                 schema=convert_pyarrow_schema_to_spark(results.schema),
             )
-        # TODO -- When spark 3.4.0 support is not required, yield a ResultComplete message here.
+
+        for option in request.request_options:
+            if option.reattach_options.reattachable:
+                yield pb2.ExecutePlanResponse(
+                    session_id=request.session_id,
+                    result_complete=pb2.ExecutePlanResponse.ResultComplete())
+                return
 
     def AnalyzePlan(self, request, context):
         _LOGGER.info('AnalyzePlan: %s', request)
