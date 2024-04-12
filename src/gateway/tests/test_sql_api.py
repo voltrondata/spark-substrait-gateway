@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for the Spark to Substrait Gateway server."""
+from pathlib import Path
+
 import pytest
 from hamcrest import assert_that, equal_to
 from pyspark import Row
@@ -8,15 +10,32 @@ from pyspark.testing import assertDataFrameEqual
 
 from gateway.converter.sql_to_substrait import find_tpch
 
+test_case_directory = Path(__file__).resolve().parent / 'data'
+
+sql_test_case_paths = [f for f in sorted(test_case_directory.iterdir()) if f.suffix == '.sql']
+
+sql_test_case_names = [p.stem for p in sql_test_case_paths]
+
+
+def _register_table(spark_session: SparkSession, name: str) -> None:
+    location = find_tpch() / name
+    spark_session.sql(
+        f'CREATE OR REPLACE TEMPORARY VIEW {name} USING org.apache.spark.sql.parquet '
+        f'OPTIONS ( path "{location}" )')
+
 
 @pytest.fixture(scope='function')
 def spark_session_with_customer_database(spark_session: SparkSession, source: str) -> SparkSession:
     """Creates a temporary view of the customer database."""
     if source == 'spark':
-        customer_location = find_tpch() / 'customer'
-        spark_session.sql(
-            'CREATE OR REPLACE TEMPORARY VIEW customer USING org.apache.spark.sql.parquet '
-            f'OPTIONS ( path "{customer_location}" )')
+        _register_table(spark_session, 'customer')
+        _register_table(spark_session, 'lineitem')
+        _register_table(spark_session, 'nation')
+        _register_table(spark_session, 'orders')
+        _register_table(spark_session, 'part')
+        _register_table(spark_session, 'partsupp')
+        _register_table(spark_session, 'region')
+        _register_table(spark_session, 'supplier')
     return spark_session
 
 
@@ -41,3 +60,16 @@ class TestSqlAPI:
         outcome = spark_session_with_customer_database.sql(
             'SELECT c_custkey, c_phone, c_mktsegment FROM customer LIMIT 5').collect()
         assertDataFrameEqual(outcome, expected)
+
+    @pytest.mark.parametrize(
+        'path',
+        sql_test_case_paths,
+        ids=sql_test_case_names,
+    )
+    def test_tpch(self, spark_session_with_customer_database, path):
+        """Test the TPC-H queries."""
+        # Read the SQL to run.
+        with open(path, "rb") as file:
+            sql_bytes = file.read()
+        sql = sql_bytes.decode('utf-8')
+        spark_session_with_customer_database.sql(sql).collect()

@@ -17,10 +17,18 @@ def _create_local_spark_session() -> SparkSession:
         SparkSession
         .builder
         .master('local[*]')
-        .config("spark.driver.bindAddress", "127.0.0.1")
+        .config("spark.driver.memory", "2g")
         .appName('gateway')
         .getOrCreate()
     )
+
+    conf = spark.sparkContext.getConf()
+    # Dump the configuration settings for debug purposes.
+    print("==== BEGIN SPARK CONFIG ====")
+    for k, v in sorted(conf.getAll()):
+        print(f"{k} = {v}")
+    print("===== END SPARK CONFIG =====")
+
     yield spark
     spark.stop()
 
