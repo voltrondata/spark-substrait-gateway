@@ -71,7 +71,7 @@ def manage_database() -> None:
 )
 def test_sql_conversion(request, path):
     """Test the conversion of SQL to a Substrait plan."""
-    # Read the Spark plan to convert.
+    # Read the SQL to run.
     with open(path, "rb") as file:
         sql_bytes = file.read()
     sql = sql_bytes.decode('utf-8')
