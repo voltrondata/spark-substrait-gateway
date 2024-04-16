@@ -6,20 +6,19 @@ import operator
 import pathlib
 from typing import Dict, Optional, List
 
-import duckdb
 import pyarrow
 import pyarrow.parquet
 import pyspark.sql.connect.proto.base_pb2 as spark_pb2
 import pyspark.sql.connect.proto.expressions_pb2 as spark_exprs_pb2
 import pyspark.sql.connect.proto.relations_pb2 as spark_relations_pb2
 import pyspark.sql.connect.proto.types_pb2 as spark_types_pb2
-from adbc_driver_manager import dbapi
 from substrait.gen.proto import algebra_pb2
 from substrait.gen.proto import plan_pb2
 from substrait.gen.proto import type_pb2
 from substrait.gen.proto.extensions import extensions_pb2
 
-from gateway.adbc.backend_options import BackendOptions, Backend
+from gateway.backends.backend_options import BackendOptions
+from gateway.backends.backend_selector import find_backend
 from gateway.converter.conversion_options import ConversionOptions
 from gateway.converter.spark_functions import ExtensionFunction, lookup_spark_function
 from gateway.converter.sql_to_substrait import convert_sql
@@ -31,39 +30,6 @@ from gateway.converter.substrait_builder import field_reference, cast_operation,
 from gateway.converter.symbol_table import SymbolTable
 
 TABLE_NAME = "my_table"
-
-
-def get_backend_driver(options: BackendOptions) -> tuple[str, str]:
-    """Gets the driver and entry point for the specified backend."""
-    match options.backend:
-        case Backend.DUCKDB:
-            driver = duckdb.duckdb.__file__
-            entry_point = "duckdb_adbc_init"
-        case _:
-            raise ValueError(f'Unknown backend type: {options.backend}')
-
-    return driver, entry_point
-
-
-def fetch_schema_with_adbc(file_path: str, ext: str, options: BackendOptions) -> pyarrow.Schema:
-    """Fetch the arrow schema via ADBC."""
-
-    file_paths = list(pathlib.Path(file_path).glob(f'*.{ext}'))
-    if len(file_paths) > 0:
-        # We sort the files because the later partitions don't have enough data to construct a schema.
-        file_paths = sorted([str(fp) for fp in file_paths])
-        file_path = file_paths[0]
-
-    driver, entry_point = get_backend_driver(options)
-
-    with dbapi.connect(driver=driver, entrypoint=entry_point) as conn, conn.cursor() as cur:
-        # TODO: Support multiple paths.
-        reader = pyarrow.parquet.ParquetFile(file_path)
-        cur.adbc_ingest(TABLE_NAME, reader.iter_batches(), mode="create")
-        schema = conn.adbc_get_table_schema(TABLE_NAME)
-        cur.execute(f"DROP TABLE {TABLE_NAME}")
-
-    return schema
 
 
 # pylint: disable=E1101,fixme,too-many-public-methods
@@ -417,8 +383,13 @@ class SparkSubstraitConverter:
         local = algebra_pb2.ReadRel.LocalFiles()
         schema = self.convert_schema(rel.schema)
         if not schema:
-            arrow_schema = fetch_schema_with_adbc(rel.paths[0], rel.format, self._conversion_options.backend)
-            schema = self.convert_arrow_schema(arrow_schema)
+            backend = find_backend(BackendOptions(self._conversion_options.backend.backend, True))
+            try:
+                backend.register_table(TABLE_NAME, rel.paths[0], rel.format)
+                arrow_schema = backend.describe_table(TABLE_NAME)
+                schema = self.convert_arrow_schema(arrow_schema)
+            finally:
+                backend.drop_table(TABLE_NAME)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         for field_name in schema.names:
             symbol.output_fields.append(field_name)

@@ -8,7 +8,7 @@ from pyspark import Row
 from pyspark.sql.session import SparkSession
 from pyspark.testing import assertDataFrameEqual
 
-from gateway.converter.sql_to_substrait import find_tpch
+from gateway.backends.backend import Backend
 
 test_case_directory = Path(__file__).resolve().parent / 'data'
 
@@ -18,7 +18,7 @@ sql_test_case_names = [p.stem for p in sql_test_case_paths]
 
 
 def _register_table(spark_session: SparkSession, name: str) -> None:
-    location = find_tpch() / name
+    location = Backend.find_tpch() / name
     spark_session.sql(
         f'CREATE OR REPLACE TEMPORARY VIEW {name} USING org.apache.spark.sql.parquet '
         f'OPTIONS ( path "{location}" )')
@@ -61,6 +61,7 @@ class TestSqlAPI:
             'SELECT c_custkey, c_phone, c_mktsegment FROM customer LIMIT 5').collect()
         assertDataFrameEqual(outcome, expected)
 
+    @pytest.mark.timeout(60)
     @pytest.mark.parametrize(
         'path',
         sql_test_case_paths,
