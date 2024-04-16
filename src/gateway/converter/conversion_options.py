@@ -2,7 +2,7 @@
 """Tracks conversion related options."""
 import dataclasses
 
-from gateway.adbc.backend_options import BackendOptions, Backend
+from gateway.backends.backend_options import BackendOptions, Backend
 
 
 # pylint: disable=too-many-instance-attributes

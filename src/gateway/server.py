@@ -7,13 +7,13 @@ from typing import Generator
 
 import grpc
 import pyarrow
-import pyspark.sql.connect.proto.base_pb2_grpc as pb2_grpc
 import pyspark.sql.connect.proto.base_pb2 as pb2
+import pyspark.sql.connect.proto.base_pb2_grpc as pb2_grpc
 from pyspark.sql.connect.proto import types_pb2
 
+from gateway.backends.backend_selector import find_backend
 from gateway.converter.conversion_options import duck_db, datafusion
 from gateway.converter.spark_to_substrait import SparkSubstraitConverter
-from gateway.adbc.backend import AdbcBackend
 from gateway.converter.sql_to_substrait import convert_sql
 
 _LOGGER = logging.getLogger(__name__)
@@ -104,8 +104,8 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
             case _:
                 raise ValueError(f'Unknown plan type: {request.plan}')
         _LOGGER.debug('  as Substrait: %s', substrait)
-        backend = AdbcBackend()
-        results = backend.execute(substrait, self._options.backend)
+        backend = find_backend(self._options.backend)
+        results = backend.execute(substrait)
         _LOGGER.debug('  results are: %s', results)
 
         if not self._options.implement_show_string and request.plan.WhichOneof(
