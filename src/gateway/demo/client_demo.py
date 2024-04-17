@@ -4,14 +4,14 @@
 from pyspark.sql.functions import col
 from pyspark.sql import SparkSession, DataFrame
 
-from gateway.converter.sql_to_substrait import find_tpch
+from gateway.backends.backend import Backend
 
 USE_GATEWAY = True
 
 
 # pylint: disable=fixme
 def get_customer_database(spark_session: SparkSession) -> DataFrame:
-    location_customer = str(find_tpch() / 'customer')
+    location_customer = str(Backend.find_tpch() / 'customer')
 
     return spark_session.read.parquet(location_customer, mergeSchema=False)
 
