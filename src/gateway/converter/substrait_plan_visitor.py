@@ -35,7 +35,7 @@ class SubstraitPlanVisitor:
         if subquery.HasField('left'):
             self.visit_expression(subquery.left)
         if subquery.HasField('right'):
-            self.visit_expression(subquery.right)
+            self.visit_relation(subquery.right)
 
     def visit_nested_struct(self, structure: algebra_pb2.Expression.Nested.Struct) -> Any:
         """Visits a nested struct."""

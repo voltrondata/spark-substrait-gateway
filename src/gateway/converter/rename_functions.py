@@ -17,6 +17,21 @@ class RenameFunctions(SubstraitPlanVisitor):
             if extension.WhichOneof('mapping_type') != 'extension_function':
                 continue
 
+            if ':' in extension.extension_function.name:
+                extension.extension_function.name = extension.extension_function.name.split(':')[0]
+
             # TODO -- Take the URI references into account.
             if extension.extension_function.name == 'substring':
                 extension.extension_function.name = 'substr'
+            elif extension.extension_function.name == '*':
+                extension.extension_function.name = 'multiply'
+            elif extension.extension_function.name == '-':
+                extension.extension_function.name = 'subtract'
+            elif extension.extension_function.name == '+':
+                extension.extension_function.name = 'add'
+            elif extension.extension_function.name == '/':
+                extension.extension_function.name = 'divide'
+            elif extension.extension_function.name == 'contains':
+                extension.extension_function.name = 'instr'
+            elif extension.extension_function.name == 'extract':
+                extension.extension_function.name = 'date_part'
