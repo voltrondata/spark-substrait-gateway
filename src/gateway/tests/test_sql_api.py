@@ -3,12 +3,11 @@
 from pathlib import Path
 
 import pytest
+from gateway.backends.backend import Backend
 from hamcrest import assert_that, equal_to
 from pyspark import Row
 from pyspark.sql.session import SparkSession
 from pyspark.testing import assertDataFrameEqual
-
-from gateway.backends.backend import Backend
 
 test_case_directory = Path(__file__).resolve().parent / 'data'
 

@@ -2,9 +2,7 @@
 """Abstract visitor class for Substrait plans."""
 from typing import Any
 
-from substrait.gen.proto import plan_pb2
-from substrait.gen.proto import algebra_pb2
-from substrait.gen.proto import type_pb2
+from substrait.gen.proto import algebra_pb2, plan_pb2, type_pb2
 from substrait.gen.proto.extensions import extensions_pb2
 
 
@@ -717,11 +715,11 @@ class SubstraitPlanVisitor:
     def visit_expand_relation(self, rel: algebra_pb2.ExpandRel) -> Any:
         """Visits an expand relation."""
         if rel.HasField('common'):
-            return self.visit_relation_common(rel.common)
+            self.visit_relation_common(rel.common)
         if rel.HasField('input'):
-            return self.visit_relation(rel.input)
+            self.visit_relation(rel.input)
         for field in rel.fields:
-            return self.visit_expand_field(field)
+            self.visit_expand_field(field)
         # ExpandRel does not have an advanced_extension like other relations do.
 
     def visit_relation(self, rel: algebra_pb2.Rel) -> Any:

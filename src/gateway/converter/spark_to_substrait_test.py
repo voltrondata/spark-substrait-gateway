@@ -2,15 +2,14 @@
 """Tests for the Spark to Substrait plan conversion routines."""
 from pathlib import Path
 
-from google.protobuf import text_format
 import pytest
-from pyspark.sql.connect.proto import base_pb2 as spark_base_pb2
-from substrait.gen.proto import plan_pb2
-
 from gateway.converter.conversion_options import duck_db
 from gateway.converter.spark_to_substrait import SparkSubstraitConverter
 from gateway.converter.sql_to_substrait import convert_sql
 from gateway.demo.mystream_database import create_mystream_database, delete_mystream_database
+from google.protobuf import text_format
+from pyspark.sql.connect.proto import base_pb2 as spark_base_pb2
+from substrait.gen.proto import plan_pb2
 
 test_case_directory = Path(__file__).resolve().parent / 'data'
 
@@ -48,7 +47,7 @@ def test_plan_conversion(request, path):
 
     if request.config.getoption('rebuild_goldens'):
         if substrait != substrait_plan:
-            with open(path.with_suffix('.splan'), "wt", encoding='utf-8') as file:
+            with open(path.with_suffix('.splan'), "w", encoding='utf-8') as file:
                 file.write(text_format.MessageToString(substrait))
         return
 
@@ -85,7 +84,7 @@ def test_sql_conversion(request, path):
 
     if request.config.getoption('rebuild_goldens'):
         if substrait != substrait_plan:
-            with open(path.with_suffix('.sql-splan'), "wt", encoding='utf-8') as file:
+            with open(path.with_suffix('.sql-splan'), "w", encoding='utf-8') as file:
                 file.write(text_format.MessageToString(substrait))
         return
 

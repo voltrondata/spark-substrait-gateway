@@ -1,12 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 """A library to search Substrait plan for local files."""
-from typing import Any, List, Optional
-
-from substrait.gen.proto import algebra_pb2
+from typing import Any
 
 from gateway.converter.output_field_tracking_visitor import get_plan_id
 from gateway.converter.substrait_plan_visitor import SubstraitPlanVisitor
 from gateway.converter.symbol_table import SymbolTable
+from substrait.gen.proto import algebra_pb2
 
 
 # pylint: disable=no-member,fixme
@@ -16,10 +15,10 @@ class SimplifyCasts(SubstraitPlanVisitor):
     def __init__(self, symbol_table: SymbolTable):
         super().__init__()
         self._symbol_table = symbol_table
-        self._current_plan_id: Optional[int] = None  # The relation currently being processed.
+        self._current_plan_id: int | None = None  # The relation currently being processed.
 
-        self._rewrite_expressions: List[algebra_pb2.Expression] = []
-        self._previous_rewrite_expressions: List[List[algebra_pb2.Expression]] = []
+        self._rewrite_expressions: list[algebra_pb2.Expression] = []
+        self._previous_rewrite_expressions: list[list[algebra_pb2.Expression]] = []
 
     def visit_cast(self, cast: algebra_pb2.Expression.Cast) -> Any:
         """Visits a cast node."""

@@ -4,42 +4,57 @@ import glob
 import json
 import operator
 import pathlib
-from typing import Dict, Optional, List
 
-import pyarrow
+import pyarrow as pa
 import pyarrow.parquet
 import pyspark.sql.connect.proto.base_pb2 as spark_pb2
 import pyspark.sql.connect.proto.expressions_pb2 as spark_exprs_pb2
 import pyspark.sql.connect.proto.relations_pb2 as spark_relations_pb2
 import pyspark.sql.connect.proto.types_pb2 as spark_types_pb2
-from substrait.gen.proto import algebra_pb2
-from substrait.gen.proto import plan_pb2
-from substrait.gen.proto import type_pb2
-from substrait.gen.proto.extensions import extensions_pb2
-
 from gateway.backends.backend_options import BackendOptions
 from gateway.backends.backend_selector import find_backend
 from gateway.converter.conversion_options import ConversionOptions
 from gateway.converter.spark_functions import ExtensionFunction, lookup_spark_function
 from gateway.converter.sql_to_substrait import convert_sql
-from gateway.converter.substrait_builder import field_reference, cast_operation, string_type, \
-    project_relation, strlen, concat, fetch_relation, join_relation, aggregate_relation, \
-    max_agg_function, string_literal, flatten, repeat_function, \
-    least_function, greatest_function, bigint_literal, lpad_function, string_concat_agg_function, \
-    if_then_else_operation, greater_function, minus_function
+from gateway.converter.substrait_builder import (
+    aggregate_relation,
+    bigint_literal,
+    cast_operation,
+    concat,
+    fetch_relation,
+    field_reference,
+    flatten,
+    greater_function,
+    greatest_function,
+    if_then_else_operation,
+    join_relation,
+    least_function,
+    lpad_function,
+    max_agg_function,
+    minus_function,
+    project_relation,
+    repeat_function,
+    string_concat_agg_function,
+    string_literal,
+    string_type,
+    strlen,
+)
 from gateway.converter.symbol_table import SymbolTable
+from substrait.gen.proto import algebra_pb2, plan_pb2, type_pb2
+from substrait.gen.proto.extensions import extensions_pb2
 
 TABLE_NAME = "my_table"
 
 
 # pylint: disable=E1101,fixme,too-many-public-methods
+# ruff: noqa: RUF005
 class SparkSubstraitConverter:
     """Converts SparkConnect plans to Substrait plans."""
 
     def __init__(self, options: ConversionOptions):
-        self._function_uris: Dict[str, int] = {}
-        self._functions: Dict[str, ExtensionFunction] = {}
-        self._current_plan_id: Optional[int] = None  # The relation currently being processed.
+        self._function_uris: dict[str, int] = {}
+        self._functions: dict[str, ExtensionFunction] = {}
+        self._current_plan_id: int | None = None  # The relation currently being processed.
         self._symbol_table = SymbolTable()
         self._conversion_options = options
         self._seen_generated_names = {}
@@ -66,7 +81,7 @@ class SparkSubstraitConverter:
         current_symbol.input_fields.extend(source_symbol.output_fields)
         current_symbol.output_fields.extend(current_symbol.input_fields)
 
-    def find_field_by_name(self, field_name: str) -> Optional[int]:
+    def find_field_by_name(self, field_name: str) -> int | None:
         """Looks up the field name in the current set of field references."""
         current_symbol = self._symbol_table.get_symbol(self._current_plan_id)
         try:
@@ -174,10 +189,8 @@ class SparkSubstraitConverter:
         func = algebra_pb2.Expression.ScalarFunction()
         function_def = self.lookup_function_by_name(unresolved_function.function_name)
         func.function_reference = function_def.anchor
-        curr_arg_count = 0
-        for arg in unresolved_function.arguments:
-            curr_arg_count += 1
-            if function_def.max_args is not None and curr_arg_count > function_def.max_args:
+        for idx, arg in enumerate(unresolved_function.arguments):
+            if function_def.max_args is not None and idx >= function_def.max_args:
                 break
             func.arguments.append(
                 algebra_pb2.FunctionArgument(value=self.convert_expression(arg)))
@@ -193,7 +206,7 @@ class SparkSubstraitConverter:
         # TODO -- Utilize the alias name.
         return self.convert_expression(alias.expr)
 
-    def convert_type_str(self, spark_type_str: Optional[str]) -> type_pb2.Type:
+    def convert_type_str(self, spark_type_str: str | None) -> type_pb2.Type:
         """Converts a Spark type string into a Substrait type."""
         # TODO -- Properly handle nullability.
         match spark_type_str:
@@ -302,7 +315,7 @@ class SparkSubstraitConverter:
         """Converts a read named table relation to a Substrait relation."""
         raise NotImplementedError('named tables are not yet implemented')
 
-    def convert_schema(self, schema_str: str) -> Optional[type_pb2.NamedStruct]:
+    def convert_schema(self, schema_str: str) -> type_pb2.NamedStruct | None:
         """Converts the Spark JSON schema string into a Substrait named type structure."""
         if not schema_str:
             return None
@@ -345,7 +358,7 @@ class SparkSubstraitConverter:
             schema.struct.types.append(field_type)
         return schema
 
-    def convert_arrow_schema(self, arrow_schema: pyarrow.Schema) -> type_pb2.NamedStruct:
+    def convert_arrow_schema(self, arrow_schema: pa.Schema) -> type_pb2.NamedStruct:
         schema = type_pb2.NamedStruct()
         schema.struct.nullability = type_pb2.Type.NULLABILITY_REQUIRED
 
@@ -404,9 +417,8 @@ class SparkSubstraitConverter:
             file_paths = rel.paths
         for path in file_paths:
             uri_path = path
-            if self._conversion_options.needs_scheme_in_path_uris:
-                if uri_path.startswith('/'):
-                    uri_path = "file:" + uri_path
+            if self._conversion_options.needs_scheme_in_path_uris and uri_path.startswith('/'):
+                uri_path = "file:" + uri_path
             file_or_files = algebra_pb2.ReadRel.LocalFiles.FileOrFiles(uri_file=uri_path)
             match rel.format:
                 case 'parquet':
@@ -500,7 +512,7 @@ class SparkSubstraitConverter:
                                      count=rel.limit)
         return algebra_pb2.Rel(fetch=fetch)
 
-    def determine_expression_name(self, expr: spark_exprs_pb2.Expression) -> Optional[str]:
+    def determine_expression_name(self, expr: spark_exprs_pb2.Expression) -> str | None:
         """Determines the name of the expression."""
         if expr.HasField('alias'):
             return expr.alias.name[0]
@@ -609,16 +621,16 @@ class SparkSubstraitConverter:
                                       string_literal(symbol.input_fields[column_number]))) for
              column_number in range(len(symbol.input_fields))])
 
-        def field_header_fragment(field_number: int) -> List[algebra_pb2.Expression]:
+        def field_header_fragment(field_number: int) -> list[algebra_pb2.Expression]:
             return [string_literal('|'),
                     lpad_function(lpad_func, string_literal(symbol.input_fields[field_number]),
                                   field_reference(field_number))]
 
-        def field_line_fragment(field_number: int) -> List[algebra_pb2.Expression]:
+        def field_line_fragment(field_number: int) -> list[algebra_pb2.Expression]:
             return [string_literal('+'),
                     repeat_function(repeat_func, '-', field_reference(field_number))]
 
-        def field_body_fragment(field_number: int) -> List[algebra_pb2.Expression]:
+        def field_body_fragment(field_number: int) -> list[algebra_pb2.Expression]:
             return [string_literal('|'),
                     if_then_else_operation(
                         greater_function(greater_func,
@@ -640,7 +652,7 @@ class SparkSubstraitConverter:
 
                     )]
 
-        def header_line(fields: List[str]) -> List[algebra_pb2.Expression]:
+        def header_line(fields: list[str]) -> list[algebra_pb2.Expression]:
             return [concat(concat_func,
                            flatten([
                                field_header_fragment(field_number) for field_number in
@@ -649,7 +661,7 @@ class SparkSubstraitConverter:
                                string_literal('|\n'),
                            ])]
 
-        def full_line(fields: List[str]) -> List[algebra_pb2.Expression]:
+        def full_line(fields: list[str]) -> list[algebra_pb2.Expression]:
             return [concat(concat_func,
                            flatten([
                                field_line_fragment(field_number) for field_number in
@@ -756,12 +768,12 @@ class SparkSubstraitConverter:
         project.common.CopyFrom(self.create_common_relation())
         return algebra_pb2.Rel(project=project)
 
-    def convert_arrow_to_literal(self, val: pyarrow.Scalar) -> algebra_pb2.Expression.Literal:
+    def convert_arrow_to_literal(self, val: pa.Scalar) -> algebra_pb2.Expression.Literal:
         """Converts an Arrow scalar into a Substrait literal."""
         literal = algebra_pb2.Expression.Literal()
-        if isinstance(val, pyarrow.BooleanScalar):
+        if isinstance(val, pa.BooleanScalar):
             literal.boolean = val.as_py()
-        elif isinstance(val, pyarrow.StringScalar):
+        elif isinstance(val, pa.StringScalar):
             literal.string = val.as_py()
         else:
             raise NotImplementedError(
@@ -772,8 +784,8 @@ class SparkSubstraitConverter:
                                             data: bytes) -> algebra_pb2.ReadRel.VirtualTable:
         """Converts a Spark local relation into a virtual table."""
         table = algebra_pb2.ReadRel.VirtualTable()
-        # use Pyarrow to convert the bytes into an arrow structure
-        with pyarrow.ipc.open_stream(data) as arrow:
+        # Use pyarrow to convert the bytes into an arrow structure.
+        with pa.ipc.open_stream(data) as arrow:
             for batch in arrow.iter_batches_with_custom_metadata():
                 for row_number in range(batch.batch.num_rows):
                     values = algebra_pb2.Expression.Literal.Struct()

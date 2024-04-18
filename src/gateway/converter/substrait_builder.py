@@ -1,14 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 """Convenience builder for constructing Substrait plans."""
 import itertools
-from typing import List, Any
-
-from substrait.gen.proto import algebra_pb2, type_pb2
+from typing import Any
 
 from gateway.converter.spark_functions import ExtensionFunction
+from substrait.gen.proto import algebra_pb2, type_pb2
 
 
-def flatten(list_of_lists: List[List[Any]]) -> List[Any]:
+def flatten(list_of_lists: list[list[Any]]) -> list[Any]:
     """Flattens a list of lists into a list."""
     return list(itertools.chain.from_iterable(list_of_lists))
 
@@ -17,13 +16,11 @@ def flatten(list_of_lists: List[List[Any]]) -> List[Any]:
 
 def fetch_relation(input_relation: algebra_pb2.Rel, num_rows: int) -> algebra_pb2.Rel:
     """Constructs a Substrait fetch plan node."""
-    fetch = algebra_pb2.Rel(fetch=algebra_pb2.FetchRel(input=input_relation, count=num_rows))
-
-    return fetch
+    return algebra_pb2.Rel(fetch=algebra_pb2.FetchRel(input=input_relation, count=num_rows))
 
 
 def project_relation(input_relation: algebra_pb2.Rel,
-                     expressions: List[algebra_pb2.Expression]) -> algebra_pb2.Rel:
+                     expressions: list[algebra_pb2.Expression]) -> algebra_pb2.Rel:
     """Constructs a Substrait project plan node."""
     return algebra_pb2.Rel(
         project=algebra_pb2.ProjectRel(input=input_relation, expressions=expressions))
@@ -31,7 +28,7 @@ def project_relation(input_relation: algebra_pb2.Rel,
 
 # pylint: disable=fixme
 def aggregate_relation(input_relation: algebra_pb2.Rel,
-                       measures: List[algebra_pb2.AggregateFunction]) -> algebra_pb2.Rel:
+                       measures: list[algebra_pb2.AggregateFunction]) -> algebra_pb2.Rel:
     """Constructs a Substrait aggregate plan node."""
     aggregate = algebra_pb2.Rel(
         aggregate=algebra_pb2.AggregateRel(
@@ -55,7 +52,7 @@ def join_relation(left: algebra_pb2.Rel, right: algebra_pb2.Rel) -> algebra_pb2.
 
 
 def concat(function_info: ExtensionFunction,
-           expressions: List[algebra_pb2.Expression]) -> algebra_pb2.Expression:
+           expressions: list[algebra_pb2.Expression]) -> algebra_pb2.Expression:
     """Constructs a Substrait concat expression."""
     return algebra_pb2.Expression(
         scalar_function=algebra_pb2.Expression.ScalarFunction(
