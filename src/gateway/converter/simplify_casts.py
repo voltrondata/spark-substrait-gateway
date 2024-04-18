@@ -13,6 +13,7 @@ class SimplifyCasts(SubstraitPlanVisitor):
     """Replaces all cast expressions with projects of casts instead."""
 
     def __init__(self, symbol_table: SymbolTable):
+        """Initialize the visitor."""
         super().__init__()
         self._symbol_table = symbol_table
         self._current_plan_id: int | None = None  # The relation currently being processed.
@@ -21,7 +22,7 @@ class SimplifyCasts(SubstraitPlanVisitor):
         self._previous_rewrite_expressions: list[list[algebra_pb2.Expression]] = []
 
     def visit_cast(self, cast: algebra_pb2.Expression.Cast) -> Any:
-        """Visits a cast node."""
+        """Visit a cast node."""
         super().visit_cast(cast)
 
         # Acero only accepts casts of selections.
@@ -43,7 +44,7 @@ class SimplifyCasts(SubstraitPlanVisitor):
 
     @staticmethod
     def find_single_input(rel: algebra_pb2.Rel) -> algebra_pb2.Rel:
-        """Finds the single input to the relation."""
+        """Find the single input to the relation."""
         match rel.WhichOneof('rel_type'):
             case 'filter':
                 return rel.filter.input
@@ -63,7 +64,7 @@ class SimplifyCasts(SubstraitPlanVisitor):
 
     @staticmethod
     def replace_single_input(rel: algebra_pb2.Rel, new_input: algebra_pb2.Rel):
-        """Updates the single input to the relation."""
+        """Update the single input to the relation."""
         match rel.WhichOneof('rel_type'):
             case 'filter':
                 rel.filter.input.CopyFrom(new_input)
@@ -82,14 +83,14 @@ class SimplifyCasts(SubstraitPlanVisitor):
                                           f'{rel.WhichOneof("rel_type")} are not implemented')
 
     def update_field_references(self, plan_id: int) -> None:
-        """Uses the field references using the specified portion of the plan."""
+        """Use the field references using the specified portion of the plan."""
         source_symbol = self._symbol_table.get_symbol(plan_id)
         current_symbol = self._symbol_table.get_symbol(self._current_plan_id)
         current_symbol.input_fields.extend(source_symbol.output_fields)
         current_symbol.output_fields.extend(current_symbol.input_fields)
 
     def visit_relation(self, rel: algebra_pb2.Rel) -> Any:
-        """Visits a relation node."""
+        """Visit a relation node."""
         previous_plan_id = self._current_plan_id
         self._current_plan_id = get_plan_id(rel)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)

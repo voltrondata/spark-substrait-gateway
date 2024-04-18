@@ -19,12 +19,14 @@ class ExtensionFunction:
 
     def __init__(self, uri: str, name: str, output_type: type_pb2.Type,
                  max_args: int | None = None):
+        """Create the ExtensionFunction structure."""
         self.uri = uri
         self.name = name
         self.output_type = output_type
         self.max_args = max_args
 
     def __lt__(self, obj) -> bool:
+        """Compare two ExtensionFunction objects."""
         return self.uri < obj.uri and self.name < obj.name
 
 
@@ -111,7 +113,7 @@ SPARK_SUBSTRAIT_MAPPING = {
 
 
 def lookup_spark_function(name: str, options: ConversionOptions) -> ExtensionFunction:
-    """Returns a Substrait function given a spark function name."""
+    """Return a Substrait function given a spark function name."""
     definition = SPARK_SUBSTRAIT_MAPPING.get(name)
     if not options.return_names_with_types:
         definition.name = definition.name.split(':', 1)[0]

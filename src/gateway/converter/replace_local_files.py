@@ -11,6 +11,7 @@ class ReplaceLocalFilesWithNamedTable(SubstraitPlanVisitor):
     """Replaces all of the local file instances with named tables."""
 
     def __init__(self):
+        """Initialize the visitor."""
         self._file_groups: list[tuple[str, list[str]]] = []
 
         super().__init__()

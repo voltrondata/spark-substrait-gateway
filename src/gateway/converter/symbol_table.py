@@ -15,6 +15,7 @@ class PlanMetadata:
     output_fields: list[str]
 
     def __init__(self, plan_id: int):
+        """Create the PlanMetadata structure."""
         self.plan_id = plan_id
         self.symbol_type = None
         self.parent_plan_id = None
@@ -29,11 +30,12 @@ class SymbolTable:
     _symbols: dict[int, PlanMetadata]
 
     def __init__(self):
+        """Initialize the symbol table."""
         self._symbols = {}
 
     # pylint: disable=E1101
     def add_symbol(self, plan_id: int, parent: int | None, symbol_type: str | None):
-        """Creates a new symbol and returns it."""
+        """Create a new symbol and returns it."""
         symbol = PlanMetadata(plan_id)
         symbol.symbol_type = symbol_type
         symbol.parent_plan_id = parent
@@ -41,5 +43,5 @@ class SymbolTable:
         return symbol
 
     def get_symbol(self, plan_id: int) -> PlanMetadata | None:
-        """Fetches the symbol with the requested plan id."""
+        """Fetch the symbol with the requested plan id."""
         return self._symbols.get(plan_id)

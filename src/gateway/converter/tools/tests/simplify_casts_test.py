@@ -3,7 +3,7 @@
 from pathlib import Path
 
 import pytest
-from gateway.converter.tools.duckdb_substrait_to_arrow import simplify_casts
+from gateway.converter.tools.duckdb_substrait_to_arrow import simplify_substrait_dialect
 from google.protobuf import json_format, text_format
 from hamcrest import assert_that, equal_to
 from substrait.gen.proto import plan_pb2
@@ -33,7 +33,7 @@ def test_simplify_casts(request, path):
         splan_prototext = file.read()
     expected_plan = json_format.Parse(splan_prototext, plan_pb2.Plan())
 
-    arrow_plan = simplify_casts(source_plan)
+    arrow_plan = simplify_substrait_dialect(source_plan)
 
     if request.config.getoption('rebuild_goldens'):
         if arrow_plan != expected_plan:

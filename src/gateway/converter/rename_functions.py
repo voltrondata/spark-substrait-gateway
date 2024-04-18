@@ -9,7 +9,7 @@ class RenameFunctions(SubstraitPlanVisitor):
     """Renames Substrait functions to match what Datafusion expects."""
 
     def visit_plan(self, plan: plan_pb2.Plan) -> None:
-        """Modifies the provided plan so that functions are Datafusion compatible."""
+        """Modify the provided plan so that functions are Datafusion compatible."""
         super().visit_plan(plan)
 
         for extension in plan.extensions:

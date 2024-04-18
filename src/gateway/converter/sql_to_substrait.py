@@ -6,7 +6,7 @@ from substrait.gen.proto import plan_pb2
 
 
 def convert_sql(sql: str) -> plan_pb2.Plan:
-    """Converts SQL into a Substrait plan."""
+    """Convert SQL into a Substrait plan."""
     result = plan_pb2.Plan()
 
     backend = backend_selector.find_backend(BackendOptions(Backend.DUCKDB, False))
