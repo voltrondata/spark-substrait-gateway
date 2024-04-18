@@ -2,12 +2,11 @@
 """Tests for the Spark to Substrait plan conversion routines."""
 from pathlib import Path
 
-from google.protobuf import json_format, text_format
 import pytest
+from gateway.converter.tools.duckdb_substrait_to_arrow import simplify_casts
+from google.protobuf import json_format, text_format
 from hamcrest import assert_that, equal_to
 from substrait.gen.proto import plan_pb2
-
-from gateway.converter.tools.duckdb_substrait_to_arrow import simplify_casts
 
 test_case_directory = Path(__file__).resolve().parent / 'data'
 
@@ -38,7 +37,7 @@ def test_simplify_casts(request, path):
 
     if request.config.getoption('rebuild_goldens'):
         if arrow_plan != expected_plan:
-            with open(path.with_suffix('.golden'), "wt", encoding='utf-8') as file:
+            with open(path.with_suffix('.golden'), "w", encoding='utf-8') as file:
                 file.write(json_format.MessageToJson(arrow_plan))
         return
 

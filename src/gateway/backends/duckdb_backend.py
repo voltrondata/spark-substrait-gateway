@@ -3,7 +3,7 @@
 from pathlib import Path
 
 import duckdb
-import pyarrow
+import pyarrow as pa
 from substrait.gen.proto import plan_pb2
 
 from gateway.backends.backend import Backend
@@ -14,10 +14,13 @@ class DuckDBBackend(Backend):
     """Provides access to send Substrait plans to DuckDB."""
 
     def __init__(self, options):
+        """Initialize the DuckDB backend."""
+        self._connection = None
         super().__init__(options)
         self.create_connection()
 
     def create_connection(self):
+        """Create a connection to the backend."""
         if self._connection is not None:
             return self._connection
 
@@ -29,8 +32,9 @@ class DuckDBBackend(Backend):
 
         return self._connection
 
-    def execute(self, plan: plan_pb2.Plan) -> pyarrow.lib.Table:
-        """Executes the given Substrait plan against DuckDB."""
+    # ruff: noqa: BLE001
+    def execute(self, plan: plan_pb2.Plan) -> pa.lib.Table:
+        """Execute the given Substrait plan against DuckDB."""
         plan_data = plan.SerializeToString()
 
         # TODO -- Rely on the client to register their own named tables.
@@ -41,10 +45,10 @@ class DuckDBBackend(Backend):
         except Exception as err:
             raise ValueError(f'DuckDB Execution Error: {err}') from err
         df = query_result.df()
-        return pyarrow.Table.from_pandas(df=df)
+        return pa.Table.from_pandas(df=df)
 
     def register_table(self, table_name: str, location: Path) -> None:
-        """Registers the given table with the backend."""
+        """Register the given table with the backend."""
         files = Backend.expand_location(location)
         if not files:
             raise ValueError(f"No parquet files found at {location}")

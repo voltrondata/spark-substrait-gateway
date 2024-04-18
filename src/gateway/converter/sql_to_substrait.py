@@ -1,9 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Routines to convert SparkConnect plans to Substrait plans."""
-from substrait.gen.proto import plan_pb2
-
 from gateway.backends import backend_selector
-from gateway.backends.backend_options import BackendOptions, Backend
+from gateway.backends.backend_options import Backend, BackendOptions
+from substrait.gen.proto import plan_pb2
 
 
 def convert_sql(sql: str) -> plan_pb2.Plan:

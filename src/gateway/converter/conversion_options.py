@@ -2,13 +2,14 @@
 """Tracks conversion related options."""
 import dataclasses
 
-from gateway.backends.backend_options import BackendOptions, Backend
+from gateway.backends.backend_options import Backend, BackendOptions
 
 
 # pylint: disable=too-many-instance-attributes
 @dataclasses.dataclass
 class ConversionOptions:
     """Holds all the possible conversion options."""
+
     use_named_table_workaround: bool
     needs_scheme_in_path_uris: bool
     use_project_emit_workaround: bool
@@ -31,8 +32,7 @@ class ConversionOptions:
 
 def datafusion():
     """Standard options to connect to a Datafusion backend."""
-    options = ConversionOptions(backend=BackendOptions(Backend.DATAFUSION))
-    return options
+    return ConversionOptions(backend=BackendOptions(Backend.DATAFUSION))
 
 
 def duck_db():

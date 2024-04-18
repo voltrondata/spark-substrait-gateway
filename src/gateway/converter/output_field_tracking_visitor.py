@@ -1,12 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 """A library to search Substrait plan for local files."""
-from typing import Any, Optional
-
-from substrait.gen.proto import algebra_pb2, plan_pb2
+from typing import Any
 
 from gateway.converter.label_relations import get_common_section
 from gateway.converter.substrait_plan_visitor import SubstraitPlanVisitor
 from gateway.converter.symbol_table import SymbolTable
+from substrait.gen.proto import algebra_pb2, plan_pb2
 
 
 # pylint: disable=E1101
@@ -30,7 +29,7 @@ class OutputFieldTrackingVisitor(SubstraitPlanVisitor):
 
     def __init__(self):
         super().__init__()
-        self._current_plan_id: Optional[int] = None  # The relation currently being processed.
+        self._current_plan_id: int | None = None  # The relation currently being processed.
         self._symbol_table = SymbolTable()
 
     def update_field_references(self, plan_id: int) -> None:

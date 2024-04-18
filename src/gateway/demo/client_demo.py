@@ -1,24 +1,25 @@
 # SPDX-License-Identifier: Apache-2.0
 """A PySpark client that can send sample queries to the gateway."""
 
-from pyspark.sql.functions import col
-from pyspark.sql import SparkSession, DataFrame
-
 from gateway.backends.backend import Backend
+from pyspark.sql import DataFrame, SparkSession
+from pyspark.sql.functions import col
 
 USE_GATEWAY = True
 
 
 # pylint: disable=fixme
 def get_customer_database(spark_session: SparkSession) -> DataFrame:
+    """Register the TPC-H customer database."""
     location_customer = str(Backend.find_tpch() / 'customer')
 
     return spark_session.read.parquet(location_customer, mergeSchema=False)
 
 
 # pylint: disable=fixme
+# ruff: noqa: T201
 def execute_query(spark_session: SparkSession) -> None:
-    """Runs a single sample query against the gateway."""
+    """Run a single sample query against the gateway."""
     df_customer = get_customer_database(spark_session)
 
     # TODO -- Enable after named table registration is implemented.

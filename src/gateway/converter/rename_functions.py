@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """A library to search Substrait plan for local files."""
-from substrait.gen.proto import plan_pb2
-
 from gateway.converter.substrait_plan_visitor import SubstraitPlanVisitor
+from substrait.gen.proto import plan_pb2
 
 
 # pylint: disable=no-member,fixme

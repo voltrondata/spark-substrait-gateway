@@ -2,7 +2,7 @@
 """Provides access to Datafusion."""
 from pathlib import Path
 
-import pyarrow
+import pyarrow as pa
 from substrait.gen.proto import plan_pb2
 
 from gateway.backends.backend import Backend
@@ -15,16 +15,18 @@ class DatafusionBackend(Backend):
     """Provides access to send Substrait plans to Datafusion."""
 
     def __init__(self, options):
+        """Initialize the Datafusion backend."""
+        self._connection = None
         super().__init__(options)
         self.create_connection()
 
     def create_connection(self) -> None:
-        """Creates a connection to the backend."""
+        """Create a connection to the backend."""
         import datafusion
         self._connection = datafusion.SessionContext()
 
-    def execute(self, plan: plan_pb2.Plan) -> pyarrow.lib.Table:
-        """Executes the given Substrait plan against Datafusion."""
+    def execute(self, plan: plan_pb2.Plan) -> pa.lib.Table:
+        """Execute the given Substrait plan against Datafusion."""
         import datafusion.substrait
 
         self.register_tpch()
@@ -60,5 +62,6 @@ class DatafusionBackend(Backend):
                 self._connection.deregister_table(table_name)
 
     def register_table(self, name: str, path: Path) -> None:
+        """Register the given table with the backend."""
         files = Backend.expand_location(path)
         self._connection.register_parquet(name, files[0])
