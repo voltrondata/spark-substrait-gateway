@@ -8,7 +8,7 @@ from substrait.gen.proto import algebra_pb2
 
 # pylint: disable=E1101
 def get_common_section(rel: algebra_pb2.Rel) -> algebra_pb2.RelCommon:
-    """Finds the single input to the relation."""
+    """Find the single input to the relation."""
     match rel.WhichOneof('rel_type'):
         case 'read':
             result = rel.read.common
@@ -65,6 +65,7 @@ class LabelRelations(SubstraitPlanVisitor):
     _seen_relations: int
 
     def __init__(self):
+        """Initialize the LabelRelations visitor."""
         super().__init__()
         self._seen_relations = 0
 
