@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import pytest
+from gateway.backends.backend import Backend
 from gateway.demo.mystream_database import (
     create_mystream_database,
     delete_mystream_database,
@@ -112,3 +113,25 @@ def users_dataframe(spark_session, schema_users, users_location):
     return spark_session.read.format('parquet') \
         .schema(from_arrow_schema(schema_users)) \
         .parquet(users_location)
+
+
+def _register_table(spark_session: SparkSession, name: str) -> None:
+    location = Backend.find_tpch() / name
+    spark_session.sql(
+        f'CREATE OR REPLACE TEMPORARY VIEW {name} USING org.apache.spark.sql.parquet '
+        f'OPTIONS ( path "{location}" )')
+
+
+@pytest.fixture(scope='function')
+def spark_session_with_tpch_dataset(spark_session: SparkSession, source: str) -> SparkSession:
+    """Add the TPC-H dataset to the current spark session."""
+    if source == 'spark':
+        _register_table(spark_session, 'customer')
+        _register_table(spark_session, 'lineitem')
+        _register_table(spark_session, 'nation')
+        _register_table(spark_session, 'orders')
+        _register_table(spark_session, 'part')
+        _register_table(spark_session, 'partsupp')
+        _register_table(spark_session, 'region')
+        _register_table(spark_session, 'supplier')
+    return spark_session
