@@ -4,6 +4,7 @@ from pathlib import Path
 
 import duckdb
 import pyarrow as pa
+import pyarrow.parquet as pq
 from adbc_driver_manager import dbapi
 from substrait.gen.proto import plan_pb2
 
@@ -60,7 +61,7 @@ class AdbcBackend(Backend):
             # Sort the files because the later ones don't have enough data to construct a schema.
             file_paths = sorted([str(fp) for fp in file_paths])
             # TODO: Support multiple paths.
-            reader = pa.parquet.ParquetFile(file_paths[0])
+            reader = pq.ParquetFile(file_paths[0])
             self._connection.cursor().adbc_ingest(name, reader.iter_batches(), mode="create")
 
     def describe_table(self, table_name: str):
