@@ -37,9 +37,6 @@ class DuckDBBackend(Backend):
         """Execute the given Substrait plan against DuckDB."""
         plan_data = plan.SerializeToString()
 
-        # TODO -- Rely on the client to register their own named tables.
-        self.register_tpch()
-
         try:
             query_result = self._connection.from_substrait(proto=plan_data)
         except Exception as err:
