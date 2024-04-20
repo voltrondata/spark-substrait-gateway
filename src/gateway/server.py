@@ -109,8 +109,7 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
                 raise ValueError(f'Unknown plan type: {request.plan}')
         _LOGGER.debug('  as Substrait: %s', substrait)
         backend = find_backend(self._options.backend)
-        tpch_location = backend.find_tpch()
-        backend.register_table('customer', tpch_location / 'customer')
+        backend.register_tpch()
         results = backend.execute(substrait)
         _LOGGER.debug('  results are: %s', results)
 
