@@ -29,8 +29,6 @@ class DatafusionBackend(Backend):
         """Execute the given Substrait plan against Datafusion."""
         import datafusion.substrait
 
-        self.register_tpch()
-
         file_groups = ReplaceLocalFilesWithNamedTable().visit_plan(plan)
         registered_tables = set()
         for files in file_groups:
