@@ -14,6 +14,17 @@ sql_test_case_paths = [f for f in sorted(test_case_directory.iterdir()) if f.suf
 sql_test_case_names = [p.stem for p in sql_test_case_paths]
 
 
+@pytest.fixture(autouse=True)
+def mark_tests_as_xfail(request):
+    """Marks a subset of tests as expected to be fail."""
+    source = request.getfixturevalue('source')
+    originalname = request.keywords.node.originalname
+    if source == 'gateway-over-duckdb' and originalname == 'test_tpch':
+        path = request.getfixturevalue('path')
+        if path.stem in ['02', '04', '15', '16', '17', '18', '20', '21', '22']:
+            request.node.add_marker(pytest.mark.xfail(reason='DuckDB needs Delim join'))
+
+
 # pylint: disable=missing-function-docstring
 # ruff: noqa: E712
 class TestSqlAPI:
