@@ -1,9 +1,21 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for the Spark to Substrait Gateway server."""
+import pytest
 from hamcrest import assert_that, equal_to
 from pyspark import Row
 from pyspark.sql.functions import col, substring
 from pyspark.testing import assertDataFrameEqual
+
+
+@pytest.fixture(autouse=True)
+def mark_dataframe_tests_as_xfail(request):
+    """Marks a subset of tests as expected to be fail."""
+    source = request.getfixturevalue('source')
+    originalname = request.keywords.node.originalname
+    if source == 'gateway-over-duckdb' and (originalname == 'test_with_column' or
+                                            originalname == 'test_cast'):
+        request.node.add_marker(
+            pytest.mark.xfail(reason='DuckDB column binding error'))
 
 
 # pylint: disable=missing-function-docstring
