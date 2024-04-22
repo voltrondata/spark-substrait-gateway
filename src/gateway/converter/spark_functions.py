@@ -41,6 +41,10 @@ SPARK_SUBSTRAIT_MAPPING = {
         '/functions_comparison.yaml', 'equal:str_str', type_pb2.Type(
             bool=type_pb2.Type.Boolean(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    '<=': ExtensionFunction(
+        '/functions_comparison.yaml', 'lte:str_str', type_pb2.Type(
+            bool=type_pb2.Type.Boolean(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     '>=': ExtensionFunction(
         '/functions_comparison.yaml', 'gte:str_str', type_pb2.Type(
             bool=type_pb2.Type.Boolean(
@@ -49,8 +53,16 @@ SPARK_SUBSTRAIT_MAPPING = {
         '/functions_comparison.yaml', 'gt:str_str', type_pb2.Type(
             bool=type_pb2.Type.Boolean(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    '+': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'add:i64_i64', type_pb2.Type(
+            i64=type_pb2.Type.I64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     '-': ExtensionFunction(
         '/functions_arithmetic.yaml', 'subtract:i64_i64', type_pb2.Type(
+            i64=type_pb2.Type.I64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    '*': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'multiply:i64_i64', type_pb2.Type(
             i64=type_pb2.Type.I64(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'array_contains': ExtensionFunction(
@@ -59,6 +71,14 @@ SPARK_SUBSTRAIT_MAPPING = {
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'sum': ExtensionFunction(
         '/functions_arithmetic.yaml', 'sum:int', type_pb2.Type(
+            i32=type_pb2.Type.I32(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'try_sum': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'sum:int', type_pb2.Type(
+            i32=type_pb2.Type.I32(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'avg': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'avg:int', type_pb2.Type(
             i32=type_pb2.Type.I32(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'regexp_extract_all': ExtensionFunction(

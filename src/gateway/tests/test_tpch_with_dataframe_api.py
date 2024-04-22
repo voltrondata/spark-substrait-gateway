@@ -14,8 +14,6 @@ def mark_tests_as_xfail(request):
     """Marks a subset of tests as expected to be fail."""
     source = request.getfixturevalue('source')
     originalname = request.keywords.node.originalname
-    if source == 'gateway-over-duckdb' and originalname == 'test_query_01':
-        request.node.add_marker(pytest.mark.xfail(reason='date32[day] not handled'))
     if source == 'gateway-over-duckdb' and originalname in [
         'test_query_02', 'test_query_03', 'test_query_05', 'test_query_07', 'test_query_08',
         'test_query_09', 'test_query_10', 'test_query_11', 'test_query_12', 'test_query_13',

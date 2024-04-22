@@ -399,7 +399,7 @@ relations {
         count: 10
       }
     }
-    names: "grouping"
+    names: "artist_lastfm"
     names: "# of Listeners"
   }
 }

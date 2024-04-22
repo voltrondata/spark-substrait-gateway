@@ -192,6 +192,10 @@ class SparkSubstraitConverter:
         for idx, arg in enumerate(unresolved_function.arguments):
             if function_def.max_args is not None and idx >= function_def.max_args:
                 break
+            if unresolved_function.function_name == 'count' and arg.WhichOneof(
+                    'expr_type') == 'unresolved_star':
+                # Ignore all the rest of the arguments.
+                break
             func.arguments.append(
                 algebra_pb2.FunctionArgument(value=self.convert_expression(arg)))
         if unresolved_function.is_distinct:
@@ -256,7 +260,7 @@ class SparkSubstraitConverter:
                     'expression_string expression type not supported')
             case 'unresolved_star':
                 raise NotImplementedError(
-                    'unresolved_star expression type not supported')
+                    '* expressions are only supported within count aggregations')
             case 'alias':
                 result = self.convert_alias_expression(expr.alias)
             case 'cast':
@@ -404,6 +408,11 @@ class SparkSubstraitConverter:
                     field_type = type_pb2.Type(fp64=type_pb2.Type.FP64(nullability=nullability))
                 case 'string':
                     field_type = type_pb2.Type(string=type_pb2.Type.String(nullability=nullability))
+                case 'timestamp[us]':
+                    field_type = type_pb2.Type(
+                        timestamp=type_pb2.Type.Timestamp(nullability=nullability))
+                case 'date32[day]':
+                    field_type = type_pb2.Type(date=type_pb2.Type.Date(nullability=nullability))
                 case _:
                     raise NotImplementedError(f'Unexpected field type: {field.type}')
 
@@ -539,6 +548,12 @@ class SparkSubstraitConverter:
         self._seen_generated_names['aggregate_expression'] += 1
         return f'aggregate_expression{self._seen_generated_names["aggregate_expression"]}'
 
+    def determine_name_for_grouping(self, expr: spark_exprs_pb2.Expression) -> str:
+        """Determine the field name the grouping should use."""
+        if expr.WhichOneof('expr_type') == 'unresolved_attribute':
+            return expr.unresolved_attribute.unparsed_identifier
+        return 'grouping'
+
     def convert_aggregate_relation(self, rel: spark_relations_pb2.Aggregate) -> algebra_pb2.Rel:
         """Convert an aggregate relation into a Substrait relation."""
         aggregate = algebra_pb2.AggregateRel(input=self.convert_relation(rel.input))
@@ -549,8 +564,7 @@ class SparkSubstraitConverter:
             aggregate.groupings.append(
                 algebra_pb2.AggregateRel.Grouping(
                     grouping_expressions=[self.convert_expression(grouping)]))
-            # TODO -- Use the same field name as what was selected in the grouping.
-            symbol.generated_fields.append('grouping')
+            symbol.generated_fields.append(self.determine_name_for_grouping(grouping))
         for expr in rel.aggregate_expressions:
             aggregate.measures.append(
                 algebra_pb2.AggregateRel.Measure(
