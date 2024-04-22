@@ -476,7 +476,7 @@ class SubstraitPlanVisitor:
                 if field.HasField('consistent_field'):
                     self.visit_expression(field.consistent_field)
             case _:
-                raise ValueError(f'Unexpected field type: {field.WhichOneof("field_type")}')
+                raise ValueError(f'Unexpected expand field type: {field.WhichOneof("field_type")}')
 
     def visit_read_relation(self, rel: algebra_pb2.ReadRel) -> Any:
         """Visits a read relation."""
