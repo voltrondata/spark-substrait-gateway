@@ -919,6 +919,14 @@ class SparkSubstraitConverter:
         project.common.CopyFrom(self.create_common_relation())
         return algebra_pb2.Rel(project=project)
 
+    def convert_subquery_alias_relation(self,
+                                        rel: spark_relations_pb2.SubqueryAlias) -> algebra_pb2.Rel:
+        """Convert a Spark subquery alias relation into a Substrait relation."""
+        # TODO -- Utilize rel.alias somehow.
+        result = self.convert_relation(rel.input)
+        self.update_field_references(rel.input.common.plan_id)
+        return result
+
     def convert_relation(self, rel: spark_relations_pb2.Relation) -> algebra_pb2.Rel:
         """Convert a Spark relation into a Substrait one."""
         self._symbol_table.add_symbol(rel.common.plan_id, parent=self._current_plan_id,
@@ -950,6 +958,8 @@ class SparkSubstraitConverter:
                 result = self.convert_join_relation(rel.join)
             case 'project':
                 result = self.convert_project_relation(rel.project)
+            case 'subquery_alias':
+                result = self.convert_subquery_alias_relation(rel.subquery_alias)
             case _:
                 raise ValueError(
                     f'Unexpected Spark plan rel_type: {rel.WhichOneof("rel_type")}')
