@@ -93,6 +93,10 @@ SPARK_SUBSTRAIT_MAPPING = {
         '/functions_string.yaml', 'substring:str_int_int', type_pb2.Type(
             string=type_pb2.Type.String(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'startswith': ExtensionFunction(
+        '/functions_string.yaml', 'starts_with:str_str', type_pb2.Type(
+            bool=type_pb2.Type.Boolean(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'endswith': ExtensionFunction(
         '/functions_string.yaml', 'ends_with:str_str', type_pb2.Type(
             bool=type_pb2.Type.Boolean(

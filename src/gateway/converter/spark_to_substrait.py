@@ -208,7 +208,6 @@ class SparkSubstraitConverter:
     def convert_alias_expression(
             self, alias: spark_exprs_pb2.Expression.Alias) -> algebra_pb2.Expression:
         """Convert a Spark alias into a Substrait expression."""
-        # TODO -- Utilize the alias name.
         return self.convert_expression(alias.expr)
 
     def convert_type_str(self, spark_type_str: str | None) -> type_pb2.Type:
@@ -902,6 +901,24 @@ class SparkSubstraitConverter:
         join.common.CopyFrom(self.create_common_relation())
         return algebra_pb2.Rel(join=join)
 
+    def convert_project_relation(
+            self, rel: spark_relations_pb2.Project) -> algebra_pb2.Rel:
+        """Convert a Spark project relation into a Substrait project relation."""
+        input_rel = self.convert_relation(rel.input)
+        project = algebra_pb2.ProjectRel(input=input_rel)
+        self.update_field_references(rel.input.common.plan_id)
+        symbol = self._symbol_table.get_symbol(self._current_plan_id)
+        for field_number, expr in enumerate(rel.expressions):
+            project.expressions.append(self.convert_expression(expr))
+            if expr.HasField('alias'):
+                name = expr.alias.name[0]
+            else:
+                name = f'generated_field_{field_number}'
+            symbol.generated_fields.append(name)
+            symbol.output_fields.append(name)
+        project.common.CopyFrom(self.create_common_relation())
+        return algebra_pb2.Rel(project=project)
+
     def convert_relation(self, rel: spark_relations_pb2.Relation) -> algebra_pb2.Rel:
         """Convert a Spark relation into a Substrait one."""
         self._symbol_table.add_symbol(rel.common.plan_id, parent=self._current_plan_id,
@@ -931,6 +948,8 @@ class SparkSubstraitConverter:
                 result = self.convert_sql_relation(rel.sql)
             case 'join':
                 result = self.convert_join_relation(rel.join)
+            case 'project':
+                result = self.convert_project_relation(rel.project)
             case _:
                 raise ValueError(
                     f'Unexpected Spark plan rel_type: {rel.WhichOneof("rel_type")}')

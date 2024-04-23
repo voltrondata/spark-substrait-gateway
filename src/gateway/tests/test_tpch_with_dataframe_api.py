@@ -15,19 +15,20 @@ def mark_tests_as_xfail(request):
     source = request.getfixturevalue('source')
     originalname = request.keywords.node.originalname
     if source == 'gateway-over-duckdb' and originalname in [
-        'test_query_02', 'test_query_08', 'test_query_09']:
+        'test_query_02', 'test_query_03', 'test_query_05', 'test_query_07', 'test_query_08',
+        'test_query_09', 'test_query_10', 'test_query_11', 'test_query_15', 'test_query_17',
+        'test_query_18', 'test_query_20', 'test_query_21', 'test_query_22']:
         request.node.add_marker(pytest.mark.xfail(reason='DuckDB binder error'))
     if source == 'gateway-over-duckdb' and originalname == 'test_query_04':
         request.node.add_marker(pytest.mark.xfail(reason='deduplicate not implemented'))
     if source == 'gateway-over-duckdb' and originalname in ['test_query_06', 'test_query_14']:
         request.node.add_marker(pytest.mark.xfail(reason='subquery_alias not implemented'))
+    if source == 'gateway-over-duckdb' and originalname == 'test_query_12':
+        request.node.add_marker(pytest.mark.xfail(reason='function when not implemented'))
     if source == 'gateway-over-duckdb' and originalname == 'test_query_13':
         request.node.add_marker(pytest.mark.xfail(reason='function rlike not implemented'))
-    if source == 'gateway-over-duckdb' and originalname in [
-        'test_query_03', 'test_query_05', 'test_query_07', 'test_query_10', 'test_query_11',
-        'test_query_12', 'test_query_15', 'test_query_16', 'test_query_17', 'test_query_18',
-        'test_query_19', 'test_query_20', 'test_query_21', 'test_query_22']:
-        request.node.add_marker(pytest.mark.xfail(reason='project not implemented'))
+    if source == 'gateway-over-duckdb' and originalname in ['test_query_16', 'test_query_19']:
+        request.node.add_marker(pytest.mark.xfail(reason='function in not implemented'))
 
 
 class TestTpchWithDataFrameAPI:
