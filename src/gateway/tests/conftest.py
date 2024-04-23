@@ -135,3 +135,11 @@ def spark_session_with_tpch_dataset(spark_session: SparkSession, source: str) ->
         _register_table(spark_session, 'region')
         _register_table(spark_session, 'supplier')
     return spark_session
+
+
+@pytest.fixture(scope='function')
+def spark_session_with_customer_dataset(spark_session: SparkSession, source: str) -> SparkSession:
+    """Add the TPC-H dataset to the current spark session."""
+    if source == 'spark':
+        _register_table(spark_session, 'customer')
+    return spark_session
