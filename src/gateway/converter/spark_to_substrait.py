@@ -67,7 +67,8 @@ class SparkSubstraitConverter:
             return self._functions.get(name)
         func = lookup_spark_function(name, self._conversion_options)
         if not func:
-            raise LookupError(f'function name {name} does not have a known Substrait conversion')
+            raise LookupError(
+                f'Spark function named {name} does not have a known Substrait conversion.')
         func.anchor = len(self._functions) + 1
         self._functions[name] = func
         if not self._function_uris.get(func.uri):
