@@ -358,6 +358,7 @@ relations {
                 measures {
                   measure {
                     function_reference: 4
+                    phase: AGGREGATION_PHASE_INITIAL_TO_RESULT
                     output_type {
                       i32 {
                         nullability: NULLABILITY_REQUIRED

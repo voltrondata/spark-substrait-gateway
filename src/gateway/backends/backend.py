@@ -31,7 +31,7 @@ class Backend:
         """Execute the given Substrait plan against Datafusion."""
         raise NotImplementedError()
 
-    def register_table(self, name: str, path: Path | str, extension: str = 'parquet') -> None:
+    def register_table(self, name: str, path: Path) -> None:
         """Register the given table with the backend."""
         raise NotImplementedError()
 
@@ -39,7 +39,7 @@ class Backend:
         """Asks the backend to describe the given table."""
         raise NotImplementedError()
 
-    def drop_table(self, name: str):
+    def drop_table(self, name: str) -> None:
         """Asks the backend to drop the given table."""
         raise NotImplementedError()
 

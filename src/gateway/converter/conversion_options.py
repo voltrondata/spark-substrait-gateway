@@ -31,6 +31,13 @@ class ConversionOptions:
         self.backend = backend
 
 
+def arrow():
+    """Return standard options to connect to the Acero backend."""
+    options = ConversionOptions(backend=BackendOptions(Backend.ARROW))
+    options.needs_scheme_in_path_uris = True
+    return options
+
+
 def datafusion():
     """Return standard options to connect to a Datafusion backend."""
     return ConversionOptions(backend=BackendOptions(Backend.DATAFUSION))
