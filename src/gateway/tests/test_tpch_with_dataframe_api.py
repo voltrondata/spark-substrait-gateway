@@ -21,9 +21,7 @@ def mark_tests_as_xfail(request):
         request.node.add_marker(pytest.mark.xfail(reason='DuckDB binder error'))
     if source == 'gateway-over-duckdb' and originalname == 'test_query_04':
         request.node.add_marker(pytest.mark.xfail(reason='deduplicate not implemented'))
-    if source == 'gateway-over-duckdb' and originalname in ['test_query_06', 'test_query_14']:
-        request.node.add_marker(pytest.mark.xfail(reason='subquery_alias not implemented'))
-    if source == 'gateway-over-duckdb' and originalname == 'test_query_12':
+    if source == 'gateway-over-duckdb' and originalname in ['test_query_12', 'test_query_14']:
         request.node.add_marker(pytest.mark.xfail(reason='function when not implemented'))
     if source == 'gateway-over-duckdb' and originalname == 'test_query_13':
         request.node.add_marker(pytest.mark.xfail(reason='function rlike not implemented'))
