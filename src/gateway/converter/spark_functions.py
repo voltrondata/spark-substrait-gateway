@@ -49,6 +49,10 @@ SPARK_SUBSTRAIT_MAPPING = {
         '/functions_comparison.yaml', 'gte:str_str', type_pb2.Type(
             bool=type_pb2.Type.Boolean(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    '<': ExtensionFunction(
+        '/functions_comparison.yaml', 'lt:str_str', type_pb2.Type(
+            bool=type_pb2.Type.Boolean(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     '>': ExtensionFunction(
         '/functions_comparison.yaml', 'gt:str_str', type_pb2.Type(
             bool=type_pb2.Type.Boolean(
@@ -89,6 +93,10 @@ SPARK_SUBSTRAIT_MAPPING = {
         '/functions_string.yaml', 'substring:str_int_int', type_pb2.Type(
             string=type_pb2.Type.String(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'endswith': ExtensionFunction(
+        '/functions_string.yaml', 'ends_with:str_str', type_pb2.Type(
+            bool=type_pb2.Type.Boolean(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'length': ExtensionFunction(
         '/functions_string.yaml', 'char_length:str', type_pb2.Type(
             i64=type_pb2.Type.I64(
@@ -128,6 +136,18 @@ SPARK_SUBSTRAIT_MAPPING = {
     'count': ExtensionFunction(
         '/functions_aggregate_generic.yaml', 'count:any', type_pb2.Type(
             i64=type_pb2.Type.I64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'and': ExtensionFunction(
+        '/functions_boolean.yaml', 'and:bool_bool', type_pb2.Type(
+            bool=type_pb2.Type.Boolean(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'or': ExtensionFunction(
+        '/functions_boolean.yaml', 'or:bool_bool', type_pb2.Type(
+            bool=type_pb2.Type.Boolean(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'not': ExtensionFunction(
+        '/functions_boolean.yaml', 'not:bool', type_pb2.Type(
+            bool=type_pb2.Type.Boolean(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED)))
 }
 
