@@ -26,7 +26,7 @@ class ArrowBackend(Backend):
         reader = pa.substrait.run_query(plan_data, table_provider=self._provide_tables)
         return reader.read_all()
 
-    def register_table(self, name: str, path: Path) -> None:
+    def register_table(self, name: str, path: Path, file_format: str = 'parquet') -> None:
         """Register the given table with the backend."""
         self._registered_tables[name] = path
 

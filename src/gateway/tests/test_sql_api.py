@@ -23,6 +23,33 @@ def mark_tests_as_xfail(request):
         path = request.getfixturevalue('path')
         if path.stem in ['02', '04', '15', '16', '17', '18', '20', '21', '22']:
             request.node.add_marker(pytest.mark.xfail(reason='DuckDB needs Delim join'))
+    if source == 'gateway-over-datafusion':
+        pytest.importorskip("datafusion.substrait")
+        if originalname == 'test_count':
+            request.node.add_marker(pytest.mark.xfail(reason='COUNT() not implemented'))
+        if originalname in ['test_tpch']:
+            path = request.getfixturevalue('path')
+            if path.stem in ['01']:
+                request.node.add_marker(pytest.mark.xfail(reason='COUNT() not implemented'))
+            elif path.stem in ['07']:
+                request.node.add_marker(pytest.mark.xfail(reason='Projection uniqueness error'))
+            elif path.stem in ['08']:
+                request.node.add_marker(pytest.mark.xfail(reason='aggregation error'))
+            elif path.stem in ['09']:
+                request.node.add_marker(pytest.mark.xfail(reason='instr not implemented'))
+            elif path.stem in ['11', '15']:
+                request.node.add_marker(pytest.mark.xfail(reason='first not implemented'))
+            elif path.stem in ['13']:
+                request.node.add_marker(pytest.mark.xfail(reason='not rlike not implemented'))
+            elif path.stem in ['16']:
+                request.node.add_marker(pytest.mark.xfail(reason='mark join not implemented'))
+            elif path.stem in ['18']:
+                request.node.add_marker(pytest.mark.xfail(reason='out of bounds error'))
+            elif path.stem in ['19']:
+                request.node.add_marker(pytest.mark.xfail(reason='multiargument OR not supported'))
+            elif path.stem in ['02', '04', '17', '20', '21', '22']:
+                request.node.add_marker(pytest.mark.xfail(reason='DataFusion needs Delim join'))
+            request.node.add_marker(pytest.mark.xfail(reason='Gateway internal iterating error'))
 
 
 # pylint: disable=missing-function-docstring
