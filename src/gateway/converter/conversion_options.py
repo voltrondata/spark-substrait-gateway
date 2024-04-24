@@ -10,14 +10,6 @@ from gateway.backends.backend_options import Backend, BackendOptions
 class ConversionOptions:
     """Holds all the possible conversion options."""
 
-    use_named_table_workaround: bool
-    needs_scheme_in_path_uris: bool
-    use_project_emit_workaround: bool
-    use_project_emit_workaround2: bool
-    use_emits_instead_of_direct: bool
-
-    return_names_with_types: bool
-
     def __init__(self, backend: BackendOptions = None):
         """Initialize the conversion options."""
         self.use_named_table_workaround = False
@@ -35,6 +27,9 @@ def arrow():
     """Return standard options to connect to the Acero backend."""
     options = ConversionOptions(backend=BackendOptions(Backend.ARROW))
     options.needs_scheme_in_path_uris = True
+    options.return_names_with_types = True
+    options.implement_show_string = False
+    options.backend.use_arrow_uri_workaround = True
     return options
 
 

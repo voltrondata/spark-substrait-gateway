@@ -23,3 +23,5 @@ class BackendOptions:
         """Create a BackendOptions structure."""
         self.backend = backend
         self.use_adbc = use_adbc
+
+        self.use_arrow_uri_workaround = False

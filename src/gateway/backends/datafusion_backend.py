@@ -6,7 +6,7 @@ import pyarrow as pa
 from substrait.gen.proto import plan_pb2
 
 from gateway.backends.backend import Backend
-from gateway.converter.rename_functions import RenameFunctions
+from gateway.converter.rename_functions import RenameFunctionsForDatafusion
 from gateway.converter.replace_local_files import ReplaceLocalFilesWithNamedTable
 
 
@@ -38,7 +38,7 @@ class DatafusionBackend(Backend):
                     self.register_table(table_name, file)
                 registered_tables.add(files[0])
 
-        RenameFunctions().visit_plan(plan)
+        RenameFunctionsForDatafusion().visit_plan(plan)
 
         try:
             plan_data = plan.SerializeToString()
