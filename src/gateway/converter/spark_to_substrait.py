@@ -182,12 +182,68 @@ class SparkSubstraitConverter:
                     field=field_ref)),
             root_reference=algebra_pb2.Expression.FieldReference.RootReference()))
 
+    def determine_type_of_expression(self, expr: algebra_pb2.Expression) -> type_pb2.Type:
+        """Determine the type of a Substrait expression."""
+        if expr.WhichOneof('rex_type') == 'literal':
+            match expr.literal.WhichOneof('literal_type'):
+                case 'boolean':
+                    return type_pb2.Type(bool=type_pb2.Type.Boolean())
+                case 'i8':
+                    return type_pb2.Type(i8=type_pb2.Type.I8())
+                case 'i16':
+                    return type_pb2.Type(i16=type_pb2.Type.I16())
+                case 'i32':
+                    return type_pb2.Type(i32=type_pb2.Type.I32())
+                case 'i64':
+                    return type_pb2.Type(i64=type_pb2.Type.I64())
+                case 'float':
+                    return type_pb2.Type(fp32=type_pb2.Type.FP32())
+                case 'double':
+                    return type_pb2.Type(fp64=type_pb2.Type.FP64())
+                case 'string':
+                    return type_pb2.Type(string=type_pb2.Type.String())
+                case _:
+                    raise NotImplementedError(
+                        'Type determination not implemented for literal of type '
+                        f'{expr.literal.WhichOneof("literal_type")}.')
+        if expr.WhichOneof('rex_type') == 'scalar_function':
+            return expr.scalar_function.output_type
+        if expr.WhichOneof('rex_type') == 'selection':
+            # TODO -- Figure out how to determine the type of a field reference.
+            return type_pb2.Type(i32=type_pb2.Type.I32())
+        raise NotImplementedError(
+            'Type determination not implemented for expressions of type '
+            f'{expr.WhichOneof("rex_type")}.')
+
+    def convert_when_function(
+            self,
+            when: spark_exprs_pb2.Expression.UnresolvedFunction) -> algebra_pb2.Expression:
+        """Convert a Spark when function into a Substrait if-then expression."""
+        ifthen = algebra_pb2.Expression.IfThen()
+        for i in range(0, len(when.arguments) - 1, 2):
+            clause = algebra_pb2.Expression.IfThen.IfClause()
+            getattr(clause, 'if').CopyFrom(self.convert_expression(when.arguments[i]))
+            clause.then.CopyFrom(self.convert_expression(when.arguments[i + 1]))
+            ifthen.ifs.append(clause)
+        if len(when.arguments) % 2 == 1:
+            getattr(ifthen, 'else').CopyFrom(
+                self.convert_expression(when.arguments[len(when.arguments) - 1]))
+        else:
+            getattr(ifthen, 'else').CopyFrom(
+                algebra_pb2.Expression(
+                    literal=algebra_pb2.Expression.Literal(
+                        null=self.determine_type_of_expression(ifthen.ifs[-1].then))))
+
+        return algebra_pb2.Expression(if_then=ifthen)
+
     def convert_unresolved_function(
             self,
             unresolved_function:
             spark_exprs_pb2.Expression.UnresolvedFunction) -> algebra_pb2.Expression:
         """Convert a Spark unresolved function into a Substrait scalar function."""
         func = algebra_pb2.Expression.ScalarFunction()
+        if unresolved_function.function_name == 'when':
+            return self.convert_when_function(unresolved_function)
         function_def = self.lookup_function_by_name(unresolved_function.function_name)
         func.function_reference = function_def.anchor
         for idx, arg in enumerate(unresolved_function.arguments):
