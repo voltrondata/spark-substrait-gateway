@@ -18,6 +18,6 @@ class ArrowBackend(Backend):
         reader = pa.substrait.run_query(plan_data)
         return reader.read_all()
 
-    def register_table(self, name: str, path: Path) -> None:
+    def register_table(self, name: str, path: Path, file_format: str = 'parquet') -> None:
         """Register the given table with the backend."""
         raise NotImplementedError()

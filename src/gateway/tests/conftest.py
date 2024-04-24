@@ -83,9 +83,8 @@ def schema_users():
 @pytest.fixture(scope='session',
                 params=['spark',
                         'gateway-over-duckdb',
-                        pytest.param('gateway-over-datafusion',
-                                     marks=pytest.mark.xfail(
-                                         reason='Datafusion Substrait missing in CI'))])
+                        'gateway-over-datafusion',
+                        ])
 def source(request) -> str:
     """Provides the source (backend) to be used."""
     return request.param
