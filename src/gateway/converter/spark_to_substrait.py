@@ -18,8 +18,10 @@ from gateway.converter.sql_to_substrait import convert_sql
 from gateway.converter.substrait_builder import (
     aggregate_relation,
     bigint_literal,
+    bool_literal,
     cast_operation,
     concat,
+    equal_function,
     fetch_relation,
     field_reference,
     flatten,
@@ -236,14 +238,55 @@ class SparkSubstraitConverter:
 
         return algebra_pb2.Expression(if_then=ifthen)
 
+    def convert_in_function(
+            self, in_: spark_exprs_pb2.Expression.UnresolvedFunction) -> algebra_pb2.Expression:
+        """Convert a Spark in function into a Substrait switch expression."""
+
+        def is_switch_expression_appropriate() -> bool:
+            """Determine if the IN function is appropriate for a switch expression."""
+            if not self._conversion_options.use_switch_expressions_where_possible:
+                return False
+            return all(a.WhichOneof("expr_type") == "literal" for a in in_.arguments[1:])
+
+        if is_switch_expression_appropriate():
+            switch = algebra_pb2.Expression.SwitchExpression(
+                match=self.convert_expression(in_.arguments[0]))
+
+            for arg in in_.arguments[1:]:
+                ifvalue = algebra_pb2.Expression.SwitchExpression.IfValue(then=bool_literal(True))
+                expr = self.convert_literal_expression(arg.literal)
+                getattr(ifvalue, 'if').CopyFrom(expr.literal)
+                switch.ifs.append(ifvalue)
+
+            getattr(switch, 'else').CopyFrom(bool_literal(False))
+
+            return algebra_pb2.Expression(switch_expression=switch)
+
+        equal_func = self.lookup_function_by_name('==')
+
+        ifthen = algebra_pb2.Expression.IfThen()
+
+        match = self.convert_expression(in_.arguments[0])
+        for arg in in_.arguments[1:]:
+            clause = algebra_pb2.Expression.IfThen.IfClause(then=bool_literal(True))
+            getattr(clause, 'if').CopyFrom(
+                equal_function(equal_func, match, self.convert_expression(arg)))
+            ifthen.ifs.append(clause)
+
+        getattr(ifthen, 'else').CopyFrom(bool_literal(False))
+
+        return algebra_pb2.Expression(if_then=ifthen)
+
     def convert_unresolved_function(
             self,
-            unresolved_function:
-            spark_exprs_pb2.Expression.UnresolvedFunction) -> algebra_pb2.Expression:
+            unresolved_function: spark_exprs_pb2.Expression.UnresolvedFunction
+    ) -> algebra_pb2.Expression:
         """Convert a Spark unresolved function into a Substrait scalar function."""
-        func = algebra_pb2.Expression.ScalarFunction()
         if unresolved_function.function_name == 'when':
             return self.convert_when_function(unresolved_function)
+        if unresolved_function.function_name == 'in':
+            return self.convert_in_function(unresolved_function)
+        func = algebra_pb2.Expression.ScalarFunction()
         function_def = self.lookup_function_by_name(unresolved_function.function_name)
         func.function_reference = function_def.anchor
         for idx, arg in enumerate(unresolved_function.arguments):

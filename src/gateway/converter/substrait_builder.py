@@ -141,6 +141,18 @@ def greatest_function(greater_function_info: ExtensionFunction, expr1: algebra_p
     )
 
 
+def equal_function(function_info: ExtensionFunction,
+                   expr1: algebra_pb2.Expression,
+                   expr2: algebra_pb2.Expression) -> algebra_pb2.Expression:
+    """Construct a Substrait min expression."""
+    return algebra_pb2.Expression(scalar_function=
+    algebra_pb2.Expression.ScalarFunction(
+        function_reference=function_info.anchor,
+        output_type=function_info.output_type,
+        arguments=[algebra_pb2.FunctionArgument(value=expr1),
+                   algebra_pb2.FunctionArgument(value=expr2)]))
+
+
 def greater_or_equal_function(function_info: ExtensionFunction,
                               expr1: algebra_pb2.Expression,
                               expr2: algebra_pb2.Expression) -> algebra_pb2.Expression:
@@ -221,6 +233,11 @@ def rpad_function(function_info: ExtensionFunction,
             algebra_pb2.FunctionArgument(value=cast_operation(count, integer_type())),
             algebra_pb2.FunctionArgument(
                 value=cast_operation(string_literal(pad_string), cast_type))]))
+
+
+def bool_literal(val: bool) -> algebra_pb2.Expression:
+    """Construct a Substrait boolean literal expression."""
+    return algebra_pb2.Expression(literal=algebra_pb2.Expression.Literal(boolean=val))
 
 
 def string_literal(val: str) -> algebra_pb2.Expression:
