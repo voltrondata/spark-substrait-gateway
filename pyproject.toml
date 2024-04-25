@@ -18,6 +18,13 @@ test = ["pytest >= 7.0.0"]
 [tool.pytest.ini_options]
 pythonpath = "src"
 addopts = "--ignore=third_party"
+markers = [
+  "spark: mark a test as running against Spark",
+  "gateway-over-arrow: mark a test as running against the gateway using Arrow",
+  "gateway-over-duckdb: mark a test as running against the gateway using DuckDB",
+  "gateway-over-datafusion: mark a test as running against the gateway using DataFusion",
+  "general: mark a test as not specific to a backend",
+]
 
 [build-system]
 requires = ["setuptools>=61.0.0", "setuptools_scm[toml]>=6.2.0"]

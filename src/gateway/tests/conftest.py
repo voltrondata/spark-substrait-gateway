@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """Test fixtures for pytest of the gateway server."""
+import re
 from pathlib import Path
 
 import pytest
@@ -12,6 +13,15 @@ from gateway.demo.mystream_database import (
 from gateway.server import serve
 from pyspark.sql.pandas.types import from_arrow_schema
 from pyspark.sql.session import SparkSession
+
+
+def pytest_collection_modifyitems(items):
+    for item in items:
+        if 'source' in getattr(item, 'fixturenames', ()):
+            source = re.search(r'\[([^,]+?)(-\d+)?]$', item.name).group(1)
+            item.add_marker(source)
+            continue
+        item.add_marker('general')
 
 
 # ruff: noqa: T201
