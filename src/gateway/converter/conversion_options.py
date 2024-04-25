@@ -15,6 +15,7 @@ class ConversionOptions:
         self.use_named_table_workaround = False
         self.needs_scheme_in_path_uris = False
         self.use_emits_instead_of_direct = False
+        self.use_switch_expressions_where_possible = True
 
         self.return_names_with_types = False
 
@@ -42,4 +43,5 @@ def duck_db():
     """Return standard options to connect to a DuckDB backend."""
     options = ConversionOptions(backend=BackendOptions(Backend.DUCKDB))
     options.return_names_with_types = True
+    options.use_switch_expressions_where_possible = False
     return options
