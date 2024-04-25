@@ -235,6 +235,21 @@ def rpad_function(function_info: ExtensionFunction,
                 value=cast_operation(string_literal(pad_string), cast_type))]))
 
 
+def regexp_strpos_function(function_info: ExtensionFunction,
+                           input: algebra_pb2.Expression, pattern: algebra_pb2.Expression,
+                           position: algebra_pb2.Expression,
+                           occurrence: algebra_pb2.Expression) -> algebra_pb2.AggregateFunction:
+    """Construct a Substrait regex substring expression."""
+    return algebra_pb2.Expression(scalar_function=algebra_pb2.Expression.ScalarFunction(
+        function_reference=function_info.anchor,
+        output_type=function_info.output_type,
+        arguments=[
+            algebra_pb2.FunctionArgument(value=input),
+            algebra_pb2.FunctionArgument(value=pattern),
+            algebra_pb2.FunctionArgument(value=occurrence),
+            algebra_pb2.FunctionArgument(value=position)]))
+
+
 def bool_literal(val: bool) -> algebra_pb2.Expression:
     """Construct a Substrait boolean literal expression."""
     return algebra_pb2.Expression(literal=algebra_pb2.Expression.Literal(boolean=val))
