@@ -15,6 +15,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest]
+        source: ["general", "spark", "gateway-over-duckdb", "gateway-over-datafusion"]
         python: ["3.10"]
     runs-on: ${{ matrix.os }}
     steps:
@@ -36,4 +37,4 @@ jobs:
       - name: Run tests
         shell: bash -el {0}
         run: |
-          pytest
+          pytest -m ${{ matrix.source }}
