@@ -93,6 +93,13 @@ SPARK_SUBSTRAIT_MAPPING = {
         '/functions_string.yaml', 'regexp_match:str_binary_str', type_pb2.Type(
             list=type_pb2.Type.List(type=type_pb2.Type(string=type_pb2.Type.String(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))))),
+    'regexp_substring': ExtensionFunction(
+        '/functions_string.yaml', 'regexp_substring:str_str_i64_i64', type_pb2.Type(
+            i64=type_pb2.Type.I64(nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'DUCKDB_regexp_matches': ExtensionFunction(
+        '/functions_string.yaml', 'regexp_matches:str_str', type_pb2.Type(
+            bool=type_pb2.Type.Boolean(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'substring': ExtensionFunction(
         '/functions_string.yaml', 'substring:str_int_int', type_pb2.Type(
             string=type_pb2.Type.String(

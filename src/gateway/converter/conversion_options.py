@@ -16,6 +16,7 @@ class ConversionOptions:
         self.needs_scheme_in_path_uris = False
         self.use_emits_instead_of_direct = False
         self.use_switch_expressions_where_possible = True
+        self.use_duckdb_regexp_matches_function = False
 
         self.return_names_with_types = False
 
@@ -44,4 +45,5 @@ def duck_db():
     options = ConversionOptions(backend=BackendOptions(Backend.DUCKDB))
     options.return_names_with_types = True
     options.use_switch_expressions_where_possible = False
+    options.use_duckdb_regexp_matches_function = True
     return options

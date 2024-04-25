@@ -34,6 +34,7 @@ from gateway.converter.substrait_builder import (
     max_agg_function,
     minus_function,
     project_relation,
+    regexp_strpos_function,
     repeat_function,
     string_concat_agg_function,
     string_literal,
@@ -47,7 +48,6 @@ from substrait.gen.proto.extensions import extensions_pb2
 TABLE_NAME = "my_table"
 
 
-# pylint: disable=E1101,fixme,too-many-public-methods
 # ruff: noqa: RUF005
 class SparkSubstraitConverter:
     """Converts SparkConnect plans to Substrait plans."""
@@ -277,6 +277,31 @@ class SparkSubstraitConverter:
 
         return algebra_pb2.Expression(if_then=ifthen)
 
+    def convert_rlike_function(
+            self, in_: spark_exprs_pb2.Expression.UnresolvedFunction) -> algebra_pb2.Expression:
+        """Convert a Spark rlike function into a Substrait expression."""
+        if self._conversion_options.use_duckdb_regexp_matches_function:
+            regexp_matches_func = self.lookup_function_by_name('DUCKDB_regexp_matches')
+            return algebra_pb2.Expression(
+                scalar_function=algebra_pb2.Expression.ScalarFunction(
+                    function_reference=regexp_matches_func.anchor,
+                    arguments=[
+                        algebra_pb2.FunctionArgument(
+                            value=self.convert_expression(in_.arguments[0])),
+                        algebra_pb2.FunctionArgument(
+                            value=self.convert_expression(in_.arguments[1]))
+                    ],
+                    output_type=regexp_matches_func.output_type))
+
+        regexp_strpos_func = self.lookup_function_by_name('regexp_strpos')
+        greater_func = self.lookup_function_by_name('>')
+
+        regexp_expr = regexp_strpos_function(regexp_strpos_func,
+                                             self.convert_expression(in_.arguments[1]),
+                                             self.convert_expression(in_.arguments[0]),
+                                             bigint_literal(1), bigint_literal(1))
+        return greater_function(greater_func, regexp_expr, bigint_literal(0))
+
     def convert_unresolved_function(
             self,
             unresolved_function: spark_exprs_pb2.Expression.UnresolvedFunction
@@ -286,6 +311,8 @@ class SparkSubstraitConverter:
             return self.convert_when_function(unresolved_function)
         if unresolved_function.function_name == 'in':
             return self.convert_in_function(unresolved_function)
+        if unresolved_function.function_name == 'rlike':
+            return self.convert_rlike_function(unresolved_function)
         func = algebra_pb2.Expression.ScalarFunction()
         function_def = self.lookup_function_by_name(unresolved_function.function_name)
         func.function_reference = function_def.anchor
