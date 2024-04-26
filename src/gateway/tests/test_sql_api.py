@@ -21,8 +21,10 @@ def mark_tests_as_xfail(request):
     originalname = request.keywords.node.originalname
     if source == 'gateway-over-duckdb' and originalname == 'test_tpch':
         path = request.getfixturevalue('path')
-        if path.stem in ['02', '04', '15', '16', '17', '18', '20', '21', '22']:
+        if path.stem in ['02', '04', '16', '17', '18', '20', '21', '22']:
             request.node.add_marker(pytest.mark.xfail(reason='DuckDB needs Delim join'))
+        if path.stem in ['15']:
+            request.node.add_marker(pytest.mark.xfail(reason='Rounding inconsistency'))
     if source == 'gateway-over-datafusion':
         pytest.importorskip("datafusion.substrait")
         if originalname == 'test_count':
