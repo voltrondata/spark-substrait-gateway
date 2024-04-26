@@ -37,10 +37,12 @@ def mark_tests_as_xfail(request):
                 request.node.add_marker(pytest.mark.xfail(reason='aggregation error'))
             elif path.stem in ['09']:
                 request.node.add_marker(pytest.mark.xfail(reason='instr not implemented'))
-            elif path.stem in ['11', '15']:
+            elif path.stem in ['11']:
                 request.node.add_marker(pytest.mark.xfail(reason='first not implemented'))
             elif path.stem in ['13']:
                 request.node.add_marker(pytest.mark.xfail(reason='not rlike not implemented'))
+            elif path.stem in ['15']:
+                request.node.add_marker(pytest.mark.xfail(reason='empty table error'))
             elif path.stem in ['16']:
                 request.node.add_marker(pytest.mark.xfail(reason='mark join not implemented'))
             elif path.stem in ['18']:

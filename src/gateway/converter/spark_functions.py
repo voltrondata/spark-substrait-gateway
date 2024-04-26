@@ -156,6 +156,10 @@ SPARK_SUBSTRAIT_MAPPING = {
         '/functions_aggregate_generic.yaml', 'count:any', type_pb2.Type(
             i64=type_pb2.Type.I64(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'any_value': ExtensionFunction(
+        '/functions_aggregate_generic.yaml', 'any_value:any', type_pb2.Type(
+            i64=type_pb2.Type.I64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'and': ExtensionFunction(
         '/functions_boolean.yaml', 'and:bool_bool', type_pb2.Type(
             bool=type_pb2.Type.Boolean(
