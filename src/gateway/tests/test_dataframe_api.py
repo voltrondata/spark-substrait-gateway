@@ -31,6 +31,10 @@ def mark_dataframe_tests_as_xfail(request):
 class TestDataFrameAPI:
     """Tests of the dataframe side of SparkConnect."""
 
+    def test_collect(self, users_dataframe):
+        outcome = users_dataframe.collect()
+        assert len(outcome) == 100
+
     # pylint: disable=singleton-comparison
     def test_filter(self, users_dataframe):
         outcome = users_dataframe.filter(col('paid_for_service') == True).collect()

@@ -1,8 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """Provides access to Acero."""
 from pathlib import Path
+from typing import ClassVar
 
 import pyarrow as pa
+import pyarrow.substrait
 from substrait.gen.proto import plan_pb2
 
 from gateway.backends.backend import Backend
@@ -25,7 +27,7 @@ class ArrowBackend(Backend):
         RenameFunctionsForArrow(use_uri_workaround=self._use_uri_workaround).visit_plan(plan)
 
         plan_data = plan.SerializeToString()
-        reader = pa.substrait.run_query(plan_data)
+        reader = pa.substrait.run_query(plan_data, table_provider=self._provide_tables)
         return reader.read_all()
 
     def register_table(self, name: str, path: Path, file_format: str = 'parquet') -> None:

@@ -424,7 +424,8 @@ class SparkSubstraitConverter:
             self,
             expr: spark_exprs_pb2.Expression) -> algebra_pb2.AggregateFunction:
         """Convert a SparkConnect expression to a Substrait expression."""
-        func = algebra_pb2.AggregateFunction()
+        func = algebra_pb2.AggregateFunction(
+            phase=algebra_pb2.AggregationPhase.AGGREGATION_PHASE_INITIAL_TO_RESULT)
         expression = self.convert_expression(expr)
         match expression.WhichOneof('rex_type'):
             case 'scalar_function':
