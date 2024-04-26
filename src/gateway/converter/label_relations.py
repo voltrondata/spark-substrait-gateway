@@ -2,14 +2,13 @@
 """A library to search Substrait plan for local files."""
 from typing import Any
 
-from substrait.gen.proto import algebra_pb2
-
 from gateway.converter.substrait_plan_visitor import SubstraitPlanVisitor
+from substrait.gen.proto import algebra_pb2
 
 
 # pylint: disable=E1101
 def get_common_section(rel: algebra_pb2.Rel) -> algebra_pb2.RelCommon:
-    """Finds the single input to the relation."""
+    """Find the single input to the relation."""
     match rel.WhichOneof('rel_type'):
         case 'read':
             result = rel.read.common
@@ -62,9 +61,11 @@ def get_common_section(rel: algebra_pb2.Rel) -> algebra_pb2.RelCommon:
 # pylint: disable=E1101,no-member,fixme
 class LabelRelations(SubstraitPlanVisitor):
     """Replaces all cast expressions with projects of casts instead."""
+
     _seen_relations: int
 
     def __init__(self):
+        """Initialize the LabelRelations visitor."""
         super().__init__()
         self._seen_relations = 0
 

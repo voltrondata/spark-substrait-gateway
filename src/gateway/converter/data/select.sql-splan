@@ -1,0 +1,120 @@
+relations {
+  root {
+    input {
+      project {
+        input {
+          read {
+            base_schema {
+              names: "c_custkey"
+              names: "c_name"
+              names: "c_address"
+              names: "c_nationkey"
+              names: "c_phone"
+              names: "c_acctbal"
+              names: "c_mktsegment"
+              names: "c_comment"
+              struct {
+                types {
+                  i64 {
+                    nullability: NULLABILITY_NULLABLE
+                  }
+                }
+                types {
+                  string {
+                    nullability: NULLABILITY_NULLABLE
+                  }
+                }
+                types {
+                  string {
+                    nullability: NULLABILITY_NULLABLE
+                  }
+                }
+                types {
+                  i64 {
+                    nullability: NULLABILITY_NULLABLE
+                  }
+                }
+                types {
+                  string {
+                    nullability: NULLABILITY_NULLABLE
+                  }
+                }
+                types {
+                  fp64 {
+                    nullability: NULLABILITY_NULLABLE
+                  }
+                }
+                types {
+                  string {
+                    nullability: NULLABILITY_NULLABLE
+                  }
+                }
+                types {
+                  string {
+                    nullability: NULLABILITY_NULLABLE
+                  }
+                }
+                nullability: NULLABILITY_REQUIRED
+              }
+            }
+            projection {
+              select {
+                struct_items {
+                }
+                struct_items {
+                  field: 4
+                }
+                struct_items {
+                  field: 6
+                }
+              }
+              maintain_singular_struct: true
+            }
+            named_table {
+              names: "customer"
+            }
+          }
+        }
+        expressions {
+          selection {
+            direct_reference {
+              struct_field {
+              }
+            }
+            root_reference {
+            }
+          }
+        }
+        expressions {
+          selection {
+            direct_reference {
+              struct_field {
+                field: 1
+              }
+            }
+            root_reference {
+            }
+          }
+        }
+        expressions {
+          selection {
+            direct_reference {
+              struct_field {
+                field: 2
+              }
+            }
+            root_reference {
+            }
+          }
+        }
+      }
+    }
+    names: "c_custkey"
+    names: "c_phone"
+    names: "c_mktsegment"
+  }
+}
+version {
+  minor_number: 39
+  producer: "DuckDB"
+}

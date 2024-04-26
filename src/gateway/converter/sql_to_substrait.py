@@ -1,25 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
 """Routines to convert SparkConnect plans to Substrait plans."""
-from pathlib import Path
-
-import duckdb
+from gateway.backends import backend_selector
+from gateway.backends.backend_options import Backend, BackendOptions
 from substrait.gen.proto import plan_pb2
 
 
-# pylint: disable=E1101,too-few-public-methods
-class SqlConverter:
-    """Converts SQL to a Substrait plan."""
+def convert_sql(sql: str) -> plan_pb2.Plan:
+    """Convert SQL into a Substrait plan."""
+    result = plan_pb2.Plan()
 
-    def convert_sql(self, sql: str) -> plan_pb2.Plan:
-        """Converts SQL into a Substrait plan."""
-        result = plan_pb2.Plan()
-        con = duckdb.connect(config={'max_memory': '100GB',
-                                     'temp_directory': str(Path('.').absolute())})
-        con.install_extension('substrait')
-        con.load_extension('substrait')
+    backend = backend_selector.find_backend(BackendOptions(Backend.DUCKDB, False))
+    backend.register_tpch()
 
-        con.execute("CREATE TABLE users AS SELECT * FROM 'users.parquet'")
-
-        proto_bytes = con.get_substrait(query=sql).fetchone()[0]
-        result.ParseFromString(proto_bytes)
-        return result
+    connection = backend.get_connection()
+    proto_bytes = connection.get_substrait(query=sql).fetchone()[0]
+    result.ParseFromString(proto_bytes)
+    return result

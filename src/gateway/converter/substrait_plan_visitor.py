@@ -2,9 +2,7 @@
 """Abstract visitor class for Substrait plans."""
 from typing import Any
 
-from substrait.gen.proto import plan_pb2
-from substrait.gen.proto import algebra_pb2
-from substrait.gen.proto import type_pb2
+from substrait.gen.proto import algebra_pb2, plan_pb2, type_pb2
 from substrait.gen.proto.extensions import extensions_pb2
 
 
@@ -35,7 +33,7 @@ class SubstraitPlanVisitor:
         if subquery.HasField('left'):
             self.visit_expression(subquery.left)
         if subquery.HasField('right'):
-            self.visit_expression(subquery.right)
+            self.visit_relation(subquery.right)
 
     def visit_nested_struct(self, structure: algebra_pb2.Expression.Nested.Struct) -> Any:
         """Visits a nested struct."""
@@ -478,7 +476,7 @@ class SubstraitPlanVisitor:
                 if field.HasField('consistent_field'):
                     self.visit_expression(field.consistent_field)
             case _:
-                raise ValueError(f'Unexpected field type: {field.WhichOneof("field_type")}')
+                raise ValueError(f'Unexpected expand field type: {field.WhichOneof("field_type")}')
 
     def visit_read_relation(self, rel: algebra_pb2.ReadRel) -> Any:
         """Visits a read relation."""
@@ -717,11 +715,11 @@ class SubstraitPlanVisitor:
     def visit_expand_relation(self, rel: algebra_pb2.ExpandRel) -> Any:
         """Visits an expand relation."""
         if rel.HasField('common'):
-            return self.visit_relation_common(rel.common)
+            self.visit_relation_common(rel.common)
         if rel.HasField('input'):
-            return self.visit_relation(rel.input)
+            self.visit_relation(rel.input)
         for field in rel.fields:
-            return self.visit_expand_field(field)
+            self.visit_expand_field(field)
         # ExpandRel does not have an advanced_extension like other relations do.
 
     def visit_relation(self, rel: algebra_pb2.Rel) -> Any:

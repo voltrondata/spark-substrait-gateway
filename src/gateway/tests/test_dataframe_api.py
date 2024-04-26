@@ -1,9 +1,22 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for the Spark to Substrait Gateway server."""
+import pytest
+from gateway.backends.backend import Backend
 from hamcrest import assert_that, equal_to
 from pyspark import Row
 from pyspark.sql.functions import col, substring
 from pyspark.testing import assertDataFrameEqual
+
+
+@pytest.fixture(autouse=True)
+def mark_dataframe_tests_as_xfail(request):
+    """Marks a subset of tests as expected to be fail."""
+    source = request.getfixturevalue('source')
+    originalname = request.keywords.node.originalname
+    if source == 'gateway-over-duckdb' and (originalname == 'test_with_column' or
+                                            originalname == 'test_cast'):
+        request.node.add_marker(
+            pytest.mark.xfail(reason='DuckDB column binding error'))
 
 
 # pylint: disable=missing-function-docstring
@@ -85,3 +98,27 @@ only showing top 1 row
             'user_id',
             substring(col('user_id'), 5, 3).cast('integer')).limit(1).collect()
         assertDataFrameEqual(outcome, expected)
+
+    def test_data_source_schema(self, spark_session):
+        location_customer = str(Backend.find_tpch() / 'customer')
+        schema = spark_session.read.parquet(location_customer).schema
+        assert len(schema) == 8
+
+    def test_data_source_filter(self, spark_session):
+        location_customer = str(Backend.find_tpch() / 'customer')
+        customer_dataframe = spark_session.read.parquet(location_customer)
+        outcome = customer_dataframe.filter(col('c_mktsegment') == 'FURNITURE').collect()
+        assert len(outcome) == 29968
+
+    def test_table(self, spark_session_with_customer_dataset):
+        outcome = spark_session_with_customer_dataset.table('customer').collect()
+        assert len(outcome) == 149999
+
+    def test_table_schema(self, spark_session_with_customer_dataset):
+        schema = spark_session_with_customer_dataset.table('customer').schema
+        assert len(schema) == 8
+
+    def test_table_filter(self, spark_session_with_customer_dataset):
+        customer_dataframe = spark_session_with_customer_dataset.table('customer')
+        outcome = customer_dataframe.filter(col('c_mktsegment') == 'FURNITURE').collect()
+        assert len(outcome) == 29968

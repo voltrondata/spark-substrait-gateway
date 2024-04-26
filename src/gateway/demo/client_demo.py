@@ -1,40 +1,47 @@
 # SPDX-License-Identifier: Apache-2.0
 """A PySpark client that can send sample queries to the gateway."""
-import atexit
-from pathlib import Path
 
-from pyspark.sql import SparkSession
+from gateway.backends.backend import Backend
+from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.functions import col
-from pyspark.sql.pandas.types import from_arrow_schema
 
-from gateway.demo.mystream_database import create_mystream_database, delete_mystream_database
-from gateway.demo.mystream_database import get_mystream_schema
+USE_GATEWAY = True
 
 
 # pylint: disable=fixme
-# ruff: noqa: E712
-def execute_query(spark_session: SparkSession) -> None:
-    """Runs a single sample query against the gateway."""
-    users_location = str(Path('users.parquet').absolute())
-    schema_users = get_mystream_schema('users')
+def get_customer_database(spark_session: SparkSession) -> DataFrame:
+    """Register the TPC-H customer database."""
+    location_customer = str(Backend.find_tpch() / 'customer')
 
-    df_users = spark_session.read.format('parquet') \
-        .schema(from_arrow_schema(schema_users)) \
-        .parquet(users_location)
+    return spark_session.read.parquet(location_customer, mergeSchema=False)
+
+
+# pylint: disable=fixme
+# ruff: noqa: T201
+def execute_query(spark_session: SparkSession) -> None:
+    """Run a single sample query against the gateway."""
+    df_customer = get_customer_database(spark_session)
+
+    # TODO -- Enable after named table registration is implemented.
+    # df_customer.createOrReplaceTempView('customer')
 
     # pylint: disable=singleton-comparison
-    df_users2 = df_users \
-        .filter(col('paid_for_service') == True) \
-        .sort(col('user_id')) \
+    df_result = df_customer \
+        .filter(col('c_mktsegment') == 'FURNITURE') \
+        .sort(col('c_name')) \
         .limit(10)
 
-    df_users2.show()
+    df_result.show()
+
+    sql_results = spark_session.sql(
+        'SELECT c_custkey, c_phone, c_mktsegment FROM customer LIMIT 5').collect()
+    print(sql_results)
 
 
 if __name__ == '__main__':
-    atexit.register(delete_mystream_database)
-    path = create_mystream_database()
-
-    # TODO -- Make this configurable.
-    spark = SparkSession.builder.remote('sc://localhost:50051').getOrCreate()
+    if USE_GATEWAY:
+        # TODO -- Make the port configurable.
+        spark = SparkSession.builder.remote('sc://localhost:50051').getOrCreate()
+    else:
+        spark = SparkSession.builder.master('local').getOrCreate()
     execute_query(spark)

@@ -2,11 +2,10 @@
 """Validation for the Spark to Substrait plan conversion routines."""
 from pathlib import Path
 
-from google.protobuf import text_format
 import pytest
-from substrait.gen.proto import plan_pb2
 import substrait_validator
-
+from google.protobuf import text_format
+from substrait.gen.proto import plan_pb2
 
 test_case_directory = Path(__file__).resolve().parent / 'data'
 
