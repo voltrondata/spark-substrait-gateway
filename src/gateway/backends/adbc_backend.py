@@ -54,9 +54,9 @@ class AdbcBackend(Backend):
             res = cur.adbc_statement.execute_query()
             return _import(res[0]).read_all()
 
-    def register_table(self, name: str, path: Path, extension: str = 'parquet') -> None:
+    def register_table(self, name: str, path: Path, file_format: str = 'parquet') -> None:
         """Register the given table with the backend."""
-        file_paths = sorted(Path(path).glob(f'*.{extension}'))
+        file_paths = sorted(Path(path).glob(f'*.{file_format}'))
         if len(file_paths) > 0:
             # Sort the files because the later ones don't have enough data to construct a schema.
             file_paths = sorted([str(fp) for fp in file_paths])

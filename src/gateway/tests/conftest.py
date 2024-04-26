@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """Test fixtures for pytest of the gateway server."""
+import re
 from pathlib import Path
 
 import pytest
@@ -12,6 +13,15 @@ from gateway.demo.mystream_database import (
 from gateway.server import serve
 from pyspark.sql.pandas.types import from_arrow_schema
 from pyspark.sql.session import SparkSession
+
+
+def pytest_collection_modifyitems(items):
+    for item in items:
+        if 'source' in getattr(item, 'fixturenames', ()):
+            source = re.search(r'\[([^,]+?)(-\d+)?]$', item.name).group(1)
+            item.add_marker(source)
+            continue
+        item.add_marker('general')
 
 
 # ruff: noqa: T201
@@ -83,9 +93,8 @@ def schema_users():
 @pytest.fixture(scope='session',
                 params=['spark',
                         'gateway-over-duckdb',
-                        pytest.param('gateway-over-datafusion',
-                                     marks=pytest.mark.xfail(
-                                         reason='Datafusion Substrait missing in CI'))])
+                        'gateway-over-datafusion',
+                        ])
 def source(request) -> str:
     """Provides the source (backend) to be used."""
     return request.param
@@ -97,6 +106,8 @@ def spark_session(source):
     match source:
         case 'spark':
             session_generator = _create_local_spark_session()
+        case 'gateway-over-arrow':
+            session_generator = _create_gateway_session('arrow')
         case 'gateway-over-datafusion':
             session_generator = _create_gateway_session('datafusion')
         case 'gateway-over-duckdb':

@@ -18,8 +18,10 @@ from gateway.converter.sql_to_substrait import convert_sql
 from gateway.converter.substrait_builder import (
     aggregate_relation,
     bigint_literal,
+    bool_literal,
     cast_operation,
     concat,
+    equal_function,
     fetch_relation,
     field_reference,
     flatten,
@@ -32,6 +34,7 @@ from gateway.converter.substrait_builder import (
     max_agg_function,
     minus_function,
     project_relation,
+    regexp_strpos_function,
     repeat_function,
     string_concat_agg_function,
     string_literal,
@@ -45,7 +48,6 @@ from substrait.gen.proto.extensions import extensions_pb2
 TABLE_NAME = "my_table"
 
 
-# pylint: disable=E1101,fixme,too-many-public-methods
 # ruff: noqa: RUF005
 class SparkSubstraitConverter:
     """Converts SparkConnect plans to Substrait plans."""
@@ -236,14 +238,82 @@ class SparkSubstraitConverter:
 
         return algebra_pb2.Expression(if_then=ifthen)
 
+    def convert_in_function(
+            self, in_: spark_exprs_pb2.Expression.UnresolvedFunction) -> algebra_pb2.Expression:
+        """Convert a Spark in function into a Substrait switch expression."""
+
+        def is_switch_expression_appropriate() -> bool:
+            """Determine if the IN function is appropriate for a switch expression."""
+            if not self._conversion_options.use_switch_expressions_where_possible:
+                return False
+            return all(a.WhichOneof("expr_type") == "literal" for a in in_.arguments[1:])
+
+        if is_switch_expression_appropriate():
+            switch = algebra_pb2.Expression.SwitchExpression(
+                match=self.convert_expression(in_.arguments[0]))
+
+            for arg in in_.arguments[1:]:
+                ifvalue = algebra_pb2.Expression.SwitchExpression.IfValue(then=bool_literal(True))
+                expr = self.convert_literal_expression(arg.literal)
+                getattr(ifvalue, 'if').CopyFrom(expr.literal)
+                switch.ifs.append(ifvalue)
+
+            getattr(switch, 'else').CopyFrom(bool_literal(False))
+
+            return algebra_pb2.Expression(switch_expression=switch)
+
+        equal_func = self.lookup_function_by_name('==')
+
+        ifthen = algebra_pb2.Expression.IfThen()
+
+        match = self.convert_expression(in_.arguments[0])
+        for arg in in_.arguments[1:]:
+            clause = algebra_pb2.Expression.IfThen.IfClause(then=bool_literal(True))
+            getattr(clause, 'if').CopyFrom(
+                equal_function(equal_func, match, self.convert_expression(arg)))
+            ifthen.ifs.append(clause)
+
+        getattr(ifthen, 'else').CopyFrom(bool_literal(False))
+
+        return algebra_pb2.Expression(if_then=ifthen)
+
+    def convert_rlike_function(
+            self, in_: spark_exprs_pb2.Expression.UnresolvedFunction) -> algebra_pb2.Expression:
+        """Convert a Spark rlike function into a Substrait expression."""
+        if self._conversion_options.use_duckdb_regexp_matches_function:
+            regexp_matches_func = self.lookup_function_by_name('DUCKDB_regexp_matches')
+            return algebra_pb2.Expression(
+                scalar_function=algebra_pb2.Expression.ScalarFunction(
+                    function_reference=regexp_matches_func.anchor,
+                    arguments=[
+                        algebra_pb2.FunctionArgument(
+                            value=self.convert_expression(in_.arguments[0])),
+                        algebra_pb2.FunctionArgument(
+                            value=self.convert_expression(in_.arguments[1]))
+                    ],
+                    output_type=regexp_matches_func.output_type))
+
+        regexp_strpos_func = self.lookup_function_by_name('regexp_strpos')
+        greater_func = self.lookup_function_by_name('>')
+
+        regexp_expr = regexp_strpos_function(regexp_strpos_func,
+                                             self.convert_expression(in_.arguments[1]),
+                                             self.convert_expression(in_.arguments[0]),
+                                             bigint_literal(1), bigint_literal(1))
+        return greater_function(greater_func, regexp_expr, bigint_literal(0))
+
     def convert_unresolved_function(
             self,
-            unresolved_function:
-            spark_exprs_pb2.Expression.UnresolvedFunction) -> algebra_pb2.Expression:
+            unresolved_function: spark_exprs_pb2.Expression.UnresolvedFunction
+    ) -> algebra_pb2.Expression:
         """Convert a Spark unresolved function into a Substrait scalar function."""
-        func = algebra_pb2.Expression.ScalarFunction()
         if unresolved_function.function_name == 'when':
             return self.convert_when_function(unresolved_function)
+        if unresolved_function.function_name == 'in':
+            return self.convert_in_function(unresolved_function)
+        if unresolved_function.function_name == 'rlike':
+            return self.convert_rlike_function(unresolved_function)
+        func = algebra_pb2.Expression.ScalarFunction()
         function_def = self.lookup_function_by_name(unresolved_function.function_name)
         func.function_reference = function_def.anchor
         for idx, arg in enumerate(unresolved_function.arguments):
@@ -354,7 +424,8 @@ class SparkSubstraitConverter:
             self,
             expr: spark_exprs_pb2.Expression) -> algebra_pb2.AggregateFunction:
         """Convert a SparkConnect expression to a Substrait expression."""
-        func = algebra_pb2.AggregateFunction()
+        func = algebra_pb2.AggregateFunction(
+            phase=algebra_pb2.AggregationPhase.AGGREGATION_PHASE_INITIAL_TO_RESULT)
         expression = self.convert_expression(expr)
         match expression.WhichOneof('rex_type'):
             case 'scalar_function':
@@ -982,6 +1053,27 @@ class SparkSubstraitConverter:
         self.update_field_references(rel.input.common.plan_id)
         return result
 
+    def convert_deduplicate_relation(self, rel: spark_relations_pb2.Deduplicate) -> algebra_pb2.Rel:
+        """Convert a Spark deduplicate relation into a Substrait aggregation."""
+        any_value_func = self.lookup_function_by_name('any_value')
+
+        aggregate = algebra_pb2.AggregateRel(input=self.convert_relation(rel.input))
+        self.update_field_references(rel.input.common.plan_id)
+        aggregate.common.CopyFrom(self.create_common_relation())
+        symbol = self._symbol_table.get_symbol(self._current_plan_id)
+        grouping = aggregate.groupings.add()
+        for idx, field in enumerate(symbol.input_fields):
+            grouping.grouping_expressions.append(field_reference(idx))
+            aggregate.measures.append(
+                algebra_pb2.AggregateRel.Measure(
+                    measure=algebra_pb2.AggregateFunction(
+                        function_reference=any_value_func.anchor,
+                        arguments=[algebra_pb2.FunctionArgument(value=field_reference(idx))],
+                        phase=algebra_pb2.AggregationPhase.AGGREGATION_PHASE_INITIAL_TO_RESULT,
+                        output_type=type_pb2.Type(bool=type_pb2.Type.Boolean()))))
+            symbol.generated_fields.append(field)
+        return algebra_pb2.Rel(aggregate=aggregate)
+
     def convert_relation(self, rel: spark_relations_pb2.Relation) -> algebra_pb2.Rel:
         """Convert a Spark relation into a Substrait one."""
         self._symbol_table.add_symbol(rel.common.plan_id, parent=self._current_plan_id,
@@ -1015,6 +1107,8 @@ class SparkSubstraitConverter:
                 result = self.convert_project_relation(rel.project)
             case 'subquery_alias':
                 result = self.convert_subquery_alias_relation(rel.subquery_alias)
+            case 'deduplicate':
+                result = self.convert_deduplicate_relation(rel.deduplicate)
             case _:
                 raise ValueError(
                     f'Unexpected Spark plan rel_type: {rel.WhichOneof("rel_type")}')

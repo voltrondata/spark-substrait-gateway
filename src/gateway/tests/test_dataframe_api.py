@@ -17,12 +17,23 @@ def mark_dataframe_tests_as_xfail(request):
                                             originalname == 'test_cast'):
         request.node.add_marker(
             pytest.mark.xfail(reason='DuckDB column binding error'))
+    elif source == 'gateway-over-datafusion':
+        if originalname in [
+            'test_data_source_schema', 'test_data_source_filter', 'test_table', 'test_table_schema',
+            'test_table_filter']:
+            request.node.add_marker(pytest.mark.xfail(reason='Gateway internal iterating error'))
+        else:
+            pytest.importorskip("datafusion.substrait")
 
 
 # pylint: disable=missing-function-docstring
 # ruff: noqa: E712
 class TestDataFrameAPI:
     """Tests of the dataframe side of SparkConnect."""
+
+    def test_collect(self, users_dataframe):
+        outcome = users_dataframe.collect()
+        assert len(outcome) == 100
 
     # pylint: disable=singleton-comparison
     def test_filter(self, users_dataframe):
