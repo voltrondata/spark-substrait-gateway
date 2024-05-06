@@ -23,6 +23,7 @@ class DatafusionBackend(Backend):
     def create_connection(self) -> None:
         """Create a connection to the backend."""
         import datafusion
+
         self._connection = datafusion.SessionContext()
 
     def execute(self, plan: plan_pb2.Plan) -> pa.lib.Table:
@@ -59,7 +60,15 @@ class DatafusionBackend(Backend):
             for table_name in registered_tables:
                 self._connection.deregister_table(table_name)
 
-    def register_table(self, name: str, path: Path, file_format: str = 'parquet') -> None:
+    def register_table(
+        self, name: str, location: Path, file_format: str = 'parquet'
+    ) -> None:
         """Register the given table with the backend."""
-        files = Backend.expand_location(path)
+        files = Backend.expand_location(location)
+        if not files:
+            raise ValueError(f"No parquet files found at {location}")
+        # TODO: Add options to skip table registration if it already exists instead
+        # of deregistering it.
+        if self._connection.table_exist(name):
+            self._connection.deregister_table(name)
         self._connection.register_parquet(name, files[0])

@@ -62,7 +62,7 @@ class AdbcBackend(Backend):
             file_paths = sorted([str(fp) for fp in file_paths])
             # TODO: Support multiple paths.
             reader = pq.ParquetFile(file_paths[0])
-            self._connection.cursor().adbc_ingest(name, reader.iter_batches(), mode="create")
+            self._connection.cursor().adbc_ingest(name, reader.iter_batches(), mode='create')
 
     def describe_table(self, table_name: str):
         """Asks the backend to describe the given table."""

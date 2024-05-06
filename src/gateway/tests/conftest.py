@@ -62,7 +62,7 @@ def _create_gateway_session(backend: str) -> SparkSession:
     spark_gateway.stop()
 
 
-@pytest.fixture(scope='session', autouse=True)
+@pytest.fixture(scope='function', autouse=True)
 def manage_database() -> None:
     """Creates the mystream database for use throughout all the tests."""
     create_mystream_database()
@@ -70,7 +70,7 @@ def manage_database() -> None:
     delete_mystream_database()
 
 
-@pytest.fixture(scope='session', autouse=True)
+@pytest.fixture(scope='function', autouse=True)
 def gateway_server():
     """Starts up a spark to substrait gateway service."""
     server = serve(50052, wait=False)
@@ -78,13 +78,13 @@ def gateway_server():
     server.stop(None)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='function')
 def users_location() -> str:
     """Provides the location of the users database."""
     return str(Path('users.parquet').resolve())
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='function')
 def schema_users():
     """Provides the schema of the users database."""
     return get_mystream_schema('users')
@@ -100,7 +100,7 @@ def source(request) -> str:
     return request.param
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='function')
 def spark_session(source):
     """Provides spark sessions connecting to various backends."""
     match source:
