@@ -2,12 +2,13 @@
 """Routines to convert SparkConnect plans to Substrait plans."""
 from gateway.backends import backend_selector
 from gateway.backends.backend_options import Backend, BackendOptions
+from gateway.converter.add_extension_uris import AddExtensionUris
 from substrait.gen.proto import plan_pb2
 
 
 def convert_sql(sql: str, backend=None) -> plan_pb2.Plan:
     """Convert SQL into a Substrait plan."""
-    result = plan_pb2.Plan()
+    plan = plan_pb2.Plan()
 
     # If backend is not provided or is not a DuckDBBackend, set one up.
     # DuckDB is used as the SQL conversion engine.
@@ -17,5 +18,9 @@ def convert_sql(sql: str, backend=None) -> plan_pb2.Plan:
 
     connection = backend.get_connection()
     proto_bytes = connection.get_substrait(query=sql).fetchone()[0]
-    result.ParseFromString(proto_bytes)
-    return result
+    plan.ParseFromString(proto_bytes)
+
+    # TODO -- Remove this after the SQL converter is fixed.
+    AddExtensionUris().visit_plan(plan)
+
+    return plan

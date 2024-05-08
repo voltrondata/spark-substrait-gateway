@@ -97,7 +97,8 @@ def field_reference(field_number: int) -> algebra_pb2.Expression:
         selection=algebra_pb2.Expression.FieldReference(
             direct_reference=algebra_pb2.Expression.ReferenceSegment(
                 struct_field=algebra_pb2.Expression.ReferenceSegment.StructField(
-                    field=field_number))))
+                    field=field_number)),
+            root_reference=algebra_pb2.Expression.FieldReference.RootReference()))
 
 
 def max_agg_function(function_info: ExtensionFunction,

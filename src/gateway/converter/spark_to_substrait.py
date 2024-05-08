@@ -190,7 +190,7 @@ class SparkSubstraitConverter:
             root_reference=algebra_pb2.Expression.FieldReference.RootReference()))
 
     def determine_type_of_expression(self, expr: algebra_pb2.Expression) -> type_pb2.Type:
-        """Determine the type of a Substrait expression."""
+        """Determine the type of the Substrait expression."""
         if expr.WhichOneof('rex_type') == 'literal':
             match expr.literal.WhichOneof('literal_type'):
                 case 'boolean':
@@ -723,6 +723,10 @@ class SparkSubstraitConverter:
             symbol.generated_fields.append(self.determine_expression_name(expr))
         symbol.output_fields.clear()
         symbol.output_fields.extend(symbol.generated_fields)
+        if len(rel.grouping_expressions) > 1:
+            # Hide the grouping source from the downstream relations.
+            for i in range(len(rel.grouping_expressions) + len(rel.aggregate_expressions)):
+                aggregate.common.emit.output_mapping.append(i)
         return algebra_pb2.Rel(aggregate=aggregate)
 
     # pylint: disable=too-many-locals,pointless-string-statement
@@ -1094,7 +1098,8 @@ class SparkSubstraitConverter:
                         function_reference=any_value_func.anchor,
                         arguments=[algebra_pb2.FunctionArgument(value=field_reference(idx))],
                         phase=algebra_pb2.AggregationPhase.AGGREGATION_PHASE_INITIAL_TO_RESULT,
-                        output_type=type_pb2.Type(bool=type_pb2.Type.Boolean()))))
+                        output_type=type_pb2.Type(bool=type_pb2.Type.Boolean(
+                            nullability=type_pb2.Type.NULLABILITY_REQUIRED)))))
             symbol.generated_fields.append(field)
         return algebra_pb2.Rel(aggregate=aggregate)
 

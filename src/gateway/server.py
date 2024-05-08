@@ -9,8 +9,9 @@ import grpc
 import pyarrow as pa
 import pyspark.sql.connect.proto.base_pb2 as pb2
 import pyspark.sql.connect.proto.base_pb2_grpc as pb2_grpc
+from google.protobuf.json_format import MessageToJson
 from pyspark.sql.connect.proto import types_pb2
-from substrait.gen.proto import algebra_pb2
+from substrait.gen.proto import algebra_pb2, plan_pb2
 
 from gateway.backends.backend_options import BackendOptions
 from gateway.backends.backend_selector import find_backend
@@ -94,6 +95,45 @@ def create_dataframe_view(rel: pb2.Plan, conversion_options, backend) -> algebra
 
     return backend
 
+class Statistics:
+    """Statistics about the requests made to the server."""
+
+    def __init__(self):
+        """Initialize the statistics."""
+        self.config_requests: int = 0
+        self.analyze_requests: int = 0
+        self.execute_requests: int = 0
+        self.add_artifacts_requests: int = 0
+        self.artifact_status_requests: int = 0
+        self.interrupt_requests: int = 0
+        self.reattach_requests: int = 0
+        self.release_requests: int = 0
+
+        self.requests: list[str] = []
+        self.plans: list[str] = []
+
+    def add_request(self, request):
+        """Remember a request for later introspection."""
+        self.requests.append(str(request))
+
+    def add_plan(self, plan: plan_pb2.Plan):
+        """Remember a plan for later introspection."""
+        self.plans.append(MessageToJson(plan))
+
+    def reset(self):
+        """Reset the statistics."""
+        self.config_requests = 0
+        self.analyze_requests = 0
+        self.execute_requests = 0
+        self.add_artifacts_requests = 0
+        self.artifact_status_requests = 0
+        self.interrupt_requests = 0
+        self.reattach_requests = 0
+        self.release_requests = 0
+
+        self.requests = []
+        self.plans = []
+
 
 # pylint: disable=E1101,fixme
 class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
@@ -107,11 +147,14 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
         self._backend_with_tempview = None
         self._tempview_session_id = None
         self._converter = None
+        self._statistics = Statistics()
 
     def ExecutePlan(
             self, request: pb2.ExecutePlanRequest, context: grpc.RpcContext) -> Generator[
         pb2.ExecutePlanResponse, None, None]:
         """Execute the given plan and return the results."""
+        self._statistics.execute_requests += 1
+        self._statistics.add_request(request)
         _LOGGER.info('ExecutePlan: %s', request)
         match request.plan.WhichOneof('op_type'):
             case 'root':
@@ -147,6 +190,7 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
         else:
             backend = find_backend(self._options.backend)
             backend.register_tpch()
+        self._statistics.add_plan(substrait)
         results = backend.execute(substrait)
         _LOGGER.debug('  results are: %s', results)
 
@@ -184,6 +228,8 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
 
     def AnalyzePlan(self, request, context):
         """Analyze the given plan and return the results."""
+        self._statistics.analyze_requests += 1
+        self._statistics.add_request(request)
         _LOGGER.info('AnalyzePlan: %s', request)
         if request.schema:
             if not self._converter:
@@ -194,6 +240,7 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
             else:
                 backend = find_backend(self._options.backend)
                 backend.register_tpch()
+            self._statistics.add_plan(substrait)
             results = backend.execute(substrait)
             _LOGGER.debug('  results are: %s', results)
             return pb2.AnalyzePlanResponse(
@@ -204,6 +251,7 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
 
     def Config(self, request, context):
         """Get or set the configuration of the server."""
+        self._statistics.config_requests += 1
         _LOGGER.info('Config: %s', request)
         response = pb2.ConfigResponse(session_id=request.session_id)
         match request.operation.WhichOneof('op_type'):
@@ -220,23 +268,44 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
                                 self._options = datafusion()
                             case _:
                                 raise ValueError(f'Unknown backend: {pair.value}')
+                    elif pair.key == 'spark-substrait-gateway.reset_statistics':
+                        self._statistics.reset()
                 response.pairs.extend(request.operation.set.pairs)
+            case 'get':
+                for key in request.operation.get.keys:
+                    if key == 'spark-substrait-gateway.backend':
+                        response.pairs.add(key=key, value=str(self._options.backend.backend))
+                    elif key == 'spark-substrait-gateway.plan_count':
+                        response.pairs.add(key=key, value=str(len(self._statistics.plans)))
+                    elif key.startswith('spark-substrait-gateway.plan.'):
+                        index = int(key[len('spark-substrait-gateway.plan.'):])
+                        if 0 <= index - 1 < len(self._statistics.plans):
+                            response.pairs.add(key=key, value=self._statistics.plans[index - 1])
+                    else:
+                        raise NotImplementedError(f'Unknown config item: {key}')
             case 'get_with_default':
-                response.pairs.extend(request.operation.get_with_default.pairs)
+                for pair in request.operation.get_with_default.pairs:
+                    if pair.key == 'spark-substrait-gateway.backend':
+                        response.pairs.add(key=pair.key, value=str(self._options.backend.backend))
+                    else:
+                        response.pairs.append(pair)
         return response
 
     def AddArtifacts(self, request_iterator, context):
         """Add the given artifacts to the server."""
+        self._statistics.add_artifacts_requests += 1
         _LOGGER.info('AddArtifacts')
         return pb2.AddArtifactsResponse()
 
     def ArtifactStatus(self, request, context):
         """Get the status of the given artifact."""
+        self._statistics.artifact_status_requests += 1
         _LOGGER.info('ArtifactStatus')
         return pb2.ArtifactStatusesResponse()
 
     def Interrupt(self, request, context):
         """Interrupt the execution of the given plan."""
+        self._statistics.interrupt_requests += 1
         _LOGGER.info('Interrupt')
         return pb2.InterruptResponse()
 
@@ -244,6 +313,7 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
             self, request: pb2.ReattachExecuteRequest, context: grpc.RpcContext) -> Generator[
         pb2.ExecutePlanResponse, None, None]:
         """Reattach the execution of the given plan."""
+        self._statistics.reattach_requests += 1
         _LOGGER.info('ReattachExecute')
         yield pb2.ExecutePlanResponse(
             session_id=request.session_id,
@@ -251,6 +321,7 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
 
     def ReleaseExecute(self, request, context):
         """Release the execution of the given plan."""
+        self._statistics.release_requests += 1
         _LOGGER.info('ReleaseExecute')
         return pb2.ReleaseExecuteResponse()
 

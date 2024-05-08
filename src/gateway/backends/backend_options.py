@@ -11,6 +11,10 @@ class Backend(Enum):
     DATAFUSION = 2
     DUCKDB = 3
 
+    def __str__(self):
+        """Return the string representation of the backend."""
+        return self.name.lower()
+
 
 @dataclasses.dataclass
 class BackendOptions:
