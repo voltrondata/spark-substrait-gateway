@@ -6,16 +6,12 @@ from gateway.converter.add_extension_uris import AddExtensionUris
 from substrait.gen.proto import plan_pb2
 
 
-def convert_sql(sql: str, backend=None) -> plan_pb2.Plan:
+def convert_sql(sql: str) -> plan_pb2.Plan:
     """Convert SQL into a Substrait plan."""
     plan = plan_pb2.Plan()
 
-    # If backend is not provided or is not a DuckDBBackend, set one up.
-    # DuckDB is used as the SQL conversion engine.
-    if not isinstance(backend, backend_selector.DuckDBBackend):
-        backend = backend_selector.find_backend(BackendOptions(Backend.DUCKDB, False))
-        backend.register_tpch()
-
+    backend = backend_selector.find_backend(BackendOptions(Backend.DUCKDB, False))
+    backend.register_tpch()
     connection = backend.get_connection()
     proto_bytes = connection.get_substrait(query=sql).fetchone()[0]
     plan.ParseFromString(proto_bytes)

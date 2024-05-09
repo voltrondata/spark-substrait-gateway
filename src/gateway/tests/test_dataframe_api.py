@@ -143,16 +143,16 @@ only showing top 1 row
         outcome = customer_dataframe.filter(col('c_mktsegment') == 'FURNITURE').collect()
         assert len(outcome) == 29968
 
-    def test_table(self, spark_session_with_customer_dataset):
-        outcome = spark_session_with_customer_dataset.table('customer').collect()
+    def test_table(self, spark_session_with_tpch_dataset):
+        outcome = spark_session_with_tpch_dataset.table('customer').collect()
         assert len(outcome) == 149999
 
-    def test_table_schema(self, spark_session_with_customer_dataset):
-        schema = spark_session_with_customer_dataset.table('customer').schema
+    def test_table_schema(self, spark_session_with_tpch_dataset):
+        schema = spark_session_with_tpch_dataset.table('customer').schema
         assert len(schema) == 8
 
-    def test_table_filter(self, spark_session_with_customer_dataset):
-        customer_dataframe = spark_session_with_customer_dataset.table('customer')
+    def test_table_filter(self, spark_session_with_tpch_dataset):
+        customer_dataframe = spark_session_with_tpch_dataset.table('customer')
         outcome = customer_dataframe.filter(col('c_mktsegment') == 'FURNITURE').collect()
         assert len(outcome) == 29968
 

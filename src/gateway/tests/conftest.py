@@ -126,31 +126,31 @@ def users_dataframe(spark_session, schema_users, users_location):
         .parquet(users_location)
 
 
-def _register_table(spark_session: SparkSession, name: str) -> None:
+def _register_table(spark_session: SparkSession, source: str, name: str) -> None:
     location = Backend.find_tpch() / name
-    spark_session.sql(
-        f'CREATE OR REPLACE TEMPORARY VIEW {name} USING org.apache.spark.sql.parquet '
-        f'OPTIONS ( path "{location}" )')
+    match source:
+        case 'spark':
+            spark_session.sql(
+                f'CREATE OR REPLACE TEMPORARY VIEW {name} USING org.apache.spark.sql.parquet '
+                f'OPTIONS ( path "{location}" )')
+        case 'gateway-over-duckdb':
+            files = Backend.expand_location(location)
+            if not files:
+                raise ValueError(f"No parquet files found at {location}")
+            files_str = ', '.join([f"'{f}'" for f in files])
+            files_sql = f"CREATE OR REPLACE TABLE {name} AS FROM read_parquet([{files_str}])"
+            spark_session.sql(files_sql)
 
 
 @pytest.fixture(scope='function')
 def spark_session_with_tpch_dataset(spark_session: SparkSession, source: str) -> SparkSession:
     """Add the TPC-H dataset to the current spark session."""
-    if source == 'spark':
-        _register_table(spark_session, 'customer')
-        _register_table(spark_session, 'lineitem')
-        _register_table(spark_session, 'nation')
-        _register_table(spark_session, 'orders')
-        _register_table(spark_session, 'part')
-        _register_table(spark_session, 'partsupp')
-        _register_table(spark_session, 'region')
-        _register_table(spark_session, 'supplier')
-    return spark_session
-
-
-@pytest.fixture(scope='function')
-def spark_session_with_customer_dataset(spark_session: SparkSession, source: str) -> SparkSession:
-    """Add the TPC-H dataset to the current spark session."""
-    if source == 'spark':
-        _register_table(spark_session, 'customer')
+    _register_table(spark_session, source, 'customer')
+    _register_table(spark_session, source, 'lineitem')
+    _register_table(spark_session, source, 'nation')
+    _register_table(spark_session, source, 'orders')
+    _register_table(spark_session, source, 'part')
+    _register_table(spark_session, source, 'partsupp')
+    _register_table(spark_session, source, 'region')
+    _register_table(spark_session, source, 'supplier')
     return spark_session
