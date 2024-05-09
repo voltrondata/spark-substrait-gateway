@@ -15,11 +15,7 @@ def mark_dataframe_tests_as_xfail(request):
     source = request.getfixturevalue('source')
     originalname = request.keywords.node.originalname
     if source == 'gateway-over-duckdb':
-        if originalname == 'test_with_column' or originalname == 'test_cast':
-            request.node.add_marker(pytest.mark.xfail(reason='DuckDB column binding error'))
-        elif originalname in [
-            'test_create_or_replace_temp_view', 'test_create_or_replace_multiple_temp_views']:
-            request.node.add_marker(pytest.mark.xfail(reason='ADBC DuckDB from_substrait error'))
+        request.node.add_marker(pytest.mark.xfail(reason='DuckDB column binding error'))
     elif source == 'gateway-over-datafusion':
         if originalname in [
             'test_data_source_schema', 'test_data_source_filter', 'test_table', 'test_table_schema',
@@ -140,11 +136,16 @@ only showing top 1 row
     def test_data_source_filter(self, spark_session):
         location_customer = str(Backend.find_tpch() / 'customer')
         customer_dataframe = spark_session.read.parquet(location_customer)
-        outcome = customer_dataframe.filter(col('c_mktsegment') == 'FURNITURE').collect()
+
+        with utilizes_valid_plans(spark_session):
+            outcome = customer_dataframe.filter(col('c_mktsegment') == 'FURNITURE').collect()
+
         assert len(outcome) == 29968
 
     def test_table(self, spark_session_with_tpch_dataset):
-        outcome = spark_session_with_tpch_dataset.table('customer').collect()
+        with utilizes_valid_plans(spark_session_with_tpch_dataset):
+            outcome = spark_session_with_tpch_dataset.table('customer').collect()
+
         assert len(outcome) == 149999
 
     def test_table_schema(self, spark_session_with_tpch_dataset):
@@ -153,14 +154,20 @@ only showing top 1 row
 
     def test_table_filter(self, spark_session_with_tpch_dataset):
         customer_dataframe = spark_session_with_tpch_dataset.table('customer')
-        outcome = customer_dataframe.filter(col('c_mktsegment') == 'FURNITURE').collect()
+
+        with utilizes_valid_plans(spark_session_with_tpch_dataset):
+            outcome = customer_dataframe.filter(col('c_mktsegment') == 'FURNITURE').collect()
+
         assert len(outcome) == 29968
 
     def test_create_or_replace_temp_view(self, spark_session):
         location_customer = str(Backend.find_tpch() / 'customer')
         df_customer = spark_session.read.parquet(location_customer)
         df_customer.createOrReplaceTempView("mytempview")
-        outcome = spark_session.table('mytempview').collect()
+
+        with utilizes_valid_plans(spark_session):
+            outcome = spark_session.table('mytempview').collect()
+
         assert len(outcome) == 149999
 
     def test_create_or_replace_multiple_temp_views(self, spark_session):
@@ -168,6 +175,9 @@ only showing top 1 row
         df_customer = spark_session.read.parquet(location_customer)
         df_customer.createOrReplaceTempView("mytempview1")
         df_customer.createOrReplaceTempView("mytempview2")
-        outcome1 = spark_session.table('mytempview1').collect()
-        outcome2 = spark_session.table('mytempview2').collect()
+
+        with utilizes_valid_plans(spark_session):
+            outcome1 = spark_session.table('mytempview1').collect()
+            outcome2 = spark_session.table('mytempview2').collect()
+
         assert len(outcome1) == len(outcome2) == 149999

@@ -8,6 +8,19 @@ from substrait.gen.proto import plan_pb2
 
 from gateway.backends.backend import Backend
 
+_DUCKDB_TO_ARROW = {
+    'BOOLEAN': pa.bool_(),
+    'TINYINT': pa.int8(),
+    'SMALLINT': pa.int16(),
+    'INTEGER': pa.int32(),
+    'BIGINT': pa.int64(),
+    'FLOAT': pa.float32(),
+    'DOUBLE': pa.float64(),
+    'DATE': pa.date32(),
+    'TIMESTAMP': pa.timestamp('ns'),
+    'VARCHAR': pa.string(),
+}
+
 
 # pylint: disable=fixme
 class DuckDBBackend(Backend):
@@ -58,3 +71,15 @@ class DuckDBBackend(Backend):
         files_sql = f"CREATE OR REPLACE TABLE {table_name} AS FROM read_parquet([{files_str}])"
 
         self._connection.execute(files_sql)
+
+    def describe_table(self, name: str):
+        """Asks the backend to describe the given table."""
+        result = self._connection.table(name).describe()
+
+        fields = []
+        for name, field_type in zip(result.columns, result.types, strict=False):
+            if name == 'aggr':
+                # This isn't a real column.
+                continue
+            fields.append(pa.field(name, _DUCKDB_TO_ARROW[str(field_type)]))
+        return pa.schema(fields)
