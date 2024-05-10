@@ -9,6 +9,19 @@ from gateway.backends.backend import Backend
 from gateway.converter.rename_functions import RenameFunctionsForDatafusion
 from gateway.converter.replace_local_files import ReplaceLocalFilesWithNamedTable
 
+_DATAFUSION_TO_ARROW = {
+    'Boolean': pa.bool_(),
+    'Int8': pa.int8(),
+    'Int16': pa.int16(),
+    'Int32': pa.int32(),
+    'Int64': pa.int64(),
+    'Float32': pa.float32(),
+    'Float64': pa.float64(),
+    'Date32': pa.date32(),
+    'Timestamp(Nanosecond, None)': pa.timestamp('ns'),
+    'Utf8': pa.string(),
+}
+
 
 # pylint: disable=import-outside-toplevel
 class DatafusionBackend(Backend):
@@ -71,4 +84,14 @@ class DatafusionBackend(Backend):
         # of deregistering it.
         if self._connection.table_exist(name):
             self._connection.deregister_table(name)
-        self._connection.register_parquet(name, files[0])
+        self._connection.register_parquet(name, str(location))
+
+    def describe_table(self, table_name: str):
+        """Asks the backend to describe the given table."""
+        result = self._connection.sql(f"describe {table_name}").to_arrow_table().to_pylist()
+
+        fields = []
+        for index in range(len(result)):
+            fields.append(pa.field(result[index]['column_name'],
+                                   _DATAFUSION_TO_ARROW[result[index]['data_type']]))
+        return pa.schema(fields)

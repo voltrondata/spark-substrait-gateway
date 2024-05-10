@@ -15,10 +15,7 @@ def mark_dataframe_tests_as_xfail(request):
     source = request.getfixturevalue('source')
     originalname = request.keywords.node.originalname
     if source == 'gateway-over-datafusion':
-        if originalname in [
-            'test_data_source_schema', 'test_data_source_filter', 'test_table', 'test_table_schema',
-            'test_table_filter', 'test_create_or_replace_temp_view',
-            'test_create_or_replace_multiple_temp_views',]:
+        if originalname in ['test_data_source_filter']:
             request.node.add_marker(pytest.mark.xfail(reason='Gateway internal iterating error'))
         else:
             pytest.importorskip("datafusion.substrait")
