@@ -14,9 +14,9 @@ def validate_plan(json_plan: str):
     issues = []
     for issue in diagnostics:
         if issue.adjusted_level >= substrait_validator.Diagnostic.LEVEL_ERROR:
-            issues.append(issue.msg)
+            issues.append([issue.msg, substrait_validator.path_to_string(issue.path)])
     if issues:
-        issues_as_text = '\n'.join(f'  → {issue}' for issue in issues)
+        issues_as_text = '\n'.join(f'  → {issue[0]}\n    at {issue[1]}' for issue in issues)
         pytest.fail(f'Validation failed.  Issues:\n{issues_as_text}\n\nPlan:\n{substrait_plan}\n',
                     pytrace=False)
 
