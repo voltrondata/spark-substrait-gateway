@@ -3,10 +3,11 @@
 from pathlib import Path
 
 import pytest
+from gateway.backends.backend_selector import find_backend
 from gateway.converter.conversion_options import duck_db
 from gateway.converter.spark_to_substrait import SparkSubstraitConverter
-from gateway.converter.sql_to_substrait import convert_sql
 from gateway.demo.mystream_database import create_mystream_database, delete_mystream_database
+from gateway.tests.conftest import find_tpch
 from google.protobuf import text_format
 from pyspark.sql.connect.proto import base_pb2 as spark_base_pb2
 from substrait.gen.proto import plan_pb2
@@ -41,8 +42,10 @@ def test_plan_conversion(request, path):
     substrait_plan = text_format.Parse(splan_prototext, plan_pb2.Plan())
 
     options = duck_db()
+    backend = find_backend(options.backend)
     options.implement_show_string = False
     convert = SparkSubstraitConverter(options)
+    convert.set_backends(backend, backend)
     substrait = convert.convert_plan(spark_plan)
 
     if request.config.getoption('rebuild_goldens'):
@@ -80,7 +83,10 @@ def test_sql_conversion(request, path):
         splan_prototext = file.read()
     substrait_plan = text_format.Parse(splan_prototext, plan_pb2.Plan())
 
-    substrait = convert_sql(str(sql))
+    options = duck_db()
+    backend = find_backend(options.backend)
+    backend.register_table('customer', find_tpch() / 'customer')
+    substrait = backend.convert_sql(str(sql))
 
     if request.config.getoption('rebuild_goldens'):
         if substrait != substrait_plan:

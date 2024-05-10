@@ -74,7 +74,7 @@ class DatafusionBackend(Backend):
                 self._connection.deregister_table(table_name)
 
     def register_table(
-        self, name: str, location: Path, file_format: str = 'parquet'
+            self, name: str, location: Path, file_format: str = 'parquet'
     ) -> None:
         """Register the given table with the backend."""
         files = Backend.expand_location(location)
@@ -85,6 +85,12 @@ class DatafusionBackend(Backend):
         if self._connection.table_exist(name):
             self._connection.deregister_table(name)
         self._connection.register_parquet(name, str(location))
+
+    def describe_files(self, paths: list[str]):
+        """Asks the backend to describe the given files."""
+        # TODO -- Use the ListingTable API to resolve the combined schema.
+        df = self._connection.read_parquet(paths[0])
+        return df.schema()
 
     def describe_table(self, table_name: str):
         """Asks the backend to describe the given table."""

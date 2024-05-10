@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for the Spark to Substrait Gateway server."""
 import pytest
-from gateway.backends.backend import Backend
+from gateway.tests.conftest import find_tpch
 from gateway.tests.plan_validator import utilizes_valid_plans
 from hamcrest import assert_that, equal_to
 from pyspark import Row
@@ -124,12 +124,12 @@ only showing top 1 row
         assertDataFrameEqual(outcome, expected)
 
     def test_data_source_schema(self, spark_session):
-        location_customer = str(Backend.find_tpch() / 'customer')
+        location_customer = str(find_tpch() / 'customer')
         schema = spark_session.read.parquet(location_customer).schema
         assert len(schema) == 8
 
     def test_data_source_filter(self, spark_session):
-        location_customer = str(Backend.find_tpch() / 'customer')
+        location_customer = str(find_tpch() / 'customer')
         customer_dataframe = spark_session.read.parquet(location_customer)
 
         with utilizes_valid_plans(spark_session):
@@ -156,7 +156,7 @@ only showing top 1 row
         assert len(outcome) == 29968
 
     def test_create_or_replace_temp_view(self, spark_session):
-        location_customer = str(Backend.find_tpch() / 'customer')
+        location_customer = str(find_tpch() / 'customer')
         df_customer = spark_session.read.parquet(location_customer)
         df_customer.createOrReplaceTempView("mytempview")
 
@@ -166,7 +166,7 @@ only showing top 1 row
         assert len(outcome) == 149999
 
     def test_create_or_replace_multiple_temp_views(self, spark_session):
-        location_customer = str(Backend.find_tpch() / 'customer')
+        location_customer = str(find_tpch() / 'customer')
         df_customer = spark_session.read.parquet(location_customer)
         df_customer.createOrReplaceTempView("mytempview1")
         df_customer.createOrReplaceTempView("mytempview2")

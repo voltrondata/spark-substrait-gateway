@@ -1,6 +1,3 @@
-extension_uris {
-  uri: "urn:arrow:substrait_simple_extension_function"
-}
 extensions {
   extension_function {
     function_anchor: 1

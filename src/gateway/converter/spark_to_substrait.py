@@ -12,7 +12,6 @@ import pyspark.sql.connect.proto.relations_pb2 as spark_relations_pb2
 import pyspark.sql.connect.proto.types_pb2 as spark_types_pb2
 from gateway.converter.conversion_options import ConversionOptions
 from gateway.converter.spark_functions import ExtensionFunction, lookup_spark_function
-from gateway.converter.sql_to_substrait import convert_sql
 from gateway.converter.substrait_builder import (
     aggregate_relation,
     bigint_literal,
@@ -43,8 +42,6 @@ from gateway.converter.symbol_table import SymbolTable
 from substrait.gen.proto import algebra_pb2, plan_pb2, type_pb2
 from substrait.gen.proto.extensions import extensions_pb2
 
-TABLE_NAME = "my_table"
-
 
 # ruff: noqa: RUF005
 class SparkSubstraitConverter:
@@ -61,10 +58,12 @@ class SparkSubstraitConverter:
         self._saved_extension_uris = {}
         self._saved_extensions = {}
         self._backend = None
+        self._sql_backend = None
 
-    def set_backend(self, backend) -> None:
-        """Save the backend being used to create the temporary dataframe."""
+    def set_backends(self, backend, sql_backend) -> None:
+        """Save the backends being used to resolve tables and convert to SQL."""
         self._backend = backend
+        self._sql_backend = sql_backend
 
     def lookup_function_by_name(self, name: str) -> ExtensionFunction:
         """Find the function reference for a given Spark function name."""
@@ -552,8 +551,7 @@ class SparkSubstraitConverter:
         local = algebra_pb2.ReadRel.LocalFiles()
         schema = self.convert_schema(rel.schema)
         if not schema:
-            self._backend.register_table(TABLE_NAME, rel.paths[0], rel.format)
-            arrow_schema = self._backend.describe_table(TABLE_NAME)
+            arrow_schema = self._backend.describe_files([str(path) for path in rel.paths])
             schema = self.convert_arrow_schema(arrow_schema)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         for field_name in schema.names:
@@ -988,7 +986,7 @@ class SparkSubstraitConverter:
     def convert_sql_relation(self, rel: spark_relations_pb2.SQL) -> algebra_pb2.Rel:
         """Convert a Spark SQL relation into a Substrait relation."""
         # TODO -- Handle multithreading in the case with a persistent backend.
-        plan = convert_sql(rel.query)
+        plan = self._sql_backend.convert_sql(rel.query)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         for field_name in plan.relations[0].root.names:
             symbol.output_fields.append(field_name)

@@ -4,7 +4,7 @@ import dataclasses
 from enum import Enum
 
 
-class Backend(Enum):
+class BackendEngine(Enum):
     """Represents the different backends we have support for."""
 
     ARROW = 1
@@ -20,10 +20,10 @@ class Backend(Enum):
 class BackendOptions:
     """Holds all the possible backend options."""
 
-    backend: Backend
+    backend: BackendEngine
     use_adbc: bool
 
-    def __init__(self, backend: Backend, use_adbc: bool = False):
+    def __init__(self, backend: BackendEngine, use_adbc: bool = False):
         """Create a BackendOptions structure."""
         self.backend = backend
         self.use_adbc = use_adbc

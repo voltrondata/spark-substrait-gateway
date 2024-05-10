@@ -72,14 +72,36 @@ class DuckDBBackend(Backend):
 
         self._connection.execute(files_sql)
 
-    def describe_table(self, name: str):
-        """Asks the backend to describe the given table."""
-        result = self._connection.table(name).describe()
+    def describe_files(self, paths: list[str]):
+        """Asks the backend to describe the given files."""
+        files = paths
+        if len(paths) == 1:
+            files = self.expand_location(paths[0])
+        df = self._connection.read_parquet(files)
 
         fields = []
-        for name, field_type in zip(result.columns, result.types, strict=False):
+        for name, field_type in zip(df.columns, df.types, strict=False):
             if name == 'aggr':
                 # This isn't a real column.
                 continue
             fields.append(pa.field(name, _DUCKDB_TO_ARROW[str(field_type)]))
         return pa.schema(fields)
+
+    def describe_table(self, name: str):
+        """Asks the backend to describe the given table."""
+        df = self._connection.table(name).describe()
+
+        fields = []
+        for name, field_type in zip(df.columns, df.types, strict=False):
+            if name == 'aggr':
+                # This isn't a real column.
+                continue
+            fields.append(pa.field(name, _DUCKDB_TO_ARROW[str(field_type)]))
+        return pa.schema(fields)
+
+    def convert_sql(self, sql: str) -> plan_pb2.Plan:
+        """Convert SQL into a Substrait plan."""
+        plan = plan_pb2.Plan()
+        proto_bytes = self._connection.get_substrait(query=sql).fetchone()[0]
+        plan.ParseFromString(proto_bytes)
+        return plan

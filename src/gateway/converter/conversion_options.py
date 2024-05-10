@@ -2,7 +2,7 @@
 """Tracks conversion related options."""
 import dataclasses
 
-from gateway.backends.backend_options import Backend, BackendOptions
+from gateway.backends.backend_options import BackendEngine, BackendOptions
 
 
 # pylint: disable=too-many-instance-attributes
@@ -29,7 +29,7 @@ class ConversionOptions:
 
 def arrow():
     """Return standard options to connect to the Acero backend."""
-    options = ConversionOptions(backend=BackendOptions(Backend.ARROW))
+    options = ConversionOptions(backend=BackendOptions(BackendEngine.ARROW))
     options.needs_scheme_in_path_uris = True
     options.return_names_with_types = True
     options.implement_show_string = False
@@ -40,12 +40,12 @@ def arrow():
 
 def datafusion():
     """Return standard options to connect to a Datafusion backend."""
-    return ConversionOptions(backend=BackendOptions(Backend.DATAFUSION))
+    return ConversionOptions(backend=BackendOptions(BackendEngine.DATAFUSION))
 
 
 def duck_db():
     """Return standard options to connect to a DuckDB backend."""
-    options = ConversionOptions(backend=BackendOptions(Backend.DUCKDB))
+    options = ConversionOptions(backend=BackendOptions(BackendEngine.DUCKDB))
     options.return_names_with_types = True
     options.use_switch_expressions_where_possible = False
     options.use_duckdb_regexp_matches_function = True

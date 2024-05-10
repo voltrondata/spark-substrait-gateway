@@ -9,8 +9,7 @@ from adbc_driver_manager import dbapi
 from substrait.gen.proto import plan_pb2
 
 from gateway.backends.backend import Backend
-from gateway.backends.backend_options import Backend as backend_engine
-from gateway.backends.backend_options import BackendOptions
+from gateway.backends.backend_options import BackendEngine, BackendOptions
 
 
 def _import(handle):
@@ -20,7 +19,7 @@ def _import(handle):
 def _get_backend_driver(options: BackendOptions) -> tuple[str, str]:
     """Get the driver and entry point for the specified backend."""
     match options.backend:
-        case backend_engine.DUCKDB:
+        case BackendEngine.DUCKDB:
             driver = duckdb.duckdb.__file__
             entry_point = "duckdb_adbc_init"
         case _:
