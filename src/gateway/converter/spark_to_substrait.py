@@ -928,6 +928,12 @@ class SparkSubstraitConverter:
                 symbol.output_fields.append(name)
         project.common.CopyFrom(self.create_common_relation())
         if remapped:
+            if self._conversion_options.duckdb_project_emit_workaround:
+                for field_number in range(len(symbol.input_fields)):
+                    if field_number == mapping[field_number]:
+                        project.expressions.append(field_reference(field_number))
+                        mapping[field_number] = len(symbol.input_fields) + (
+                            len(project.expressions)) - 1
             for item in mapping:
                 project.common.emit.output_mapping.append(item)
         return algebra_pb2.Rel(project=project)

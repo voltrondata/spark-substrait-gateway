@@ -14,9 +14,7 @@ def mark_dataframe_tests_as_xfail(request):
     """Marks a subset of tests as expected to be fail."""
     source = request.getfixturevalue('source')
     originalname = request.keywords.node.originalname
-    if source == 'gateway-over-duckdb':
-        request.node.add_marker(pytest.mark.xfail(reason='DuckDB column binding error'))
-    elif source == 'gateway-over-datafusion':
+    if source == 'gateway-over-datafusion':
         if originalname in [
             'test_data_source_schema', 'test_data_source_filter', 'test_table', 'test_table_schema',
             'test_table_filter', 'test_create_or_replace_temp_view',

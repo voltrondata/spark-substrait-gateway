@@ -78,15 +78,15 @@ relations {
                           project {
                             common {
                               emit {
-                                output_mapping: 0
-                                output_mapping: 1
-                                output_mapping: 2
-                                output_mapping: 3
-                                output_mapping: 4
-                                output_mapping: 5
-                                output_mapping: 6
-                                output_mapping: 7
-                                output_mapping: 8
+                                output_mapping: 11
+                                output_mapping: 12
+                                output_mapping: 13
+                                output_mapping: 14
+                                output_mapping: 15
+                                output_mapping: 16
+                                output_mapping: 17
+                                output_mapping: 18
+                                output_mapping: 19
                                 output_mapping: 10
                               }
                             }
@@ -94,32 +94,32 @@ relations {
                               project {
                                 common {
                                   emit {
-                                    output_mapping: 0
-                                    output_mapping: 1
-                                    output_mapping: 2
-                                    output_mapping: 3
-                                    output_mapping: 4
-                                    output_mapping: 5
-                                    output_mapping: 6
+                                    output_mapping: 11
+                                    output_mapping: 12
+                                    output_mapping: 13
+                                    output_mapping: 14
+                                    output_mapping: 15
+                                    output_mapping: 16
+                                    output_mapping: 17
                                     output_mapping: 10
-                                    output_mapping: 8
-                                    output_mapping: 9
+                                    output_mapping: 18
+                                    output_mapping: 19
                                   }
                                 }
                                 input {
                                   project {
                                     common {
                                       emit {
-                                        output_mapping: 0
-                                        output_mapping: 1
-                                        output_mapping: 2
-                                        output_mapping: 3
-                                        output_mapping: 4
-                                        output_mapping: 5
+                                        output_mapping: 11
+                                        output_mapping: 12
+                                        output_mapping: 13
+                                        output_mapping: 14
+                                        output_mapping: 15
+                                        output_mapping: 16
                                         output_mapping: 10
-                                        output_mapping: 7
-                                        output_mapping: 8
-                                        output_mapping: 9
+                                        output_mapping: 17
+                                        output_mapping: 18
+                                        output_mapping: 19
                                       }
                                     }
                                     input {
@@ -232,6 +232,104 @@ relations {
                                         }
                                       }
                                     }
+                                    expressions {
+                                      selection {
+                                        direct_reference {
+                                          struct_field {
+                                          }
+                                        }
+                                        root_reference {
+                                        }
+                                      }
+                                    }
+                                    expressions {
+                                      selection {
+                                        direct_reference {
+                                          struct_field {
+                                            field: 1
+                                          }
+                                        }
+                                        root_reference {
+                                        }
+                                      }
+                                    }
+                                    expressions {
+                                      selection {
+                                        direct_reference {
+                                          struct_field {
+                                            field: 2
+                                          }
+                                        }
+                                        root_reference {
+                                        }
+                                      }
+                                    }
+                                    expressions {
+                                      selection {
+                                        direct_reference {
+                                          struct_field {
+                                            field: 3
+                                          }
+                                        }
+                                        root_reference {
+                                        }
+                                      }
+                                    }
+                                    expressions {
+                                      selection {
+                                        direct_reference {
+                                          struct_field {
+                                            field: 4
+                                          }
+                                        }
+                                        root_reference {
+                                        }
+                                      }
+                                    }
+                                    expressions {
+                                      selection {
+                                        direct_reference {
+                                          struct_field {
+                                            field: 5
+                                          }
+                                        }
+                                        root_reference {
+                                        }
+                                      }
+                                    }
+                                    expressions {
+                                      selection {
+                                        direct_reference {
+                                          struct_field {
+                                            field: 7
+                                          }
+                                        }
+                                        root_reference {
+                                        }
+                                      }
+                                    }
+                                    expressions {
+                                      selection {
+                                        direct_reference {
+                                          struct_field {
+                                            field: 8
+                                          }
+                                        }
+                                        root_reference {
+                                        }
+                                      }
+                                    }
+                                    expressions {
+                                      selection {
+                                        direct_reference {
+                                          struct_field {
+                                            field: 9
+                                          }
+                                        }
+                                        root_reference {
+                                        }
+                                      }
+                                    }
                                   }
                                 }
                                 expressions {
@@ -254,6 +352,104 @@ relations {
                                     }
                                   }
                                 }
+                                expressions {
+                                  selection {
+                                    direct_reference {
+                                      struct_field {
+                                      }
+                                    }
+                                    root_reference {
+                                    }
+                                  }
+                                }
+                                expressions {
+                                  selection {
+                                    direct_reference {
+                                      struct_field {
+                                        field: 1
+                                      }
+                                    }
+                                    root_reference {
+                                    }
+                                  }
+                                }
+                                expressions {
+                                  selection {
+                                    direct_reference {
+                                      struct_field {
+                                        field: 2
+                                      }
+                                    }
+                                    root_reference {
+                                    }
+                                  }
+                                }
+                                expressions {
+                                  selection {
+                                    direct_reference {
+                                      struct_field {
+                                        field: 3
+                                      }
+                                    }
+                                    root_reference {
+                                    }
+                                  }
+                                }
+                                expressions {
+                                  selection {
+                                    direct_reference {
+                                      struct_field {
+                                        field: 4
+                                      }
+                                    }
+                                    root_reference {
+                                    }
+                                  }
+                                }
+                                expressions {
+                                  selection {
+                                    direct_reference {
+                                      struct_field {
+                                        field: 5
+                                      }
+                                    }
+                                    root_reference {
+                                    }
+                                  }
+                                }
+                                expressions {
+                                  selection {
+                                    direct_reference {
+                                      struct_field {
+                                        field: 6
+                                      }
+                                    }
+                                    root_reference {
+                                    }
+                                  }
+                                }
+                                expressions {
+                                  selection {
+                                    direct_reference {
+                                      struct_field {
+                                        field: 8
+                                      }
+                                    }
+                                    root_reference {
+                                    }
+                                  }
+                                }
+                                expressions {
+                                  selection {
+                                    direct_reference {
+                                      struct_field {
+                                        field: 9
+                                      }
+                                    }
+                                    root_reference {
+                                    }
+                                  }
+                                }
                               }
                             }
                             expressions {
@@ -273,6 +469,104 @@ relations {
                                     root_reference {
                                     }
                                   }
+                                }
+                              }
+                            }
+                            expressions {
+                              selection {
+                                direct_reference {
+                                  struct_field {
+                                  }
+                                }
+                                root_reference {
+                                }
+                              }
+                            }
+                            expressions {
+                              selection {
+                                direct_reference {
+                                  struct_field {
+                                    field: 1
+                                  }
+                                }
+                                root_reference {
+                                }
+                              }
+                            }
+                            expressions {
+                              selection {
+                                direct_reference {
+                                  struct_field {
+                                    field: 2
+                                  }
+                                }
+                                root_reference {
+                                }
+                              }
+                            }
+                            expressions {
+                              selection {
+                                direct_reference {
+                                  struct_field {
+                                    field: 3
+                                  }
+                                }
+                                root_reference {
+                                }
+                              }
+                            }
+                            expressions {
+                              selection {
+                                direct_reference {
+                                  struct_field {
+                                    field: 4
+                                  }
+                                }
+                                root_reference {
+                                }
+                              }
+                            }
+                            expressions {
+                              selection {
+                                direct_reference {
+                                  struct_field {
+                                    field: 5
+                                  }
+                                }
+                                root_reference {
+                                }
+                              }
+                            }
+                            expressions {
+                              selection {
+                                direct_reference {
+                                  struct_field {
+                                    field: 6
+                                  }
+                                }
+                                root_reference {
+                                }
+                              }
+                            }
+                            expressions {
+                              selection {
+                                direct_reference {
+                                  struct_field {
+                                    field: 7
+                                  }
+                                }
+                                root_reference {
+                                }
+                              }
+                            }
+                            expressions {
+                              selection {
+                                direct_reference {
+                                  struct_field {
+                                    field: 8
+                                  }
+                                }
+                                root_reference {
                                 }
                               }
                             }
