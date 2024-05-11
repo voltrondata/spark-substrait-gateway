@@ -84,7 +84,7 @@ class SparkSubstraitConverter:
         source_symbol = self._symbol_table.get_symbol(plan_id)
         current_symbol = self._symbol_table.get_symbol(self._current_plan_id)
         current_symbol.input_fields.extend(source_symbol.output_fields)
-        current_symbol.output_fields.extend(current_symbol.input_fields)
+        current_symbol.output_fields.extend(source_symbol.output_fields)
 
     def find_field_by_name(self, field_name: str) -> int | None:
         """Look up the field name in the current set of field references."""

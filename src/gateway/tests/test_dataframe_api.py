@@ -119,6 +119,24 @@ only showing top 1 row
 
         assertDataFrameEqual(outcome, expected)
 
+    def test_join(self, spark_session_with_tpch_dataset):
+        expected = [
+            Row(n_nationkey=5, n_name='ETHIOPIA', n_regionkey=0,
+                n_comment='ven packages wake quickly. regu', s_suppkey=2,
+                s_name='Supplier#000000002', s_address='89eJ5ksX3ImxJQBvxObC,', s_nationkey=5,
+                s_phone='15-679-861-2259', s_acctbal=4032.68,
+                s_comment=' slyly bold instructions. idle dependen'),
+        ]
+
+        with utilizes_valid_plans(spark_session_with_tpch_dataset):
+            nation = spark_session_with_tpch_dataset.table('nation')
+            supplier = spark_session_with_tpch_dataset.table('supplier')
+
+            nat = nation.join(supplier, col('n_nationkey') == col('s_nationkey'))
+            outcome = nat.filter(col('s_suppkey') == 2).limit(1).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
     def test_data_source_schema(self, spark_session):
         location_customer = str(find_tpch() / 'customer')
         schema = spark_session.read.parquet(location_customer).schema
