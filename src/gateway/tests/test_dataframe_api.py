@@ -13,12 +13,8 @@ from pyspark.testing import assertDataFrameEqual
 def mark_dataframe_tests_as_xfail(request):
     """Marks a subset of tests as expected to be fail."""
     source = request.getfixturevalue('source')
-    originalname = request.keywords.node.originalname
     if source == 'gateway-over-datafusion':
-        if originalname in ['test_data_source_filter']:
-            request.node.add_marker(pytest.mark.xfail(reason='Gateway internal iterating error'))
-        else:
-            pytest.importorskip("datafusion.substrait")
+        pytest.importorskip("datafusion.substrait")
 
 
 # pylint: disable=missing-function-docstring

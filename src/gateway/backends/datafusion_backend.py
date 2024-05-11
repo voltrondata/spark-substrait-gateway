@@ -47,10 +47,9 @@ class DatafusionBackend(Backend):
         registered_tables = set()
         for files in file_groups:
             table_name = files[0]
-            for file in files[1]:
-                if table_name not in registered_tables:
-                    self.register_table(table_name, file)
-                registered_tables.add(files[0])
+            location = Path(files[1][0]).parent
+            self.register_table(table_name, location)
+            registered_tables.add(table_name)
 
         RenameFunctionsForDatafusion().visit_plan(plan)
 
