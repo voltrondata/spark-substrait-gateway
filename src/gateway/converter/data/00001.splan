@@ -350,6 +350,7 @@ relations {
                                         }
                                       }
                                     }
+                                    failure_behavior: FAILURE_BEHAVIOR_THROW_EXCEPTION
                                   }
                                 }
                                 expressions {
@@ -470,6 +471,7 @@ relations {
                                     }
                                   }
                                 }
+                                failure_behavior: FAILURE_BEHAVIOR_THROW_EXCEPTION
                               }
                             }
                             expressions {

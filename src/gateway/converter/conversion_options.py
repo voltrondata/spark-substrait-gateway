@@ -32,7 +32,6 @@ def arrow():
     options = ConversionOptions(backend=BackendOptions(BackendEngine.ARROW))
     options.needs_scheme_in_path_uris = True
     options.return_names_with_types = True
-    options.implement_show_string = False
     options.backend.use_arrow_uri_workaround = True
     options.safety_project_read_relations = True
     return options

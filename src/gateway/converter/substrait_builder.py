@@ -76,8 +76,9 @@ def cast_operation(expression: algebra_pb2.Expression,
                    output_type: type_pb2.Type) -> algebra_pb2.Expression:
     """Construct a Substrait cast expression."""
     return algebra_pb2.Expression(
-        cast=algebra_pb2.Expression.Cast(input=expression, type=output_type)
-    )
+        cast=algebra_pb2.Expression.Cast(
+            input=expression, type=output_type,
+            failure_behavior=algebra_pb2.Expression.Cast.FAILURE_BEHAVIOR_THROW_EXCEPTION))
 
 
 def if_then_else_operation(if_expr: algebra_pb2.Expression, then_expr: algebra_pb2.Expression,
@@ -108,7 +109,8 @@ def max_agg_function(function_info: ExtensionFunction,
     return algebra_pb2.AggregateFunction(
         function_reference=function_info.anchor,
         output_type=function_info.output_type,
-        arguments=[algebra_pb2.FunctionArgument(value=field_reference(field_number))])
+        arguments=[algebra_pb2.FunctionArgument(value=field_reference(field_number))],
+        phase=algebra_pb2.AggregationPhase.AGGREGATION_PHASE_INITIAL_TO_RESULT)
 
 
 def string_concat_agg_function(function_info: ExtensionFunction,
@@ -119,7 +121,8 @@ def string_concat_agg_function(function_info: ExtensionFunction,
         function_reference=function_info.anchor,
         output_type=function_info.output_type,
         arguments=[algebra_pb2.FunctionArgument(value=field_reference(field_number)),
-                   algebra_pb2.FunctionArgument(value=string_literal(separator))])
+                   algebra_pb2.FunctionArgument(value=string_literal(separator))],
+        phase=algebra_pb2.AggregationPhase.AGGREGATION_PHASE_INITIAL_TO_RESULT)
 
 
 def least_function(greater_function_info: ExtensionFunction, expr1: algebra_pb2.Expression,
@@ -192,7 +195,7 @@ def minus_function(function_info: ExtensionFunction,
 
 def repeat_function(function_info: ExtensionFunction,
                     string: str,
-                    count: algebra_pb2.Expression) -> algebra_pb2.AggregateFunction:
+                    count: algebra_pb2.Expression) -> algebra_pb2.Expression:
     """Construct a Substrait concat expression."""
     return algebra_pb2.Expression(scalar_function=
     algebra_pb2.Expression.ScalarFunction(
@@ -204,7 +207,7 @@ def repeat_function(function_info: ExtensionFunction,
 
 def lpad_function(function_info: ExtensionFunction,
                   expression: algebra_pb2.Expression, count: algebra_pb2.Expression,
-                  pad_string: str = ' ') -> algebra_pb2.AggregateFunction:
+                  pad_string: str = ' ') -> algebra_pb2.Expression:
     """Construct a Substrait concat expression."""
     # TODO -- Avoid a cast if we don't need it.
     cast_type = string_type()
@@ -221,7 +224,7 @@ def lpad_function(function_info: ExtensionFunction,
 
 def rpad_function(function_info: ExtensionFunction,
                   expression: algebra_pb2.Expression, count: algebra_pb2.Expression,
-                  pad_string: str = ' ') -> algebra_pb2.AggregateFunction:
+                  pad_string: str = ' ') -> algebra_pb2.Expression:
     """Construct a Substrait concat expression."""
     # TODO -- Avoid a cast if we don't need it.
     cast_type = string_type()
@@ -239,7 +242,7 @@ def rpad_function(function_info: ExtensionFunction,
 def regexp_strpos_function(function_info: ExtensionFunction,
                            input: algebra_pb2.Expression, pattern: algebra_pb2.Expression,
                            position: algebra_pb2.Expression,
-                           occurrence: algebra_pb2.Expression) -> algebra_pb2.AggregateFunction:
+                           occurrence: algebra_pb2.Expression) -> algebra_pb2.Expression:
     """Construct a Substrait regex substring expression."""
     return algebra_pb2.Expression(scalar_function=algebra_pb2.Expression.ScalarFunction(
         function_reference=function_info.anchor,

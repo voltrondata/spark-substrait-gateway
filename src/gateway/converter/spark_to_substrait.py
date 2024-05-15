@@ -367,7 +367,9 @@ class SparkSubstraitConverter:
     def convert_cast_expression(
             self, cast: spark_exprs_pb2.Expression.Cast) -> algebra_pb2.Expression:
         """Convert a Spark cast expression into a Substrait cast expression."""
-        cast_rel = algebra_pb2.Expression.Cast(input=self.convert_expression(cast.expr))
+        cast_rel = algebra_pb2.Expression.Cast(
+            input=self.convert_expression(cast.expr),
+            failure_behavior=algebra_pb2.Expression.Cast.FAILURE_BEHAVIOR_THROW_EXCEPTION)
         match cast.WhichOneof('cast_to_type'):
             case 'type':
                 cast_rel.type.CopyFrom(self.convert_type(cast.type))
@@ -457,6 +459,7 @@ class SparkSubstraitConverter:
         table_name = rel.unparsed_identifier
 
         arrow_schema = self._backend.describe_table(table_name)
+
         schema = self.convert_arrow_schema(arrow_schema)
 
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
