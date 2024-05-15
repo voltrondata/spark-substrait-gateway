@@ -83,14 +83,19 @@ class SparkSubstraitConverter:
         """Use the field references using the specified portion of the plan."""
         source_symbol = self._symbol_table.get_symbol(plan_id)
         current_symbol = self._symbol_table.get_symbol(self._current_plan_id)
-        current_symbol.input_fields.extend(source_symbol.output_fields)
-        current_symbol.output_fields.extend(source_symbol.output_fields)
+        original_output_fields = current_symbol.output_fields
+        for symbol in source_symbol.output_fields:
+            new_name = symbol
+            while new_name in original_output_fields:
+                new_name = new_name + '_dup'
+            current_symbol.input_fields.append(new_name)
+            current_symbol.output_fields.append(new_name)
 
     def find_field_by_name(self, field_name: str) -> int | None:
         """Look up the field name in the current set of field references."""
         current_symbol = self._symbol_table.get_symbol(self._current_plan_id)
         try:
-            return current_symbol.output_fields.index(field_name)
+            return current_symbol.input_fields.index(field_name)
         except ValueError:
             return None
 
@@ -1056,11 +1061,16 @@ class SparkSubstraitConverter:
             project.expressions.append(self.convert_expression(expr))
             if expr.HasField('alias'):
                 name = expr.alias.name[0]
+            elif expr.WhichOneof('expr_type') == 'unresolved_attribute':
+                name = expr.unresolved_attribute.unparsed_identifier
             else:
                 name = f'generated_field_{field_number}'
             symbol.generated_fields.append(name)
             symbol.output_fields.append(name)
         project.common.CopyFrom(self.create_common_relation())
+        symbol.output_fields = symbol.generated_fields
+        for field_number in range(len(rel.expressions)):
+            project.common.emit.output_mapping.append(field_number + len(symbol.input_fields))
         return algebra_pb2.Rel(project=project)
 
     def convert_subquery_alias_relation(self,

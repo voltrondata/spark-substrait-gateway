@@ -35,14 +35,15 @@ def utilizes_valid_plans(session):
     except SparkConnectGrpcException as e:
         exception = e
     if session.conf.get('spark-substrait-gateway.backend', 'spark') == 'spark':
+        if exception:
+            raise exception
         return
     plan_count = int(session.conf.get('spark-substrait-gateway.plan_count'))
-    first_plan = None
+    plans_as_text = []
     for i in range(plan_count):
         plan = session.conf.get(f'spark-substrait-gateway.plan.{i + 1}')
-        if first_plan is None:
-            first_plan = plan
+        plans_as_text.append( f'Plan #{i+1}:\n{plan}\n')
         validate_plan(plan)
     if exception:
-        pytest.fail(f'Exception raised during plan validation: {exception.message}\n\n'
-                    f'First Plan:\n{first_plan}\n', pytrace=False)
+        pytest.fail(f'Exception raised during execution: {exception.message}\n\n' +
+                    '\n\n'.join(plans_as_text), pytrace=False)
