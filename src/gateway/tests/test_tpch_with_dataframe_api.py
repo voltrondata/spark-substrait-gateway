@@ -16,9 +16,7 @@ def mark_tests_as_xfail(request):
     source = request.getfixturevalue('source')
     originalname = request.keywords.node.originalname
     if source == 'gateway-over-duckdb':
-        if originalname in ['test_query_14']:
-            request.node.add_marker(pytest.mark.xfail(reason='If/then branches w/ different types'))
-        elif originalname in ['test_query_15']:
+        if originalname in ['test_query_15']:
             request.node.add_marker(pytest.mark.xfail(reason='No results (float vs decimal)'))
         elif originalname in ['test_query_16', 'test_query_21']:
             request.node.add_marker(pytest.mark.xfail(reason='Distinct argument behavior'))

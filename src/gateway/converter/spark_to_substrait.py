@@ -220,7 +220,7 @@ class SparkSubstraitConverter:
             return expr.scalar_function.output_type
         if expr.WhichOneof('rex_type') == 'selection':
             # TODO -- Figure out how to determine the type of a field reference.
-            return type_pb2.Type(i32=type_pb2.Type.I32())
+            return type_pb2.Type(i64=type_pb2.Type.I64())
         raise NotImplementedError(
             'Type determination not implemented for expressions of type '
             f'{expr.WhichOneof("rex_type")}.')
