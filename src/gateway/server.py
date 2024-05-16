@@ -11,7 +11,7 @@ import pyspark.sql.connect.proto.base_pb2 as pb2
 import pyspark.sql.connect.proto.base_pb2_grpc as pb2_grpc
 from google.protobuf.json_format import MessageToJson
 from pyspark.sql.connect.proto import types_pb2
-from substrait.gen.proto import algebra_pb2, plan_pb2
+from substrait.gen.proto import plan_pb2
 
 from gateway.backends.backend import Backend
 from gateway.backends.backend_options import BackendEngine, BackendOptions
@@ -56,7 +56,7 @@ def convert_pyarrow_schema_to_spark(schema: pa.Schema) -> types_pb2.DataType:
         elif field.type == pa.int8():
             data_type = types_pb2.DataType(byte=types_pb2.DataType.Byte())
         elif field.type == pa.int16():
-            data_type = types_pb2.DataType(integer=types_pb2.DataType.Short())
+            data_type = types_pb2.DataType(short=types_pb2.DataType.Short())
         elif field.type == pa.int32():
             data_type = types_pb2.DataType(integer=types_pb2.DataType.Integer())
         elif field.type == pa.int64():
@@ -84,15 +84,13 @@ def convert_pyarrow_schema_to_spark(schema: pa.Schema) -> types_pb2.DataType:
     return types_pb2.DataType(struct=types_pb2.DataType.Struct(fields=fields))
 
 
-def create_dataframe_view(rel: pb2.Plan, backend) -> algebra_pb2.Rel:
+def create_dataframe_view(rel: pb2.Plan, backend) -> None:
     """Register the temporary dataframe."""
     dataframe_view_name = rel.command.create_dataframe_view.name
     read_data_source_relation = rel.command.create_dataframe_view.input.read.data_source
-    format = read_data_source_relation.format
+    fmt = read_data_source_relation.format
     path = read_data_source_relation.paths[0]
-    backend.register_table(dataframe_view_name, path, format)
-
-    return None
+    backend.register_table(dataframe_view_name, path, fmt)
 
 
 class Statistics:

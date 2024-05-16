@@ -16,18 +16,16 @@ def mark_tests_as_xfail(request):
     source = request.getfixturevalue('source')
     originalname = request.keywords.node.originalname
     if source == 'gateway-over-duckdb':
-        if originalname in[ 'test_query_07', 'test_query_08', 'test_query_09']:
+        if originalname in ['test_query_07', 'test_query_08', 'test_query_09']:
             request.node.add_marker(pytest.mark.xfail(reason='Substring argument mismatch'))
         elif originalname in ['test_query_14']:
-            request.node.add_marker(pytest.mark.xfail(reason='Missing nullability information'))
+            request.node.add_marker(pytest.mark.xfail(reason='If/then branches w/ different types'))
         elif originalname in ['test_query_15']:
             request.node.add_marker(pytest.mark.xfail(reason='No results (float vs decimal)'))
         elif originalname in ['test_query_16', 'test_query_21']:
             request.node.add_marker(pytest.mark.xfail(reason='Distinct argument behavior'))
         elif originalname in ['test_query_19', 'test_query_20']:
             request.node.add_marker(pytest.mark.xfail(reason='Unknown validation error'))
-        elif originalname in ['test_query_22']:
-            request.node.add_marker(pytest.mark.xfail(reason='Unsupported expression type 0'))
     elif source == 'gateway-over-datafusion':
         pytest.importorskip("datafusion.substrait")
         request.node.add_marker(pytest.mark.xfail(reason='gateway internal error'))
@@ -720,7 +718,7 @@ class TestTpchWithDataFrameAPI:
             orders = spark_session_with_tpch_dataset.table('orders')
 
             fcustomer = customer.select(
-                'c_acctbal', 'c_custkey', (col('c_phone').substr(0, 2)).alias('cntrycode')).filter(
+                'c_acctbal', 'c_custkey', (col('c_phone').substr(1, 2)).alias('cntrycode')).filter(
                 col('cntrycode').isin(['13', '31', '23', '29', '30', '18', '17']))
 
             avg_customer = fcustomer.filter(col('c_acctbal') > 0.00).agg(

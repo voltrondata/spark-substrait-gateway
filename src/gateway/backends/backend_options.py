@@ -29,3 +29,4 @@ class BackendOptions:
         self.use_adbc = use_adbc
 
         self.use_arrow_uri_workaround = False
+        self.use_duckdb_python_api = False

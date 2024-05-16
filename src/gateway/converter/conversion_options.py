@@ -49,4 +49,5 @@ def duck_db():
     options.use_switch_expressions_where_possible = False
     options.use_duckdb_regexp_matches_function = True
     options.duckdb_project_emit_workaround = True
+    options.backend.use_duckdb_python_api = False
     return options

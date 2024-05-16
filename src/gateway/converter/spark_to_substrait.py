@@ -240,7 +240,9 @@ class SparkSubstraitConverter:
                 self.convert_expression(when.arguments[len(when.arguments) - 1]))
         else:
             nullable_literal = self.determine_type_of_expression(ifthen.ifs[-1].then)
-            nullable_literal.bool.nullability = type_pb2.Type.Nullability.NULLABILITY_NULLABLE
+            kind = nullable_literal.WhichOneof('kind')
+            getattr(nullable_literal, kind).nullability = (
+                type_pb2.Type.Nullability.NULLABILITY_NULLABLE)
             getattr(ifthen, 'else').CopyFrom(
                 algebra_pb2.Expression(
                     literal=algebra_pb2.Expression.Literal(
@@ -1041,11 +1043,13 @@ class SparkSubstraitConverter:
         if rel.HasField('join_condition'):
             raise ValueError('Cross joins do not support having a join condition.')
         join.common.CopyFrom(self.create_common_relation())
-        return algebra_pb2.Rel(join=join)
+        return algebra_pb2.Rel(cross=join)
 
     def convert_join_relation(self, rel: spark_relations_pb2.Join) -> algebra_pb2.Rel:
         """Convert a Spark join relation into a Substrait join relation."""
         if rel.join_type == spark_relations_pb2.Join.JOIN_TYPE_CROSS:
+            return self.convert_cross_join_relation(rel)
+        if not rel.HasField('join_condition') and not rel.using_columns:
             return self.convert_cross_join_relation(rel)
         join = algebra_pb2.JoinRel(left=self.convert_relation(rel.left),
                                    right=self.convert_relation(rel.right))
