@@ -341,6 +341,10 @@ class SparkSubstraitConverter:
             raise NotImplementedError(
                 'Treating arguments as distinct is not supported for unresolved functions.')
         func.output_type.CopyFrom(function_def.output_type)
+        if unresolved_function.function_name == 'substring':
+            original_argument = func.arguments[0]
+            func.arguments[0].CopyFrom(algebra_pb2.FunctionArgument(
+                value=cast_operation(original_argument.value, string_type())))
         return algebra_pb2.Expression(scalar_function=func)
 
     def convert_alias_expression(

@@ -16,15 +16,13 @@ def mark_tests_as_xfail(request):
     source = request.getfixturevalue('source')
     originalname = request.keywords.node.originalname
     if source == 'gateway-over-duckdb':
-        if originalname in ['test_query_07', 'test_query_08', 'test_query_09']:
-            request.node.add_marker(pytest.mark.xfail(reason='Substring argument mismatch'))
-        elif originalname in ['test_query_14']:
+        if originalname in ['test_query_14']:
             request.node.add_marker(pytest.mark.xfail(reason='If/then branches w/ different types'))
         elif originalname in ['test_query_15']:
             request.node.add_marker(pytest.mark.xfail(reason='No results (float vs decimal)'))
         elif originalname in ['test_query_16', 'test_query_21']:
             request.node.add_marker(pytest.mark.xfail(reason='Distinct argument behavior'))
-        elif originalname in ['test_query_19', 'test_query_20']:
+        elif originalname in ['test_query_08', 'test_query_19', 'test_query_20']:
             request.node.add_marker(pytest.mark.xfail(reason='Unknown validation error'))
     elif source == 'gateway-over-datafusion':
         pytest.importorskip("datafusion.substrait")
@@ -250,7 +248,7 @@ class TestTpchWithDataFrameAPI:
                 suppNation, col('o_orderkey') == suppNation.l_orderkey).filter(
                 (col('supp_nation') == 'FRANCE') & (col('cust_nation') == 'GERMANY') | (
                         col('supp_nation') == 'GERMANY') & (col('cust_nation') == 'FRANCE')).select(
-                'supp_nation', 'cust_nation', col('l_shipdate').substr(0, 4).alias('l_year'),
+                'supp_nation', 'cust_nation', col('l_shipdate').substr(1, 4).alias('l_year'),
                 (col('l_extendedprice') * (1 - col('l_discount'))).alias('volume')).groupBy(
                 'supp_nation', 'cust_nation', 'l_year').agg(
                 try_sum('volume').alias('revenue'))
@@ -294,7 +292,7 @@ class TestTpchWithDataFrameAPI:
                 'c_custkey').join(forder, col('c_custkey') == col('o_custkey')).select(
                 'o_orderkey', 'o_orderdate').join(line,
                                                   col('o_orderkey') == line.l_orderkey).select(
-                col('n_name'), col('o_orderdate').substr(0, 4).alias('o_year'),
+                col('n_name'), col('o_orderdate').substr(1, 4).alias('o_year'),
                 col('volume')).withColumn('case_volume',
                                           when(col('n_name') == 'BRAZIL', col('volume')).otherwise(
                                               0)).groupBy('o_year').agg(
@@ -330,7 +328,7 @@ class TestTpchWithDataFrameAPI:
                 partsupp, (col('l_suppkey') == partsupp.ps_suppkey) & (
                         col('l_partkey') == partsupp.ps_partkey)).join(
                 orders, col('l_orderkey') == orders.o_orderkey).select(
-                'n_name', col('o_orderdate').substr(0, 4).alias('o_year'),
+                'n_name', col('o_orderdate').substr(1, 4).alias('o_year'),
                 (col('l_extendedprice') * (1 - col('l_discount')) - (
                         col('ps_supplycost') * col('l_quantity'))).alias('amount')).groupBy(
                 'n_name', 'o_year').agg(try_sum('amount').alias('sum_profit'))
