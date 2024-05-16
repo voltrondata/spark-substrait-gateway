@@ -341,6 +341,7 @@ class SparkSubstraitConverter:
     def convert_alias_expression(
             self, alias: spark_exprs_pb2.Expression.Alias) -> algebra_pb2.Expression:
         """Convert a Spark alias into a Substrait expression."""
+        # We do nothing here and let the magic happen in the calling project relation.
         return self.convert_expression(alias.expr)
 
     def convert_type_str(self, spark_type_str: str | None) -> type_pb2.Type:
@@ -1062,7 +1063,7 @@ class SparkSubstraitConverter:
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         for field_number, expr in enumerate(rel.expressions):
             project.expressions.append(self.convert_expression(expr))
-            if expr.HasField('alias'):
+            if expr.WhichOneof('expr_type') == 'alias':
                 name = expr.alias.name[0]
             elif expr.WhichOneof('expr_type') == 'unresolved_attribute':
                 name = expr.unresolved_attribute.unparsed_identifier
@@ -1079,9 +1080,10 @@ class SparkSubstraitConverter:
     def convert_subquery_alias_relation(self,
                                         rel: spark_relations_pb2.SubqueryAlias) -> algebra_pb2.Rel:
         """Convert a Spark subquery alias relation into a Substrait relation."""
-        # TODO -- Utilize rel.alias somehow.
         result = self.convert_relation(rel.input)
         self.update_field_references(rel.input.common.plan_id)
+        symbol = self._symbol_table.get_symbol(self._current_plan_id)
+        symbol.output_fields[-1] = rel.alias
         return result
 
     def convert_deduplicate_relation(self, rel: spark_relations_pb2.Deduplicate) -> algebra_pb2.Rel:
@@ -1104,7 +1106,12 @@ class SparkSubstraitConverter:
                         output_type=type_pb2.Type(bool=type_pb2.Type.Boolean(
                             nullability=type_pb2.Type.NULLABILITY_REQUIRED)))))
             symbol.generated_fields.append(field)
-        return algebra_pb2.Rel(aggregate=aggregate)
+        aggr = algebra_pb2.Rel(aggregate=aggregate)
+        project = project_relation(
+            aggr, [field_reference(idx) for idx in range(len(symbol.input_fields))])
+        for idx in range(len(symbol.input_fields)):
+            project.project.common.emit.output_mapping.append(idx)
+        return project
 
     def convert_relation(self, rel: spark_relations_pb2.Relation) -> algebra_pb2.Rel:
         """Convert a Spark relation into a Substrait one."""

@@ -4,10 +4,10 @@ import datetime
 
 import pyspark
 import pytest
+from gateway.tests.compare_dataframes import assert_dataframes_equal
 from gateway.tests.plan_validator import utilizes_valid_plans
 from pyspark import Row
 from pyspark.sql.functions import avg, col, count, countDistinct, desc, try_sum, when
-from pyspark.testing import assertDataFrameEqual
 
 
 @pytest.fixture(autouse=True)
@@ -16,19 +16,15 @@ def mark_tests_as_xfail(request):
     source = request.getfixturevalue('source')
     originalname = request.keywords.node.originalname
     if source == 'gateway-over-duckdb':
-        if originalname in [  'test_query_03', 'test_query_18']:
-            request.node.add_marker(pytest.mark.xfail(reason='Date time type mismatch'))
-        elif originalname in ['test_query_04']:
-            request.node.add_marker(pytest.mark.xfail(reason='Incorrect calculation'))
-        elif originalname in[ 'test_query_07', 'test_query_08', 'test_query_09']:
+        if originalname in[ 'test_query_07', 'test_query_08', 'test_query_09']:
             request.node.add_marker(pytest.mark.xfail(reason='Substring argument mismatch'))
-        elif originalname in ['test_query_12']:
+        elif originalname in ['test_query_12', 'test_query_14']:
             request.node.add_marker(pytest.mark.xfail(reason='Missing nullability information'))
         elif originalname in ['test_query_15']:
             request.node.add_marker(pytest.mark.xfail(reason='No results (float vs decimal)'))
         elif originalname in ['test_query_16', 'test_query_21']:
-            request.node.add_marker(pytest.mark.xfail(reason='Disctinct argument behavior'))
-        elif originalname in ['test_query_20']:
+            request.node.add_marker(pytest.mark.xfail(reason='Distinct argument behavior'))
+        elif originalname in ['test_query_19', 'test_query_20']:
             request.node.add_marker(pytest.mark.xfail(reason='Unknown validation error'))
         elif originalname in ['test_query_22']:
             request.node.add_marker(pytest.mark.xfail(reason='Schema determination for null'))
@@ -66,7 +62,7 @@ class TestTpchWithDataFrameAPI:
 
             sorted_outcome = outcome.sort('l_returnflag', 'l_linestatus').limit(1).collect()
 
-        assertDataFrameEqual(sorted_outcome, expected, atol=1e-2)
+        assert_dataframes_equal(sorted_outcome, expected)
 
     def test_query_02(self, spark_session_with_tpch_dataset):
         expected = [
@@ -107,7 +103,7 @@ class TestTpchWithDataFrameAPI:
             sorted_outcome = outcome.sort(
                 desc('s_acctbal'), 'n_name', 's_name', 'p_partkey').limit(2).collect()
 
-        assertDataFrameEqual(sorted_outcome, expected, atol=1e-2)
+        assert_dataframes_equal(sorted_outcome, expected)
 
     def test_query_03(self, spark_session_with_tpch_dataset):
         expected = [
@@ -144,7 +140,7 @@ class TestTpchWithDataFrameAPI:
 
             sorted_outcome = outcome.sort(desc('revenue'), 'o_orderdate').limit(5).collect()
 
-        assertDataFrameEqual(sorted_outcome, expected, atol=1e-2)
+        assert_dataframes_equal(sorted_outcome, expected)
 
     def test_query_04(self, spark_session_with_tpch_dataset):
         expected = [
@@ -171,7 +167,7 @@ class TestTpchWithDataFrameAPI:
 
             sorted_outcome = outcome.sort('o_orderpriority').collect()
 
-        assertDataFrameEqual(sorted_outcome, expected, atol=1e-2)
+        assert_dataframes_equal(sorted_outcome, expected)
 
     def test_query_05(self, spark_session_with_tpch_dataset):
         expected = [
@@ -207,7 +203,7 @@ class TestTpchWithDataFrameAPI:
 
             sorted_outcome = outcome.sort('revenue').collect()
 
-        assertDataFrameEqual(sorted_outcome, expected, atol=1e-2)
+        assert_dataframes_equal(sorted_outcome, expected)
 
     def test_query_06(self, spark_session_with_tpch_dataset):
         expected = [
@@ -222,9 +218,9 @@ class TestTpchWithDataFrameAPI:
                                       (col('l_discount') >= 0.05) &
                                       (col('l_discount') <= 0.07) &
                                       (col('l_quantity') < 24)).agg(
-                try_sum(col('l_extendedprice') * col('l_discount'))).alias('revenue')
+                try_sum(col('l_extendedprice') * col('l_discount'))).alias('revenue').collect()
 
-        assertDataFrameEqual(outcome, expected, atol=1e-2)
+        assert_dataframes_equal(outcome, expected)
 
     def test_query_07(self, spark_session_with_tpch_dataset):
         expected = [
@@ -263,7 +259,7 @@ class TestTpchWithDataFrameAPI:
 
             sorted_outcome = outcome.sort('supp_nation', 'cust_nation', 'l_year').collect()
 
-        assertDataFrameEqual(sorted_outcome, expected, atol=1e-2)
+        assert_dataframes_equal(sorted_outcome, expected)
 
     def test_query_08(self, spark_session_with_tpch_dataset):
         expected = [
@@ -308,7 +304,7 @@ class TestTpchWithDataFrameAPI:
 
             sorted_outcome = outcome.sort('o_year').collect()
 
-        assertDataFrameEqual(sorted_outcome, expected, atol=1e-2)
+        assert_dataframes_equal(sorted_outcome, expected)
 
     def test_query_09(self, spark_session_with_tpch_dataset):
         # TODO -- Verify the corretness of these results against another version of the dataset.
@@ -343,7 +339,7 @@ class TestTpchWithDataFrameAPI:
 
             sorted_outcome = outcome.sort('n_name', desc('o_year')).limit(5).collect()
 
-        assertDataFrameEqual(sorted_outcome, expected, atol=1e-2)
+        assert_dataframes_equal(sorted_outcome, expected)
 
     def test_query_10(self, spark_session_with_tpch_dataset):
         expected = [
@@ -382,15 +378,15 @@ class TestTpchWithDataFrameAPI:
 
             sorted_outcome = outcome.sort(desc('revenue')).limit(2).collect()
 
-        assertDataFrameEqual(sorted_outcome, expected, atol=1e-2)
+        assert_dataframes_equal(sorted_outcome, expected)
 
     def test_query_11(self, spark_session_with_tpch_dataset):
         expected = [
-            Row(ps_partkey=129760, value=17538456.86),
-            Row(ps_partkey=166726, value=16503353.92),
-            Row(ps_partkey=191287, value=16474801.97),
-            Row(ps_partkey=161758, value=16101755.54),
-            Row(ps_partkey=34452, value=15983844.72),
+            Row(ps_partkey=129760, part_value=17538456.86),
+            Row(ps_partkey=166726, part_value=16503353.92),
+            Row(ps_partkey=191287, part_value=16474801.97),
+            Row(ps_partkey=161758, part_value=16101755.54),
+            Row(ps_partkey=34452, part_value=15983844.72),
         ]
 
         with utilizes_valid_plans(spark_session_with_tpch_dataset):
@@ -411,7 +407,7 @@ class TestTpchWithDataFrameAPI:
 
             sorted_outcome = outcome.sort(desc('part_value')).limit(5).collect()
 
-        assertDataFrameEqual(sorted_outcome, expected, atol=1e-2)
+        assert_dataframes_equal(sorted_outcome, expected)
 
     def test_query_12(self, spark_session_with_tpch_dataset):
         expected = [
@@ -443,7 +439,7 @@ class TestTpchWithDataFrameAPI:
 
             sorted_outcome = outcome.sort('l_shipmode').collect()
 
-        assertDataFrameEqual(sorted_outcome, expected, atol=1e-2)
+        assert_dataframes_equal(sorted_outcome, expected)
 
     def test_query_13(self, spark_session_with_tpch_dataset):
         # TODO -- Verify the corretness of these results against another version of the dataset.
@@ -465,7 +461,7 @@ class TestTpchWithDataFrameAPI:
 
             sorted_outcome = outcome.sort(desc('custdist'), desc('c_count')).limit(3).collect()
 
-        assertDataFrameEqual(sorted_outcome, expected, atol=1e-2)
+        assert_dataframes_equal(sorted_outcome, expected)
 
     def test_query_14(self, spark_session_with_tpch_dataset):
         expected = [
@@ -482,13 +478,14 @@ class TestTpchWithDataFrameAPI:
                 'p_type', (col('l_extendedprice') * (1 - col('l_discount'))).alias('value')).agg(
                 try_sum(when(col('p_type').contains('PROMO'), col('value'))) * 100 / try_sum(
                     col('value'))
-            ).alias('promo_revenue')
+            ).alias('promo_revenue').collect()
 
-        assertDataFrameEqual(outcome, expected, atol=1e-2)
+        assert_dataframes_equal(outcome, expected)
 
     def test_query_15(self, spark_session_with_tpch_dataset):
         expected = [
-            Row(s_suppkey=8449, s_name='Supplier#000008449', s_address='Wp34zim9qYFbVctdW'),
+            Row(s_suppkey=8449, s_name='Supplier#000008449', s_address='Wp34zim9qYFbVctdW',
+                s_phone='20-469-856-8873', total=1772627.21),
         ]
 
         with utilizes_valid_plans(spark_session_with_tpch_dataset):
@@ -508,7 +505,7 @@ class TestTpchWithDataFrameAPI:
 
             sorted_outcome = outcome.sort('s_suppkey').limit(1).collect()
 
-        assertDataFrameEqual(sorted_outcome, expected, atol=1e-2)
+        assert_dataframes_equal(sorted_outcome, expected)
 
     def test_query_16(self, spark_session_with_tpch_dataset):
         expected = [
@@ -537,7 +534,7 @@ class TestTpchWithDataFrameAPI:
             sorted_outcome = outcome.sort(
                 desc('supplier_cnt'), 'p_brand', 'p_type', 'p_size').limit(3).collect()
 
-        assertDataFrameEqual(sorted_outcome, expected, atol=1e-2)
+        assert_dataframes_equal(sorted_outcome, expected)
 
     def test_query_17(self, spark_session_with_tpch_dataset):
         expected = [
@@ -557,9 +554,9 @@ class TestTpchWithDataFrameAPI:
                 col('p_partkey').alias('key'), 'avg_quantity').join(
                 fpart, col('key') == fpart.p_partkey).filter(
                 col('l_quantity') < col('avg_quantity')).agg(
-                try_sum('l_extendedprice') / 7).alias('avg_yearly')
+                try_sum('l_extendedprice') / 7).alias('avg_yearly').collect()
 
-        assertDataFrameEqual(outcome, expected, atol=1e-2)
+        assert_dataframes_equal(outcome, expected)
 
     def test_query_18(self, spark_session_with_tpch_dataset):
         expected = [
@@ -586,11 +583,11 @@ class TestTpchWithDataFrameAPI:
                 'l_quantity', 'c_name', 'c_custkey', 'o_orderkey', 'o_orderdate',
                 'o_totalprice').groupBy(
                 'c_name', 'c_custkey', 'o_orderkey', 'o_orderdate', 'o_totalprice').agg(
-                try_sum('l_quantity'))
+                try_sum('l_quantity')).alias('sum_l_quantity')
 
             sorted_outcome = outcome.sort(desc('o_totalprice'), 'o_orderdate').limit(2).collect()
 
-        assertDataFrameEqual(sorted_outcome, expected, atol=1e-2)
+        assert_dataframes_equal(sorted_outcome, expected)
 
     def test_query_19(self, spark_session_with_tpch_dataset):
         expected = [
@@ -617,9 +614,9 @@ class TestTpchWithDataFrameAPI:
                  (col('l_quantity') >= 20) & (col('l_quantity') <= 30) &
                  (col('p_size') >= 1) & (col('p_size') <= 15))).select(
                 (col('l_extendedprice') * (1 - col('l_discount'))).alias('volume')).agg(
-                try_sum('volume').alias('revenue'))
+                try_sum('volume').alias('revenue')).collect()
 
-        assertDataFrameEqual(outcome, expected, atol=1e-2)
+        assert_dataframes_equal(outcome, expected)
 
     def test_query_20(self, spark_session_with_tpch_dataset):
         expected = [
@@ -653,7 +650,7 @@ class TestTpchWithDataFrameAPI:
 
             sorted_outcome = outcome.sort('s_name').limit(3).collect()
 
-        assertDataFrameEqual(sorted_outcome, expected, atol=1e-2)
+        assert_dataframes_equal(sorted_outcome, expected)
 
     def test_query_21(self, spark_session_with_tpch_dataset):
         # TODO -- Verify the corretness of these results against another version of the dataset.
@@ -705,7 +702,7 @@ class TestTpchWithDataFrameAPI:
 
             sorted_outcome = outcome.sort(desc('numwait'), 's_name').limit(5).collect()
 
-        assertDataFrameEqual(sorted_outcome, expected, atol=1e-2)
+        assert_dataframes_equal(sorted_outcome, expected)
 
     def test_query_22(self, spark_session_with_tpch_dataset):
         expected = [
@@ -738,4 +735,4 @@ class TestTpchWithDataFrameAPI:
 
             sorted_outcome = outcome.sort('cntrycode').collect()
 
-        assertDataFrameEqual(sorted_outcome, expected, atol=1e-2)
+        assert_dataframes_equal(sorted_outcome, expected)
