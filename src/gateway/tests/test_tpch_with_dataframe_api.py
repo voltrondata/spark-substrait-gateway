@@ -18,7 +18,7 @@ def mark_tests_as_xfail(request):
     if source == 'gateway-over-duckdb':
         if originalname in[ 'test_query_07', 'test_query_08', 'test_query_09']:
             request.node.add_marker(pytest.mark.xfail(reason='Substring argument mismatch'))
-        elif originalname in ['test_query_12', 'test_query_14']:
+        elif originalname in ['test_query_14']:
             request.node.add_marker(pytest.mark.xfail(reason='Missing nullability information'))
         elif originalname in ['test_query_15']:
             request.node.add_marker(pytest.mark.xfail(reason='No results (float vs decimal)'))
@@ -27,7 +27,7 @@ def mark_tests_as_xfail(request):
         elif originalname in ['test_query_19', 'test_query_20']:
             request.node.add_marker(pytest.mark.xfail(reason='Unknown validation error'))
         elif originalname in ['test_query_22']:
-            request.node.add_marker(pytest.mark.xfail(reason='Schema determination for null'))
+            request.node.add_marker(pytest.mark.xfail(reason='Unsupported expression type 0'))
     elif source == 'gateway-over-datafusion':
         pytest.importorskip("datafusion.substrait")
         request.node.add_marker(pytest.mark.xfail(reason='gateway internal error'))

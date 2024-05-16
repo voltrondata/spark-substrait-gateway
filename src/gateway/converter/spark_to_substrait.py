@@ -16,6 +16,7 @@ from gateway.converter.substrait_builder import (
     aggregate_relation,
     bigint_literal,
     bool_literal,
+    bool_type,
     cast_operation,
     concat,
     equal_function,
@@ -196,7 +197,7 @@ class SparkSubstraitConverter:
         if expr.WhichOneof('rex_type') == 'literal':
             match expr.literal.WhichOneof('literal_type'):
                 case 'boolean':
-                    return type_pb2.Type(bool=type_pb2.Type.Boolean())
+                    return bool_type()
                 case 'i8':
                     return type_pb2.Type(i8=type_pb2.Type.I8())
                 case 'i16':
@@ -238,10 +239,12 @@ class SparkSubstraitConverter:
             getattr(ifthen, 'else').CopyFrom(
                 self.convert_expression(when.arguments[len(when.arguments) - 1]))
         else:
+            nullable_literal = self.determine_type_of_expression(ifthen.ifs[-1].then)
+            nullable_literal.bool.nullability = type_pb2.Type.Nullability.NULLABILITY_NULLABLE
             getattr(ifthen, 'else').CopyFrom(
                 algebra_pb2.Expression(
                     literal=algebra_pb2.Expression.Literal(
-                        null=self.determine_type_of_expression(ifthen.ifs[-1].then))))
+                        null=nullable_literal)))
 
         return algebra_pb2.Expression(if_then=ifthen)
 

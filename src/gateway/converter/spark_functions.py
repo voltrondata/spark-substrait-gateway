@@ -57,6 +57,10 @@ SPARK_SUBSTRAIT_MAPPING = {
         '/functions_comparison.yaml', 'gt:i64_i64', type_pb2.Type(
             bool=type_pb2.Type.Boolean(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'isnull': ExtensionFunction(
+        '/functions_comparison.yaml', 'is_null:int', type_pb2.Type(
+            bool=type_pb2.Type.Boolean(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     '+': ExtensionFunction(
         '/functions_arithmetic.yaml', 'add:i64_i64', type_pb2.Type(
             i64=type_pb2.Type.I64(

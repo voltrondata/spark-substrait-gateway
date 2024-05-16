@@ -259,6 +259,15 @@ def bool_literal(val: bool) -> algebra_pb2.Expression:
     return algebra_pb2.Expression(literal=algebra_pb2.Expression.Literal(boolean=val))
 
 
+def bool_type(required: bool = True) -> algebra_pb2.Expression:
+    """Construct a Substrait boolean type."""
+    if required:
+        nullability = type_pb2.Type.Nullability.NULLABILITY_REQUIRED
+    else:
+        nullability = type_pb2.Type.Nullability.NULLABILITY_NULLABLE
+    return type_pb2.Type(bool=type_pb2.Type.Boolean(nullability=nullability))
+
+
 def string_literal(val: str) -> algebra_pb2.Expression:
     """Construct a Substrait string literal expression."""
     return algebra_pb2.Expression(literal=algebra_pb2.Expression.Literal(string=val))
