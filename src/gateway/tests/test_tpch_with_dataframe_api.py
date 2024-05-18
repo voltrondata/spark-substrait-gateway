@@ -18,10 +18,10 @@ def mark_tests_as_xfail(request):
     if source == 'gateway-over-duckdb':
         if originalname in ['test_query_15']:
             request.node.add_marker(pytest.mark.xfail(reason='No results (float vs decimal)'))
-        elif originalname in ['test_query_16', 'test_query_21']:
-            request.node.add_marker(pytest.mark.xfail(reason='Distinct argument behavior'))
         elif originalname in ['test_query_08']:
             request.node.add_marker(pytest.mark.xfail(reason='DuckDB binder error'))
+        elif originalname == 'test_query_16':
+            request.node.add_marker(pytest.mark.xfail(reason='results differ'))
     elif source == 'gateway-over-datafusion':
         pytest.importorskip("datafusion.substrait")
         request.node.add_marker(pytest.mark.xfail(reason='gateway internal error'))
