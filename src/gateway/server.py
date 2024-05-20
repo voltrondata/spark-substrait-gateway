@@ -191,7 +191,6 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
             case _:
                 raise ValueError(f'Unknown plan type: {request.plan}')
         _LOGGER.debug('  as Substrait: %s', substrait)
-        # TODO: Register the TPCH data for datafusion through the fixture.
         self._statistics.add_plan(substrait)
         results = self._backend.execute(substrait)
         _LOGGER.debug('  results are: %s', results)
