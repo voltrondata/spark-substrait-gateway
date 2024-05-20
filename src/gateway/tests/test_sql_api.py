@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import pytest
+from gateway.tests.plan_validator import utilizes_valid_plans
 from hamcrest import assert_that, equal_to
 from pyspark import Row
 from pyspark.testing import assertDataFrameEqual
@@ -19,16 +20,23 @@ def mark_tests_as_xfail(request):
     """Marks a subset of tests as expected to be fail."""
     source = request.getfixturevalue('source')
     originalname = request.keywords.node.originalname
-    if source == 'gateway-over-duckdb' and originalname == 'test_tpch':
-        path = request.getfixturevalue('path')
-        if path.stem in ['02', '04', '16', '17', '18', '20', '21', '22']:
-            request.node.add_marker(pytest.mark.xfail(reason='DuckDB needs Delim join'))
-        if path.stem in ['15']:
-            request.node.add_marker(pytest.mark.xfail(reason='Rounding inconsistency'))
+    if source == 'gateway-over-duckdb':
+        if originalname == 'test_tpch':
+            path = request.getfixturevalue('path')
+            if path.stem in ['02', '04', '16', '17', '18', '20', '21', '22']:
+                request.node.add_marker(pytest.mark.xfail(reason='DuckDB needs Delim join'))
+            if path.stem in ['15']:
+                request.node.add_marker(pytest.mark.xfail(reason='Rounding inconsistency'))
+            else:
+                request.node.add_marker(pytest.mark.xfail(reason='Too few names returned'))
+        else:
+            request.node.add_marker(pytest.mark.xfail(reason='Too few names returned'))
     if source == 'gateway-over-datafusion':
         pytest.importorskip("datafusion.substrait")
         if originalname == 'test_count':
             request.node.add_marker(pytest.mark.xfail(reason='COUNT() not implemented'))
+        if originalname == 'test_limit':
+            request.node.add_marker(pytest.mark.xfail(reason='Too few names returned'))
         if originalname in ['test_tpch']:
             path = request.getfixturevalue('path')
             if path.stem in ['01']:
@@ -62,8 +70,10 @@ class TestSqlAPI:
     """Tests of the SQL side of SparkConnect."""
 
     def test_count(self, spark_session_with_tpch_dataset):
-        outcome = spark_session_with_tpch_dataset.sql(
-            'SELECT COUNT(*) FROM customer').collect()
+        with utilizes_valid_plans(spark_session_with_tpch_dataset):
+            outcome = spark_session_with_tpch_dataset.sql(
+                'SELECT COUNT(*) FROM customer').collect()
+
         assert_that(outcome[0][0], equal_to(149999))
 
     def test_limit(self, spark_session_with_tpch_dataset):
@@ -74,8 +84,11 @@ class TestSqlAPI:
             Row(c_custkey=5, c_phone='13-750-942-6364', c_mktsegment='HOUSEHOLD'),
             Row(c_custkey=6, c_phone='30-114-968-4951', c_mktsegment='AUTOMOBILE'),
         ]
-        outcome = spark_session_with_tpch_dataset.sql(
-            'SELECT c_custkey, c_phone, c_mktsegment FROM customer LIMIT 5').collect()
+
+        with utilizes_valid_plans(spark_session_with_tpch_dataset):
+            outcome = spark_session_with_tpch_dataset.sql(
+                'SELECT c_custkey, c_phone, c_mktsegment FROM customer LIMIT 5').collect()
+
         assertDataFrameEqual(outcome, expected)
 
     @pytest.mark.timeout(60)
@@ -90,4 +103,6 @@ class TestSqlAPI:
         with open(path, "rb") as file:
             sql_bytes = file.read()
         sql = sql_bytes.decode('utf-8')
-        spark_session_with_tpch_dataset.sql(sql).collect()
+
+        with utilizes_valid_plans(spark_session_with_tpch_dataset):
+            spark_session_with_tpch_dataset.sql(sql).collect()

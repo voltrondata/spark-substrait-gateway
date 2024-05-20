@@ -8,6 +8,19 @@ from substrait.gen.proto import plan_pb2
 
 from gateway.backends.backend import Backend
 
+_DUCKDB_TO_ARROW = {
+    'BOOLEAN': pa.bool_(),
+    'TINYINT': pa.int8(),
+    'SMALLINT': pa.int16(),
+    'INTEGER': pa.int32(),
+    'BIGINT': pa.int64(),
+    'FLOAT': pa.float32(),
+    'DOUBLE': pa.float64(),
+    'DATE': pa.date32(),
+    'TIMESTAMP': pa.timestamp('ns'),
+    'VARCHAR': pa.string(),
+}
+
 
 # pylint: disable=fixme
 class DuckDBBackend(Backend):
@@ -18,6 +31,7 @@ class DuckDBBackend(Backend):
         self._connection = None
         super().__init__(options)
         self.create_connection()
+        self._use_duckdb_python_api = options.use_duckdb_python_api
 
     def create_connection(self):
         """Create a connection to the backend."""
@@ -44,12 +58,51 @@ class DuckDBBackend(Backend):
         df = query_result.df()
         return pa.Table.from_pandas(df=df)
 
-    def register_table(self, table_name: str, location: Path, file_format: str = 'parquet') -> None:
+    def register_table(
+            self,
+            table_name: str,
+            location: Path,
+            file_format: str = "parquet"
+    ) -> None:
         """Register the given table with the backend."""
         files = Backend.expand_location(location)
         if not files:
             raise ValueError(f"No parquet files found at {location}")
-        files_str = ', '.join([f"'{f}'" for f in files])
-        files_sql = f"CREATE OR REPLACE TABLE {table_name} AS FROM read_parquet([{files_str}])"
 
-        self._connection.execute(files_sql)
+        if self._use_duckdb_python_api:
+            self._connection.register(table_name, self._connection.read_parquet(files))
+        else:
+            files_str = ', '.join([f"'{f}'" for f in files])
+            files_sql = f"CREATE OR REPLACE TABLE {table_name} AS FROM read_parquet([{files_str}])"
+            self._connection.execute(files_sql)
+
+    def describe_files(self, paths: list[str]):
+        """Asks the backend to describe the given files."""
+        files = paths
+        if len(paths) == 1:
+            files = self.expand_location(paths[0])
+        df = self._connection.read_parquet(files)
+
+        fields = []
+        for name, field_type in zip(df.columns, df.types, strict=False):
+            if name == 'aggr':
+                # This isn't a real column.
+                continue
+            fields.append(pa.field(name, _DUCKDB_TO_ARROW[str(field_type)]))
+        return pa.schema(fields)
+
+    def describe_table(self, name: str):
+        """Asks the backend to describe the given table."""
+        df = self._connection.execute(f'DESCRIBE {name}').fetchdf()
+
+        fields = []
+        for name, field_type in zip(df.column_name, df.column_type, strict=False):
+            fields.append(pa.field(name, _DUCKDB_TO_ARROW[str(field_type)]))
+        return pa.schema(fields)
+
+    def convert_sql(self, sql: str) -> plan_pb2.Plan:
+        """Convert SQL into a Substrait plan."""
+        plan = plan_pb2.Plan()
+        proto_bytes = self._connection.get_substrait(query=sql).fetchone()[0]
+        plan.ParseFromString(proto_bytes)
+        return plan

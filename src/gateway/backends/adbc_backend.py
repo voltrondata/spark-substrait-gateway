@@ -9,8 +9,7 @@ from adbc_driver_manager import dbapi
 from substrait.gen.proto import plan_pb2
 
 from gateway.backends.backend import Backend
-from gateway.backends.backend_options import Backend as backend_engine
-from gateway.backends.backend_options import BackendOptions
+from gateway.backends.backend_options import BackendEngine, BackendOptions
 
 
 def _import(handle):
@@ -20,7 +19,7 @@ def _import(handle):
 def _get_backend_driver(options: BackendOptions) -> tuple[str, str]:
     """Get the driver and entry point for the specified backend."""
     match options.backend:
-        case backend_engine.DUCKDB:
+        case BackendEngine.DUCKDB:
             driver = duckdb.duckdb.__file__
             entry_point = "duckdb_adbc_init"
         case _:
@@ -62,7 +61,7 @@ class AdbcBackend(Backend):
             file_paths = sorted([str(fp) for fp in file_paths])
             # TODO: Support multiple paths.
             reader = pq.ParquetFile(file_paths[0])
-            self._connection.cursor().adbc_ingest(name, reader.iter_batches(), mode="create")
+            self._connection.cursor().adbc_ingest(name, reader.iter_batches(), mode='create')
 
     def describe_table(self, table_name: str):
         """Asks the backend to describe the given table."""

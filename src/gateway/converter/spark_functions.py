@@ -42,19 +42,23 @@ SPARK_SUBSTRAIT_MAPPING = {
             bool=type_pb2.Type.Boolean(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     '<=': ExtensionFunction(
-        '/functions_comparison.yaml', 'lte:str_str', type_pb2.Type(
+        '/functions_comparison.yaml', 'lte:i64_i64', type_pb2.Type(
             bool=type_pb2.Type.Boolean(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     '>=': ExtensionFunction(
-        '/functions_comparison.yaml', 'gte:str_str', type_pb2.Type(
+        '/functions_comparison.yaml', 'gte:i64_i64', type_pb2.Type(
             bool=type_pb2.Type.Boolean(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     '<': ExtensionFunction(
-        '/functions_comparison.yaml', 'lt:str_str', type_pb2.Type(
+        '/functions_comparison.yaml', 'lt:i64_i64', type_pb2.Type(
             bool=type_pb2.Type.Boolean(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     '>': ExtensionFunction(
-        '/functions_comparison.yaml', 'gt:str_str', type_pb2.Type(
+        '/functions_comparison.yaml', 'gt:i64_i64', type_pb2.Type(
+            bool=type_pb2.Type.Boolean(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'isnull': ExtensionFunction(
+        '/functions_comparison.yaml', 'is_null:int', type_pb2.Type(
             bool=type_pb2.Type.Boolean(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     '+': ExtensionFunction(
@@ -121,7 +125,11 @@ SPARK_SUBSTRAIT_MAPPING = {
             i64=type_pb2.Type.I64(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'max': ExtensionFunction(
-        '/functions_aggregate.yaml', 'max:i64', type_pb2.Type(
+        '/unknown.yaml', 'max:i64', type_pb2.Type(
+            i64=type_pb2.Type.I64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'min': ExtensionFunction(
+        '/unknown.yaml', 'min:i64', type_pb2.Type(
             i64=type_pb2.Type.I64(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'string_agg': ExtensionFunction(
@@ -156,6 +164,10 @@ SPARK_SUBSTRAIT_MAPPING = {
         '/functions_aggregate_generic.yaml', 'count:any', type_pb2.Type(
             i64=type_pb2.Type.I64(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'approx_count_distinct': ExtensionFunction(
+        '/functions_aggregate_approx.yaml', 'approx_count_distinct:any',
+        type_pb2.Type(i64=type_pb2.Type.I64(
+            nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'any_value': ExtensionFunction(
         '/functions_aggregate_generic.yaml', 'any_value:any', type_pb2.Type(
             i64=type_pb2.Type.I64(

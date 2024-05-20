@@ -10,15 +10,13 @@ import pyspark.sql.connect.proto.base_pb2 as spark_pb2
 import pyspark.sql.connect.proto.expressions_pb2 as spark_exprs_pb2
 import pyspark.sql.connect.proto.relations_pb2 as spark_relations_pb2
 import pyspark.sql.connect.proto.types_pb2 as spark_types_pb2
-from gateway.backends.backend_options import BackendOptions
-from gateway.backends.backend_selector import find_backend
 from gateway.converter.conversion_options import ConversionOptions
 from gateway.converter.spark_functions import ExtensionFunction, lookup_spark_function
-from gateway.converter.sql_to_substrait import convert_sql
 from gateway.converter.substrait_builder import (
     aggregate_relation,
     bigint_literal,
     bool_literal,
+    bool_type,
     cast_operation,
     concat,
     equal_function,
@@ -45,8 +43,6 @@ from gateway.converter.symbol_table import SymbolTable
 from substrait.gen.proto import algebra_pb2, plan_pb2, type_pb2
 from substrait.gen.proto.extensions import extensions_pb2
 
-TABLE_NAME = "my_table"
-
 
 # ruff: noqa: RUF005
 class SparkSubstraitConverter:
@@ -62,6 +58,13 @@ class SparkSubstraitConverter:
         self._seen_generated_names = {}
         self._saved_extension_uris = {}
         self._saved_extensions = {}
+        self._backend = None
+        self._sql_backend = None
+
+    def set_backends(self, backend, sql_backend) -> None:
+        """Save the backends being used to resolve tables and convert to SQL."""
+        self._backend = backend
+        self._sql_backend = sql_backend
 
     def lookup_function_by_name(self, name: str) -> ExtensionFunction:
         """Find the function reference for a given Spark function name."""
@@ -81,14 +84,19 @@ class SparkSubstraitConverter:
         """Use the field references using the specified portion of the plan."""
         source_symbol = self._symbol_table.get_symbol(plan_id)
         current_symbol = self._symbol_table.get_symbol(self._current_plan_id)
-        current_symbol.input_fields.extend(source_symbol.output_fields)
-        current_symbol.output_fields.extend(current_symbol.input_fields)
+        original_output_fields = current_symbol.output_fields
+        for symbol in source_symbol.output_fields:
+            new_name = symbol
+            while new_name in original_output_fields:
+                new_name = new_name + '_dup'
+            current_symbol.input_fields.append(new_name)
+            current_symbol.output_fields.append(new_name)
 
     def find_field_by_name(self, field_name: str) -> int | None:
         """Look up the field name in the current set of field references."""
         current_symbol = self._symbol_table.get_symbol(self._current_plan_id)
         try:
-            return current_symbol.output_fields.index(field_name)
+            return current_symbol.input_fields.index(field_name)
         except ValueError:
             return None
 
@@ -185,11 +193,11 @@ class SparkSubstraitConverter:
             root_reference=algebra_pb2.Expression.FieldReference.RootReference()))
 
     def determine_type_of_expression(self, expr: algebra_pb2.Expression) -> type_pb2.Type:
-        """Determine the type of a Substrait expression."""
+        """Determine the type of the Substrait expression."""
         if expr.WhichOneof('rex_type') == 'literal':
             match expr.literal.WhichOneof('literal_type'):
                 case 'boolean':
-                    return type_pb2.Type(bool=type_pb2.Type.Boolean())
+                    return bool_type()
                 case 'i8':
                     return type_pb2.Type(i8=type_pb2.Type.I8())
                 case 'i16':
@@ -212,7 +220,7 @@ class SparkSubstraitConverter:
             return expr.scalar_function.output_type
         if expr.WhichOneof('rex_type') == 'selection':
             # TODO -- Figure out how to determine the type of a field reference.
-            return type_pb2.Type(i32=type_pb2.Type.I32())
+            return type_pb2.Type(i64=type_pb2.Type.I64())
         raise NotImplementedError(
             'Type determination not implemented for expressions of type '
             f'{expr.WhichOneof("rex_type")}.')
@@ -231,10 +239,14 @@ class SparkSubstraitConverter:
             getattr(ifthen, 'else').CopyFrom(
                 self.convert_expression(when.arguments[len(when.arguments) - 1]))
         else:
+            nullable_literal = self.determine_type_of_expression(ifthen.ifs[-1].then)
+            kind = nullable_literal.WhichOneof('kind')
+            getattr(nullable_literal, kind).nullability = (
+                type_pb2.Type.Nullability.NULLABILITY_NULLABLE)
             getattr(ifthen, 'else').CopyFrom(
                 algebra_pb2.Expression(
                     literal=algebra_pb2.Expression.Literal(
-                        null=self.determine_type_of_expression(ifthen.ifs[-1].then))))
+                        null=nullable_literal)))
 
         return algebra_pb2.Expression(if_then=ifthen)
 
@@ -325,15 +337,17 @@ class SparkSubstraitConverter:
                 break
             func.arguments.append(
                 algebra_pb2.FunctionArgument(value=self.convert_expression(arg)))
-        if unresolved_function.is_distinct:
-            raise NotImplementedError(
-                'Treating arguments as distinct is not supported for unresolved functions.')
         func.output_type.CopyFrom(function_def.output_type)
+        if unresolved_function.function_name == 'substring':
+            original_argument = func.arguments[0]
+            func.arguments[0].CopyFrom(algebra_pb2.FunctionArgument(
+                value=cast_operation(original_argument.value, string_type())))
         return algebra_pb2.Expression(scalar_function=func)
 
     def convert_alias_expression(
             self, alias: spark_exprs_pb2.Expression.Alias) -> algebra_pb2.Expression:
         """Convert a Spark alias into a Substrait expression."""
+        # We do nothing here and let the magic happen in the calling project relation.
         return self.convert_expression(alias.expr)
 
     def convert_type_str(self, spark_type_str: str | None) -> type_pb2.Type:
@@ -360,7 +374,9 @@ class SparkSubstraitConverter:
     def convert_cast_expression(
             self, cast: spark_exprs_pb2.Expression.Cast) -> algebra_pb2.Expression:
         """Convert a Spark cast expression into a Substrait cast expression."""
-        cast_rel = algebra_pb2.Expression.Cast(input=self.convert_expression(cast.expr))
+        cast_rel = algebra_pb2.Expression.Cast(
+            input=self.convert_expression(cast.expr),
+            failure_behavior=algebra_pb2.Expression.Cast.FAILURE_BEHAVIOR_THROW_EXCEPTION)
         match cast.WhichOneof('cast_to_type'):
             case 'type':
                 cast_rel.type.CopyFrom(self.convert_type(cast.type))
@@ -420,12 +436,23 @@ class SparkSubstraitConverter:
                     f'Unexpected expression type: {expr.WhichOneof("expr_type")}')
         return result
 
+    def is_distinct(self, expr: spark_exprs_pb2.Expression) -> bool:
+        """Determine if the expression is distinct."""
+        if expr.WhichOneof(
+                'expr_type') == 'unresolved_function' and expr.unresolved_function.is_distinct:
+            return True
+        if expr.WhichOneof('expr_type') == 'alias':
+            return self.is_distinct(expr.alias.expr)
+        return False
+
     def convert_expression_to_aggregate_function(
             self,
             expr: spark_exprs_pb2.Expression) -> algebra_pb2.AggregateFunction:
         """Convert a SparkConnect expression to a Substrait expression."""
         func = algebra_pb2.AggregateFunction(
             phase=algebra_pb2.AggregationPhase.AGGREGATION_PHASE_INITIAL_TO_RESULT)
+        if self.is_distinct(expr):
+            func.invocation = algebra_pb2.AggregateFunction.AGGREGATION_INVOCATION_DISTINCT
         expression = self.convert_expression(expr)
         match expression.WhichOneof('rex_type'):
             case 'scalar_function':
@@ -449,10 +476,8 @@ class SparkSubstraitConverter:
         """Convert a read named table relation to a Substrait relation."""
         table_name = rel.unparsed_identifier
 
-        backend = find_backend(BackendOptions(self._conversion_options.backend.backend, True))
-        tpch_location = backend.find_tpch()
-        backend.register_table(table_name, tpch_location / table_name)
-        arrow_schema = backend.describe_table(table_name)
+        arrow_schema = self._backend.describe_table(table_name)
+
         schema = self.convert_arrow_schema(arrow_schema)
 
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
@@ -462,7 +487,8 @@ class SparkSubstraitConverter:
         return algebra_pb2.Rel(
             read=algebra_pb2.ReadRel(
                 base_schema=schema,
-                named_table=algebra_pb2.ReadRel.NamedTable(names=[table_name])))
+                named_table=algebra_pb2.ReadRel.NamedTable(names=[table_name]),
+                common=self.create_common_relation()))
 
     def convert_schema(self, schema_str: str) -> type_pb2.NamedStruct | None:
         """Convert the Spark JSON schema string into a Substrait named type structure."""
@@ -551,13 +577,8 @@ class SparkSubstraitConverter:
         local = algebra_pb2.ReadRel.LocalFiles()
         schema = self.convert_schema(rel.schema)
         if not schema:
-            backend = find_backend(BackendOptions(self._conversion_options.backend.backend, True))
-            try:
-                backend.register_table(TABLE_NAME, rel.paths[0], rel.format)
-                arrow_schema = backend.describe_table(TABLE_NAME)
-                schema = self.convert_arrow_schema(arrow_schema)
-            finally:
-                backend.drop_table(TABLE_NAME)
+            arrow_schema = self._backend.describe_files([str(path) for path in rel.paths])
+            schema = self.convert_arrow_schema(arrow_schema)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         for field_name in schema.names:
             symbol.output_fields.append(field_name)
@@ -565,7 +586,8 @@ class SparkSubstraitConverter:
             return algebra_pb2.Rel(
                 read=algebra_pb2.ReadRel(base_schema=schema,
                                          named_table=algebra_pb2.ReadRel.NamedTable(
-                                             names=['demotable'])))
+                                             names=['demotable']),
+                                         common=self.create_common_relation()))
         if pathlib.Path(rel.paths[0]).is_dir():
             file_paths = glob.glob(f'{rel.paths[0]}/*{rel.format}')
         else:
@@ -600,7 +622,19 @@ class SparkSubstraitConverter:
                 case _:
                     raise NotImplementedError(f'Unexpected file format: {rel.format}')
             local.items.append(file_or_files)
-        return algebra_pb2.Rel(read=algebra_pb2.ReadRel(base_schema=schema, local_files=local))
+        result = algebra_pb2.Rel(read=algebra_pb2.ReadRel(base_schema=schema, local_files=local,
+                                                          common=self.create_common_relation()))
+        if not self._conversion_options.safety_project_read_relations:
+            return result
+
+        project = algebra_pb2.ProjectRel(
+            input=result,
+            common=algebra_pb2.RelCommon(direct=algebra_pb2.RelCommon.Direct()))
+        for field_number in range(len(symbol.output_fields)):
+            project.expressions.append(field_reference(field_number))
+            project.common.emit.output_mapping.append(field_number)
+
+        return algebra_pb2.Rel(project=project)
 
     def create_common_relation(self, emit_overrides=None) -> algebra_pb2.RelCommon:
         """Create the common metadata relation used by all relations."""
@@ -627,7 +661,6 @@ class SparkSubstraitConverter:
                 result = self.convert_read_data_source_relation(rel.data_source)
             case _:
                 raise ValueError(f'Unexpected read type: {rel.WhichOneof("read_type")}')
-        result.read.common.CopyFrom(self.create_common_relation())
         return result
 
     def convert_filter_relation(self, rel: spark_relations_pb2.Filter) -> algebra_pb2.Rel:
@@ -700,6 +733,10 @@ class SparkSubstraitConverter:
             symbol.generated_fields.append(self.determine_expression_name(expr))
         symbol.output_fields.clear()
         symbol.output_fields.extend(symbol.generated_fields)
+        if len(rel.grouping_expressions) > 1:
+            # Hide the grouping source from the downstream relations.
+            for i in range(len(rel.grouping_expressions) + len(rel.aggregate_expressions)):
+                aggregate.common.emit.output_mapping.append(i)
         return algebra_pb2.Rel(aggregate=aggregate)
 
     # pylint: disable=too-many-locals,pointless-string-statement
@@ -909,6 +946,12 @@ class SparkSubstraitConverter:
                 symbol.output_fields.append(name)
         project.common.CopyFrom(self.create_common_relation())
         if remapped:
+            if self._conversion_options.duckdb_project_emit_workaround:
+                for field_number in range(len(symbol.input_fields)):
+                    if field_number == mapping[field_number]:
+                        project.expressions.append(field_reference(field_number))
+                        mapping[field_number] = len(symbol.input_fields) + (
+                            len(project.expressions)) - 1
             for item in mapping:
                 project.common.emit.output_mapping.append(item)
         return algebra_pb2.Rel(project=project)
@@ -968,7 +1011,8 @@ class SparkSubstraitConverter:
 
     def convert_sql_relation(self, rel: spark_relations_pb2.SQL) -> algebra_pb2.Rel:
         """Convert a Spark SQL relation into a Substrait relation."""
-        plan = convert_sql(rel.query)
+        # TODO -- Handle multithreading in the case with a persistent backend.
+        plan = self._sql_backend.convert_sql(rel.query)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         for field_name in plan.relations[0].root.names:
             symbol.output_fields.append(field_name)
@@ -1011,11 +1055,13 @@ class SparkSubstraitConverter:
         if rel.HasField('join_condition'):
             raise ValueError('Cross joins do not support having a join condition.')
         join.common.CopyFrom(self.create_common_relation())
-        return algebra_pb2.Rel(join=join)
+        return algebra_pb2.Rel(cross=join)
 
     def convert_join_relation(self, rel: spark_relations_pb2.Join) -> algebra_pb2.Rel:
         """Convert a Spark join relation into a Substrait join relation."""
         if rel.join_type == spark_relations_pb2.Join.JOIN_TYPE_CROSS:
+            return self.convert_cross_join_relation(rel)
+        if not rel.HasField('join_condition') and not rel.using_columns:
             return self.convert_cross_join_relation(rel)
         join = algebra_pb2.JoinRel(left=self.convert_relation(rel.left),
                                    right=self.convert_relation(rel.right))
@@ -1036,21 +1082,27 @@ class SparkSubstraitConverter:
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         for field_number, expr in enumerate(rel.expressions):
             project.expressions.append(self.convert_expression(expr))
-            if expr.HasField('alias'):
+            if expr.WhichOneof('expr_type') == 'alias':
                 name = expr.alias.name[0]
+            elif expr.WhichOneof('expr_type') == 'unresolved_attribute':
+                name = expr.unresolved_attribute.unparsed_identifier
             else:
                 name = f'generated_field_{field_number}'
             symbol.generated_fields.append(name)
             symbol.output_fields.append(name)
         project.common.CopyFrom(self.create_common_relation())
+        symbol.output_fields = symbol.generated_fields
+        for field_number in range(len(rel.expressions)):
+            project.common.emit.output_mapping.append(field_number + len(symbol.input_fields))
         return algebra_pb2.Rel(project=project)
 
     def convert_subquery_alias_relation(self,
                                         rel: spark_relations_pb2.SubqueryAlias) -> algebra_pb2.Rel:
         """Convert a Spark subquery alias relation into a Substrait relation."""
-        # TODO -- Utilize rel.alias somehow.
         result = self.convert_relation(rel.input)
         self.update_field_references(rel.input.common.plan_id)
+        symbol = self._symbol_table.get_symbol(self._current_plan_id)
+        symbol.output_fields[-1] = rel.alias
         return result
 
     def convert_deduplicate_relation(self, rel: spark_relations_pb2.Deduplicate) -> algebra_pb2.Rel:
@@ -1070,9 +1122,15 @@ class SparkSubstraitConverter:
                         function_reference=any_value_func.anchor,
                         arguments=[algebra_pb2.FunctionArgument(value=field_reference(idx))],
                         phase=algebra_pb2.AggregationPhase.AGGREGATION_PHASE_INITIAL_TO_RESULT,
-                        output_type=type_pb2.Type(bool=type_pb2.Type.Boolean()))))
+                        output_type=type_pb2.Type(bool=type_pb2.Type.Boolean(
+                            nullability=type_pb2.Type.NULLABILITY_REQUIRED)))))
             symbol.generated_fields.append(field)
-        return algebra_pb2.Rel(aggregate=aggregate)
+        aggr = algebra_pb2.Rel(aggregate=aggregate)
+        project = project_relation(
+            aggr, [field_reference(idx) for idx in range(len(symbol.input_fields))])
+        for idx in range(len(symbol.input_fields)):
+            project.project.common.emit.output_mapping.append(idx)
+        return project
 
     def convert_relation(self, rel: spark_relations_pb2.Relation) -> algebra_pb2.Rel:
         """Convert a Spark relation into a Substrait one."""

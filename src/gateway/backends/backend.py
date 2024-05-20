@@ -35,12 +35,20 @@ class Backend:
         """Register the given table with the backend."""
         raise NotImplementedError()
 
+    def describe_files(self, paths: list[str]):
+        """Asks the backend to describe the given files."""
+        raise NotImplementedError()
+
     def describe_table(self, name: str):
         """Asks the backend to describe the given table."""
         raise NotImplementedError()
 
     def drop_table(self, name: str) -> None:
         """Asks the backend to drop the given table."""
+        raise NotImplementedError()
+
+    def convert_sql(self, sql: str) -> plan_pb2.Plan:
+        """Convert SQL into a Substrait plan."""
         raise NotImplementedError()
 
     @staticmethod

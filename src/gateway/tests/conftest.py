@@ -4,14 +4,12 @@ import re
 from pathlib import Path
 
 import pytest
-from gateway.backends.backend import Backend
 from gateway.demo.mystream_database import (
     create_mystream_database,
     delete_mystream_database,
     get_mystream_schema,
 )
 from gateway.server import serve
-from pyspark.sql.pandas.types import from_arrow_schema
 from pyspark.sql.session import SparkSession
 
 
@@ -62,7 +60,7 @@ def _create_gateway_session(backend: str) -> SparkSession:
     spark_gateway.stop()
 
 
-@pytest.fixture(scope='session', autouse=True)
+@pytest.fixture(scope='function', autouse=True)
 def manage_database() -> None:
     """Creates the mystream database for use throughout all the tests."""
     create_mystream_database()
@@ -70,7 +68,7 @@ def manage_database() -> None:
     delete_mystream_database()
 
 
-@pytest.fixture(scope='session', autouse=True)
+@pytest.fixture(scope='function', autouse=True)
 def gateway_server():
     """Starts up a spark to substrait gateway service."""
     server = serve(50052, wait=False)
@@ -78,20 +76,21 @@ def gateway_server():
     server.stop(None)
 
 
-@pytest.fixture(scope='session')
-def users_location() -> str:
+@pytest.fixture(scope='function')
+def users_location(manage_database) -> str:
     """Provides the location of the users database."""
     return str(Path('users.parquet').resolve())
 
 
-@pytest.fixture(scope='session')
-def schema_users():
+@pytest.fixture(scope='function')
+def schema_users(manage_database):
     """Provides the schema of the users database."""
     return get_mystream_schema('users')
 
 
 @pytest.fixture(scope='session',
                 params=['spark',
+                        'gateway-over-arrow',
                         'gateway-over-duckdb',
                         'gateway-over-datafusion',
                         ])
@@ -100,7 +99,7 @@ def source(request) -> str:
     return request.param
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='function')
 def spark_session(source):
     """Provides spark sessions connecting to various backends."""
     match source:
@@ -119,38 +118,46 @@ def spark_session(source):
 
 # pylint: disable=redefined-outer-name
 @pytest.fixture(scope='function')
-def users_dataframe(spark_session, schema_users, users_location):
-    """Provides a ready to go dataframe over the users database."""
-    return spark_session.read.format('parquet') \
-        .schema(from_arrow_schema(schema_users)) \
-        .parquet(users_location)
-
-
-def _register_table(spark_session: SparkSession, name: str) -> None:
-    location = Backend.find_tpch() / name
-    spark_session.sql(
-        f'CREATE OR REPLACE TEMPORARY VIEW {name} USING org.apache.spark.sql.parquet '
-        f'OPTIONS ( path "{location}" )')
-
-
-@pytest.fixture(scope='function')
-def spark_session_with_tpch_dataset(spark_session: SparkSession, source: str) -> SparkSession:
-    """Add the TPC-H dataset to the current spark session."""
-    if source == 'spark':
-        _register_table(spark_session, 'customer')
-        _register_table(spark_session, 'lineitem')
-        _register_table(spark_session, 'nation')
-        _register_table(spark_session, 'orders')
-        _register_table(spark_session, 'part')
-        _register_table(spark_session, 'partsupp')
-        _register_table(spark_session, 'region')
-        _register_table(spark_session, 'supplier')
+def spark_session_with_users_dataset(spark_session, schema_users, users_location):
+    """Provides the spark session with the users database already loaded."""
+    df = spark_session.read.parquet(users_location)
+    df.createOrReplaceTempView('users')
     return spark_session
 
 
 @pytest.fixture(scope='function')
-def spark_session_with_customer_dataset(spark_session: SparkSession, source: str) -> SparkSession:
+def users_dataframe(spark_session_with_users_dataset):
+    """Provides a ready to go users dataframe."""
+    return spark_session_with_users_dataset.table('users')
+
+
+def find_tpch() -> Path:
+    """Find the location of the TPC-H dataset."""
+    current_location = Path('.').resolve()
+    while current_location != Path('/'):
+        location = current_location / 'third_party' / 'tpch' / 'parquet'
+        if location.exists():
+            return location.resolve()
+        current_location = current_location.parent
+    raise ValueError('TPC-H dataset not found')
+
+
+def _register_table(spark_session: SparkSession, name: str) -> None:
+    """Registers a TPC-H table with the given name into spark_session."""
+    location = find_tpch() / name
+    df = spark_session.read.parquet(str(location))
+    df.createOrReplaceTempView(name)
+
+
+@pytest.fixture(scope='function')
+def spark_session_with_tpch_dataset(spark_session: SparkSession) -> SparkSession:
     """Add the TPC-H dataset to the current spark session."""
-    if source == 'spark':
-        _register_table(spark_session, 'customer')
+    _register_table(spark_session, 'customer')
+    _register_table(spark_session, 'lineitem')
+    _register_table(spark_session, 'nation')
+    _register_table(spark_session, 'orders')
+    _register_table(spark_session, 'part')
+    _register_table(spark_session, 'partsupp')
+    _register_table(spark_session, 'region')
+    _register_table(spark_session, 'supplier')
     return spark_session

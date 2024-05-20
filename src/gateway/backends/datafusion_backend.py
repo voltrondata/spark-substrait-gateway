@@ -9,6 +9,19 @@ from gateway.backends.backend import Backend
 from gateway.converter.rename_functions import RenameFunctionsForDatafusion
 from gateway.converter.replace_local_files import ReplaceLocalFilesWithNamedTable
 
+_DATAFUSION_TO_ARROW = {
+    'Boolean': pa.bool_(),
+    'Int8': pa.int8(),
+    'Int16': pa.int16(),
+    'Int32': pa.int32(),
+    'Int64': pa.int64(),
+    'Float32': pa.float32(),
+    'Float64': pa.float64(),
+    'Date32': pa.date32(),
+    'Timestamp(Nanosecond, None)': pa.timestamp('ns'),
+    'Utf8': pa.string(),
+}
+
 
 # pylint: disable=import-outside-toplevel
 class DatafusionBackend(Backend):
@@ -23,6 +36,7 @@ class DatafusionBackend(Backend):
     def create_connection(self) -> None:
         """Create a connection to the backend."""
         import datafusion
+
         self._connection = datafusion.SessionContext()
 
     def execute(self, plan: plan_pb2.Plan) -> pa.lib.Table:
@@ -33,10 +47,9 @@ class DatafusionBackend(Backend):
         registered_tables = set()
         for files in file_groups:
             table_name = files[0]
-            for file in files[1]:
-                if table_name not in registered_tables:
-                    self.register_table(table_name, file)
-                registered_tables.add(files[0])
+            location = Path(files[1][0]).parent
+            self.register_table(table_name, location)
+            registered_tables.add(table_name)
 
         RenameFunctionsForDatafusion().visit_plan(plan)
 
@@ -59,7 +72,31 @@ class DatafusionBackend(Backend):
             for table_name in registered_tables:
                 self._connection.deregister_table(table_name)
 
-    def register_table(self, name: str, path: Path, file_format: str = 'parquet') -> None:
+    def register_table(
+            self, name: str, location: Path, file_format: str = 'parquet'
+    ) -> None:
         """Register the given table with the backend."""
-        files = Backend.expand_location(path)
-        self._connection.register_parquet(name, files[0])
+        files = Backend.expand_location(location)
+        if not files:
+            raise ValueError(f"No parquet files found at {location}")
+        # TODO: Add options to skip table registration if it already exists instead
+        # of deregistering it.
+        if self._connection.table_exist(name):
+            self._connection.deregister_table(name)
+        self._connection.register_parquet(name, str(location))
+
+    def describe_files(self, paths: list[str]):
+        """Asks the backend to describe the given files."""
+        # TODO -- Use the ListingTable API to resolve the combined schema.
+        df = self._connection.read_parquet(paths[0])
+        return df.schema()
+
+    def describe_table(self, table_name: str):
+        """Asks the backend to describe the given table."""
+        result = self._connection.sql(f"describe {table_name}").to_arrow_table().to_pylist()
+
+        fields = []
+        for index in range(len(result)):
+            fields.append(pa.field(result[index]['column_name'],
+                                   _DATAFUSION_TO_ARROW[result[index]['data_type']]))
+        return pa.schema(fields)

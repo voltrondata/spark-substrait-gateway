@@ -2,6 +2,7 @@
 """A library to search Substrait plan for local files."""
 from gateway.converter.substrait_plan_visitor import SubstraitPlanVisitor
 from substrait.gen.proto import plan_pb2
+from substrait.gen.proto.extensions import extensions_pb2
 
 
 # pylint: disable=no-member,fixme
@@ -46,6 +47,20 @@ class RenameFunctionsForArrow(SubstraitPlanVisitor):
         self._use_uri_workaround = use_uri_workaround
         super().__init__()
 
+    def _find_arrow_uri_reference(self, plan: plan_pb2.Plan) -> int:
+        """Find the URI reference for the Arrow workaround."""
+        biggest_reference = -1
+        for extension in plan.extension_uris:
+            if extension.uri == 'urn:arrow:substrait_simple_extension_function':
+                return extension.extension_uri_anchor
+            if extension.extension_uri_anchor > biggest_reference:
+                biggest_reference = extension.extension_uri_anchor
+        plan.extension_uris.append(extensions_pb2.SimpleExtensionURI(
+            extension_uri_anchor=biggest_reference + 1,
+            uri='urn:arrow:substrait_simple_extension_function'))
+        self._extensions[biggest_reference + 1] = 'urn:arrow:substrait_simple_extension_function'
+        return biggest_reference + 1
+
     def normalize_extension_uris(self, plan: plan_pb2.Plan) -> None:
         """Normalize the URI."""
         for extension in plan.extension_uris:
@@ -83,7 +98,23 @@ class RenameFunctionsForArrow(SubstraitPlanVisitor):
             changed = False
             if name == 'char_length':
                 changed = True
+                extension.extension_function.extension_uri_reference = (
+                    self._find_arrow_uri_reference(plan))
                 name = 'utf8_length'
+            elif name == 'max':
+                changed = True
+                extension.extension_function.extension_uri_reference = (
+                    self._find_arrow_uri_reference(plan))
+            elif name == 'gt':
+                changed = True
+                extension.extension_function.extension_uri_reference = (
+                    self._find_arrow_uri_reference(plan))
+                name = 'greater'
+            elif name == 'lt':
+                changed = True
+                extension.extension_function.extension_uri_reference = (
+                    self._find_arrow_uri_reference(plan))
+                name = 'less'
 
             if not changed:
                 continue
