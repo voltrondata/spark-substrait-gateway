@@ -275,50 +275,50 @@ class TestTpchWithDataFrameAPI:
 
         assert_dataframes_equal(sorted_outcome, expected)
 
-    # def test_query_08(self, spark_session_with_tpch_dataset):
-    #     expected = [
-    #         Row(o_year='1995', mkt_share=0.03),
-    #         Row(o_year='1996', mkt_share=0.04),
-    #     ]
-    #
-    #     with utilizes_valid_plans(spark_session_with_tpch_dataset):
-    #         customer = spark_session_with_tpch_dataset.table('customer')
-    #         orders = spark_session_with_tpch_dataset.table('orders')
-    #         lineitem = spark_session_with_tpch_dataset.table('lineitem')
-    #         nation = spark_session_with_tpch_dataset.table('nation')
-    #         part = spark_session_with_tpch_dataset.table('part')
-    #         region = spark_session_with_tpch_dataset.table('region')
-    #         supplier = spark_session_with_tpch_dataset.table('supplier')
-    #
-    #         fregion = region.filter(col('r_name') == 'AMERICA')
-    #         forder = orders.filter((col('o_orderdate') >= '1995-01-01') & (
-    #                 col('o_orderdate') <= '1996-12-31'))
-    #         fpart = part.filter(col('p_type') == 'ECONOMY ANODIZED STEEL')
-    #
-    #         nat = nation.join(supplier, col('n_nationkey') == col('s_nationkey'))
-    #
-    #         line = lineitem.select(
-    #             'l_partkey', 'l_suppkey', 'l_orderkey',
-    #             (col('l_extendedprice') * (1 - col('l_discount'))).alias(
-    #                 'volume')).join(
-    #             fpart, col('l_partkey') == fpart.p_partkey).join(
-    #             nat, col('l_suppkey') == nat.s_suppkey)
-    #
-    #         outcome = nation.join(fregion, col('n_regionkey') == fregion.r_regionkey).select(
-    #             'n_nationkey', 'n_name').join(customer,
-    #                                           col('n_nationkey') == col('c_nationkey')).select(
-    #             'c_custkey').join(forder, col('c_custkey') == col('o_custkey')).select(
-    #             'o_orderkey', 'o_orderdate').join(line,
-    #                                               col('o_orderkey') == line.l_orderkey).select(
-    #             col('n_name'), col('o_orderdate').substr(1, 4).alias('o_year'),
-    #             col('volume')).withColumn('case_volume',
-    #                                       when(col('n_name') == 'BRAZIL', col('volume')).otherwise(
-    #                                           0)).groupBy('o_year').agg(
-    #             (try_sum('case_volume') / try_sum('volume')).alias('mkt_share'))
-    #
-    #         sorted_outcome = outcome.sort('o_year').collect()
-    #
-    #     assert_dataframes_equal(sorted_outcome, expected)
+    def test_query_08(self, spark_session_with_tpch_dataset):
+        expected = [
+            Row(o_year='1995', mkt_share=0.03),
+            Row(o_year='1996', mkt_share=0.04),
+        ]
+
+        with utilizes_valid_plans(spark_session_with_tpch_dataset):
+            customer = spark_session_with_tpch_dataset.table('customer')
+            orders = spark_session_with_tpch_dataset.table('orders')
+            lineitem = spark_session_with_tpch_dataset.table('lineitem')
+            nation = spark_session_with_tpch_dataset.table('nation')
+            part = spark_session_with_tpch_dataset.table('part')
+            region = spark_session_with_tpch_dataset.table('region')
+            supplier = spark_session_with_tpch_dataset.table('supplier')
+
+            fregion = region.filter(col('r_name') == 'AMERICA')
+            forder = orders.filter((col('o_orderdate') >= '1995-01-01') & (
+                    col('o_orderdate') <= '1996-12-31'))
+            fpart = part.filter(col('p_type') == 'ECONOMY ANODIZED STEEL')
+
+            nat = nation.join(supplier, col('n_nationkey') == col('s_nationkey'))
+
+            line = lineitem.select(
+                'l_partkey', 'l_suppkey', 'l_orderkey',
+                (col('l_extendedprice') * (1 - col('l_discount'))).alias(
+                    'volume')).join(
+                fpart, col('l_partkey') == fpart.p_partkey).join(
+                nat, col('l_suppkey') == nat.s_suppkey)
+
+            outcome = nation.join(fregion, col('n_regionkey') == fregion.r_regionkey).select(
+                'n_nationkey', 'n_name').join(customer,
+                                              col('n_nationkey') == col('c_nationkey')).select(
+                'c_custkey').join(forder, col('c_custkey') == col('o_custkey')).select(
+                'o_orderkey', 'o_orderdate').join(line,
+                                                  col('o_orderkey') == line.l_orderkey).select(
+                col('n_name'), col('o_orderdate').substr(1, 4).alias('o_year'),
+                col('volume')).withColumn('case_volume',
+                                          when(col('n_name') == 'BRAZIL', col('volume')).otherwise(
+                                              0)).groupBy('o_year').agg(
+                (try_sum('case_volume') / try_sum('volume')).alias('mkt_share'))
+
+            sorted_outcome = outcome.sort('o_year').collect()
+
+        assert_dataframes_equal(sorted_outcome, expected)
 
     def test_query_09(self, spark_session_with_tpch_dataset):
         # TODO -- Verify the correctness of these results against another version of the dataset.
