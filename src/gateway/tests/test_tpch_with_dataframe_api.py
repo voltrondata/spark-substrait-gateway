@@ -19,7 +19,7 @@ def mark_tests_as_xfail(request):
         if originalname in ['test_query_15']:
             request.node.add_marker(pytest.mark.xfail(reason='No results (float vs decimal)'))
         elif originalname == 'test_query_16':
-            request.node.add_marker(pytest.mark.xfail(reason='results differ'))
+            request.node.add_marker(pytest.mark.xfail(reason='distinct not supported'))
     elif source == 'gateway-over-datafusion':
         pytest.importorskip("datafusion.substrait")
         request.node.add_marker(pytest.mark.xfail(reason='gateway internal error'))
