@@ -22,7 +22,29 @@ def mark_tests_as_xfail(request):
             request.node.add_marker(pytest.mark.xfail(reason='distinct not supported'))
     elif source == 'gateway-over-datafusion':
         pytest.importorskip("datafusion.substrait")
-        request.node.add_marker(pytest.mark.xfail(reason='gateway internal error'))
+        if originalname in ['test_query_01']:
+            request.node.add_marker(pytest.mark.xfail(reason='0-arg count not supported'))
+        elif originalname in ['test_query_03', 'test_query_10', 'test_query_20']:
+            request.node.add_marker(pytest.mark.xfail(reason='Schema mismatch'))
+        elif originalname in ['test_query_04']:
+            request.node.add_marker(pytest.mark.xfail(
+                reason='Aggregated function any_value is not supported'))
+        elif originalname in ['test_query_07']:
+            request.node.add_marker(pytest.mark.xfail(reason='Duplicate Expression names'))
+        elif originalname in ['test_query_09']:
+            request.node.add_marker(pytest.mark.xfail(
+                reason='Cannot create filter with non-boolean predicate - substr function'))
+        elif originalname in ['test_query_11']:
+            request.node.add_marker(pytest.mark.xfail(reason='Duplicate field in schema'))
+        elif originalname in ['test_query_14']:
+            request.node.add_marker(pytest.mark.xfail(reason='Sum not implemented'))
+        elif originalname in ['test_query_15', 'test_query_19', 'test_query_22']:
+            request.node.add_marker(pytest.mark.xfail(reason='no oneof "rex_type" field'))
+        elif originalname in ['test_query_18']:
+            request.node.add_marker(pytest.mark.xfail(
+                reason='Error with assigning date attribute during schema alignment'))
+        else:
+            request.node.add_marker(pytest.mark.xfail(reason='gateway internal error'))
 
 
 class TestTpchWithDataFrameAPI:
