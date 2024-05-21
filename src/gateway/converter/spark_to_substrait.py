@@ -954,6 +954,17 @@ class SparkSubstraitConverter:
                             len(project.expressions)) - 1
             for item in mapping:
                 project.common.emit.output_mapping.append(item)
+        else:
+            new_expressions = []
+            for field_number in range(len(symbol.input_fields)):
+                new_expressions.append(field_reference(field_number))
+                project.common.emit.output_mapping.append(
+                    field_number + len(symbol.input_fields))
+            new_expressions.extend(list(project.expressions))
+            del project.expressions[:]
+            project.expressions.extend(new_expressions)
+            for field_number in range(len(symbol.generated_fields)):
+                project.common.emit.output_mapping.append(field_number + len(symbol.input_fields))
         return algebra_pb2.Rel(project=project)
 
     def convert_to_df_relation(self, rel: spark_relations_pb2.ToDF) -> algebra_pb2.Rel:

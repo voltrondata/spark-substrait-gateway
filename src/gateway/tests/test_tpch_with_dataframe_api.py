@@ -18,8 +18,6 @@ def mark_tests_as_xfail(request):
     if source == 'gateway-over-duckdb':
         if originalname in ['test_query_15']:
             request.node.add_marker(pytest.mark.xfail(reason='No results (float vs decimal)'))
-        elif originalname in ['test_query_08']:
-            request.node.add_marker(pytest.mark.xfail(reason='DuckDB binder error'))
         elif originalname == 'test_query_16':
             request.node.add_marker(pytest.mark.xfail(reason='results differ'))
     elif source == 'gateway-over-datafusion':
@@ -301,7 +299,7 @@ class TestTpchWithDataFrameAPI:
         assert_dataframes_equal(sorted_outcome, expected)
 
     def test_query_09(self, spark_session_with_tpch_dataset):
-        # TODO -- Verify the corretness of these results against another version of the dataset.
+        # TODO -- Verify the correctness of these results against another version of the dataset.
         expected = [
             Row(n_name='ARGENTINA', o_year='1998', sum_profit=28341663.78),
             Row(n_name='ARGENTINA', o_year='1997', sum_profit=47143964.12),
