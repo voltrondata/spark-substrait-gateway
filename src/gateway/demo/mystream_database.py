@@ -1,11 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 """Routines to create a fake mystream database for testing."""
 import contextlib
+import os.path
 from pathlib import Path
 
 import pyarrow as pa
+import pyarrow.parquet as pq
 from faker import Faker
-from pyarrow import parquet
 
 TABLE_SCHEMAS = {
     'users': pa.schema([
@@ -17,24 +18,26 @@ TABLE_SCHEMAS = {
     'channels': pa.schema([
         pa.field('creator_id', pa.string(), False),
         pa.field('channel_id', pa.string(), False),
-        pa.field('name', pa.string(), False),
+        pa.field('channel_name', pa.string(), False),
         pa.field('primary_category', pa.string(), True),
     ]),
     'subscriptions': pa.schema([
+        pa.field('subscription_id', pa.string(), False),
         pa.field('user_id', pa.string(), False),
         pa.field('channel_id', pa.string(), False),
     ]),
     'streams': pa.schema([
         pa.field('stream_id', pa.string(), False),
         pa.field('channel_id', pa.string(), False),
-        pa.field('name', pa.string(), False),
+        pa.field('stream_name', pa.string(), False),
     ]),
     'categories': pa.schema([
         pa.field('category_id', pa.string(), False),
-        pa.field('name', pa.string(), False),
-        pa.field('language', pa.string(), False),
+        pa.field('category_name', pa.string(), False),
+        pa.field('language', pa.string(), True),
     ]),
     'watches': pa.schema([
+        pa.field('watch_id', pa.string(), False),
         pa.field('user_id', pa.string(), False),
         pa.field('channel_id', pa.string(), False),
         pa.field('stream_id', pa.string(), False),
@@ -49,20 +52,28 @@ def get_mystream_schema(name: str) -> pa.Schema:
     return TABLE_SCHEMAS[name]
 
 
-# pylint: disable=fixme,line-too-long
+# pylint: disable=fixme
 def make_users_database():
     """Construct the users table."""
     fake = Faker(['en_US'])
-    rows = []
     # TODO -- Make the number and uniqueness of userids configurable.
     # TODO -- Make the density of paid customers configurable.
-    for _ in range(100):
-        rows.append({'name': fake.name(),
-                     'user_id': f'user{fake.unique.pyint(max_value=999999999):>09}',
-                     'paid_for_service': fake.pybool(truth_probability=21)})
-    table = pa.Table.from_pylist(rows, schema=get_mystream_schema('users'))
-    parquet.write_table(table, 'users.parquet', version='2.4', flavor='spark',
-                        compression='NONE')
+    if os.path.isfile('users.parquet'):
+        # The file already exists.
+        return
+    schema = get_mystream_schema('users')
+    with pq.ParquetWriter('users.parquet', schema) as writer:
+        for _ in range(100):
+            user_name = fake.name()
+            user_id = f'user{fake.unique.pyint(max_value=999999999):>09}'
+            user_paid = fake.pybool(truth_probability=21)
+            data = [
+                pa.array([user_id]),
+                pa.array([user_name]),
+                pa.array([user_paid]),
+            ]
+            batch = pa.record_batch(data, schema=schema)
+            writer.write_batch(batch)
 
 
 def create_mystream_database() -> Path:
