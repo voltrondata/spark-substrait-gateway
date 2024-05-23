@@ -76,6 +76,26 @@ def make_users_database():
             writer.write_batch(batch)
 
 
+def make_categories_database():
+    fake = Faker(['en_US'])
+    if os.path.isfile('categories.parquet'):
+        # The file already exists.
+        return
+    schema = get_mystream_schema('categories')
+    with (pq.ParquetWriter('categories.parquet', schema) as writer):
+        for _ in range(100):
+            category_id = f'category{fake.unique.pyint(max_value=9999):>04}'
+            category_name = ' '.join(fake.words(nb=2, unique=True)).title()
+            category_language = fake.word()
+            data = [
+                pa.array([category_id]),
+                pa.array([category_name]),
+                pa.array([category_language]),
+            ]
+            batch = pa.record_batch(data, schema=schema)
+            writer.write_batch(batch)
+
+
 # pylint: disable=fixme
 def make_channels_database():
     """Construct the channels table."""
@@ -109,6 +129,7 @@ def create_mystream_database() -> None:
     Faker.seed(9999)
     # Build all the tables in sorted order.
     make_users_database()
+    make_categories_database()
     make_channels_database()
 
 
