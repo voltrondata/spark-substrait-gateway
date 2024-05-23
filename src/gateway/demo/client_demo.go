@@ -1,8 +1,12 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"flag"
 	"log"
+	"os"
+	"path/filepath"
 
 	"github.com/apache/spark-connect-go/v34/client/sql"
 )
@@ -12,6 +16,20 @@ var (
 		"the remote address of Spark Connect server to connect to")
 )
 
+func find_source_root() string {
+	current_location, _ := os.Getwd()
+	source_root := current_location
+	_, err := os.OpenFile(source_root+"/CONTRIBUTING.md", os.O_RDONLY, 0)
+	for errors.Is(err, os.ErrNotExist) {
+		if source_root == "/" || source_root == "" {
+			return "/"
+		}
+		source_root = filepath.Clean(filepath.Join(source_root, ".."))
+		_, err = os.OpenFile(source_root+"/CONTRIBUTING.md", os.O_RDONLY, 0)
+	}
+	return source_root
+}
+
 func main() {
 	flag.Parse()
 	spark, err := sql.SparkSession.Builder.Remote(*remote).Build()
@@ -20,28 +38,8 @@ func main() {
 	}
 	defer spark.Stop()
 
-	df, err := spark.Sql("select 'apple' as word, 123 as count union all select 'orange' as word, 456 as count")
-	if err != nil {
-		log.Fatalf("Failed: %s", err.Error())
-	}
-
-	log.Printf("DataFrame from sql: select 'apple' as word, 123 as count union all select 'orange' as word, 456 as count")
-	err = df.Show(100, false)
-	if err != nil {
-		log.Fatalf("Failed: %s", err.Error())
-	}
-
-	rows, err := df.Collect()
-	if err != nil {
-		log.Fatalf("Failed: %s", err.Error())
-	}
-
-	for _, row := range rows {
-		log.Printf("Row: %v", row)
-	}
-
-	df, err = spark.Read().Format("parquet").
-		Load("file://../../../third-party/tpch/parquet/customer")
+	df, err := spark.Read().Format("parquet").
+		Load(fmt.Sprintf("%s/%s", find_source_root(), "users.parquet"))
 	if err != nil {
 		log.Fatalf("Failed: %s", err.Error())
 	}
@@ -49,16 +47,30 @@ func main() {
 	log.Printf("DataFrame from reading parquet")
 	df.Show(100, false)
 
-	err = df.CreateTempView("view1", true, false)
+	log.Printf("Creating temporary view")
+	err = df.CreateTempView("users", true, false)
 	if err != nil {
 		log.Fatalf("Failed: %s", err.Error())
 	}
 
-	df, err = spark.Sql("select count, word from view1 order by count")
+    log.Printf("Executing SQL query")
+	df, err = spark.Sql("select name, paid_for_service from users order by user_id")
 	if err != nil {
 		log.Fatalf("Failed: %s", err.Error())
 	}
 
-	log.Printf("DataFrame from sql: select count, word from view1 order by count")
+	log.Printf("DataFrame from sql: elect name, paid_for_service from users order by user_id")
 	df.Show(100, false)
+
+    log.Printf("Collecting results")
+	rows, err := df.Collect()
+	if err != nil {
+		log.Fatalf("Failed: %s", err.Error())
+	}
+
+    log.Printf("Showing rows")
+	for _, row := range rows {
+		log.Printf("Row: %v", row)
+	}
+
 }

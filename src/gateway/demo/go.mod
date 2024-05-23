@@ -1,6 +1,6 @@
 module substrait.io/spark-subatrait-gateway/demo
 
-go 1.21.0
+go 1.17.0
 
 require github.com/apache/spark-connect-go/v34 v34.0.0-20240411000536-f7ad5188552c
 
