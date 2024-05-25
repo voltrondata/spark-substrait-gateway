@@ -236,27 +236,48 @@ def make_watches_database():
         # The file already exists.
         return
     schema = get_mystream_schema('watches')
-    with pq.ParquetWriter('watches.parquet', schema) as writer:
-        streams_file = pq.ParquetFile('streams.parquet')
-        for batch in streams_file.iter_batches():
-            for stream_id in batch[0]:
+    # First create an intermediate file with the channels and intended users to join against.
+    temp_schema = pa.schema([
+        pa.field('user_number', pa.int64(), False),
+        pa.field('channel_id', pa.string(), False),
+    ])
+    with pq.ParquetWriter('temporary_watches.parquet', temp_schema) as writer:
+        channels_file = pq.ParquetFile('streams.parquet')
+        for batch in channels_file.iter_batches():
+            for stream_id in batch.column(0):
                 num_watches = fake.random_int(min=0, max=10)
                 for _ in range(num_watches):
-                    start_time = fake.date_time_between(start_date=datetime.datetime(2024, 5, 5),
-                                                        end_date=datetime.datetime(2024, 5, 6))
-                    duration = fake.pyint(min_value=0, max_value=14400000)
-                    end_time = start_time + datetime.timedelta(milliseconds=duration)
-                    if end_time > datetime.datetime(2024, 5, 6):
-                        end_time = None
                     data = [
-                        pa.array([f'watch{fake.unique.pyint(max_value=999999999):>09}']),
-                        pa.array([f'user{fake.unique.pyint(max_value=999999999):>09}']),
+                        pa.array([fake.random_int(min=0, max=NUMBER_OF_USERS - 1)]),
                         pa.array([stream_id]),
-                        pa.array([start_time]),
-                        pa.array([end_time]),
                     ]
-                    out_batch = pa.record_batch(data, schema=schema)
+                    out_batch = pa.record_batch(data, schema=temp_schema)
                     writer.write_batch(out_batch)
+    # Sort the temporary file by user number.
+    sort_parquet_file('temporary_watches.parquet')
+    # Now find the user id for each user number and finish writing the watches table.
+    users_iterator = enumerate(rows_from_parquet_file('users.parquet'))
+    last_user_number, last_user_row = next(users_iterator)
+    with pq.ParquetWriter('watches.parquet', schema) as writer:
+        for user_number, stream_id in rows_from_parquet_file('temporary_watches.parquet'):
+            while user_number > last_user_number:
+                last_user_number, last_user_row = next(users_iterator)
+            start_time = fake.date_time_between(start_date=datetime.datetime(2024, 5, 5),
+                                                end_date=datetime.datetime(2024, 5, 6))
+            duration = fake.pyint(min_value=0, max_value=14400000)
+            end_time = start_time + datetime.timedelta(milliseconds=duration)
+            if end_time > datetime.datetime(2024, 5, 6):
+                end_time = None
+            data = [
+                pa.array([f'watch{fake.unique.pyint(max_value=999999999):>09}']),
+                pa.array([next(iter(last_user_row))]),
+                pa.array([stream_id]),
+                pa.array([start_time]),
+                pa.array([end_time]),
+            ]
+            out_batch = pa.record_batch(data, schema=schema)
+            writer.write_batch(out_batch)
+    unlink('temporary_watches.parquet')
 
 
 def create_mystream_database() -> None:
