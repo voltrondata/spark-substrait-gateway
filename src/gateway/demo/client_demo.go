@@ -2,8 +2,8 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -53,7 +53,7 @@ func main() {
 		log.Fatalf("Failed: %s", err.Error())
 	}
 
-    log.Printf("Executing SQL query")
+	log.Printf("Executing SQL query")
 	df, err = spark.Sql("select name, paid_for_service from users order by user_id")
 	if err != nil {
 		log.Fatalf("Failed: %s", err.Error())
@@ -62,13 +62,13 @@ func main() {
 	log.Printf("DataFrame from sql: elect name, paid_for_service from users order by user_id")
 	df.Show(100, false)
 
-    log.Printf("Collecting results")
+	log.Printf("Collecting results")
 	rows, err := df.Collect()
 	if err != nil {
 		log.Fatalf("Failed: %s", err.Error())
 	}
 
-    log.Printf("Showing rows")
+	log.Printf("Showing rows")
 	for _, row := range rows {
 		log.Printf("Row: %v", row)
 	}
