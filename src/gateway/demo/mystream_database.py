@@ -1,12 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 """Routines to create a fake mystream database for testing."""
 import contextlib
+import datetime
 import os.path
 from pathlib import Path
 
 import pyarrow as pa
 import pyarrow.parquet as pq
 from faker import Faker
+
+NUMBER_OF_USERS: int = 100
+NUMBER_OF_CATEGORIES: int = 100
 
 TABLE_SCHEMAS = {
     'users': pa.schema([
@@ -39,10 +43,9 @@ TABLE_SCHEMAS = {
     'watches': pa.schema([
         pa.field('watch_id', pa.string(), False),
         pa.field('user_id', pa.string(), False),
-        pa.field('channel_id', pa.string(), False),
         pa.field('stream_id', pa.string(), False),
-        pa.field('start_time', pa.string(), False),
-        pa.field('end_time', pa.string(), True),
+        pa.field('start_time', pa.timestamp('us'), False),
+        pa.field('end_time', pa.timestamp('us'), True),
     ]),
 }
 
@@ -63,7 +66,7 @@ def make_users_database():
         return
     schema = get_mystream_schema('users')
     with pq.ParquetWriter('users.parquet', schema) as writer:
-        for _ in range(100):
+        for _ in range(NUMBER_OF_USERS):
             user_name = fake.name()
             user_id = f'user{fake.unique.pyint(max_value=999999999):>09}'
             user_paid = fake.pybool(truth_probability=21)
@@ -76,6 +79,13 @@ def make_users_database():
             writer.write_batch(batch)
 
 
+def category_id(category_number: int) -> str | None:
+    """Return the category id for the given category number."""
+    if category_number is None:
+        return None
+    return f'category{category_number + 1:>04}'
+
+
 def make_categories_database():
     fake = Faker(['en_US'])
     if os.path.isfile('categories.parquet'):
@@ -83,12 +93,11 @@ def make_categories_database():
         return
     schema = get_mystream_schema('categories')
     with (pq.ParquetWriter('categories.parquet', schema) as writer):
-        for _ in range(100):
-            category_id = f'category{fake.unique.pyint(max_value=9999):>04}'
+        for category_number in range(NUMBER_OF_CATEGORIES):
             category_name = ' '.join(fake.words(nb=2, unique=True)).title()
             category_language = fake.word()
             data = [
-                pa.array([category_id]),
+                pa.array([category_id(category_number)]),
                 pa.array([category_name]),
                 pa.array([category_language]),
             ]
@@ -105,8 +114,8 @@ def make_channels_database():
         return
     schema = get_mystream_schema('channels')
     with pq.ParquetWriter('channels.parquet', schema) as writer:
-        file = pq.ParquetFile('users.parquet')
-        for batch in file.iter_batches():
+        users_file = pq.ParquetFile('users.parquet')
+        for batch in users_file.iter_batches():
             for user_id in batch[0]:
                 is_creator = fake.pybool(truth_probability=10)
                 if not is_creator:
@@ -114,11 +123,93 @@ def make_channels_database():
 
                 num_channels = fake.random_int(min=1, max=5)
                 for _ in range(num_channels):
+                    if fake.pybool(truth_probability=90):
+                        category_number = fake.pyint(min_value=1, max_value=100)
+                    else:
+                        # Ten percent of channels have no category.
+                        category_number = None
                     data = [
                         pa.array([user_id]),
                         pa.array([f'channel{fake.unique.pyint(max_value=999999999):>09}']),
                         pa.array([' '.join(fake.words(nb=3))]),
-                        pa.array([None]),  # TODO -- Generate categories.
+                        pa.array([category_id(category_number)]),
+                    ]
+                    batch = pa.record_batch(data, schema=schema)
+                    writer.write_batch(batch)
+
+
+# pylint: disable=fixme
+def make_subscriptions_database():
+    """Construct the subscriptions table."""
+    fake = Faker(['en_US'])
+    if os.path.isfile('subscriptions.parquet'):
+        # The file already exists.
+        return
+    schema = get_mystream_schema('subscriptions')
+    # TODO -- Make this generator able to scale to arbitrary sizes.
+    with pq.ParquetWriter('subscriptions.parquet', schema) as writer:
+        channels_file = pq.ParquetFile('channels.parquet')
+        for batch in channels_file.iter_batches():
+            for channel_id in batch[0]:
+                num_subscriptions = fake.random_int(min=0, max=3)
+                for _ in range(num_subscriptions):
+                    # TODO -- Make the user id point to a real channel.
+                    data = [
+                        pa.array([f'subscription{fake.unique.pyint(max_value=999999999):>09}']),
+                        pa.array(['USERID']),
+                        pa.array([channel_id]),
+                    ]
+                    batch = pa.record_batch(data, schema=schema)
+                    writer.write_batch(batch)
+
+
+def make_streams_database():
+    """Construct the streams table."""
+    fake = Faker(['en_US'])
+    if os.path.isfile('streams.parquet'):
+        # The file already exists.
+        return
+    schema = get_mystream_schema('streams')
+    with pq.ParquetWriter('streams.parquet', schema) as writer:
+        channels_file = pq.ParquetFile('channels.parquet')
+        for batch in channels_file.iter_batches():
+            for channel_id in batch[1]:
+                num_streams = fake.random_int(min=1, max=5)
+                for _ in range(num_streams):
+                    data = [
+                        pa.array([f'stream{fake.unique.pyint(max_value=999999999):>09}']),
+                        pa.array([channel_id]),
+                        pa.array([' '.join(fake.words(nb=3))]),
+                    ]
+                    batch = pa.record_batch(data, schema=schema)
+                    writer.write_batch(batch)
+
+
+def make_watches_database():
+    """Construct the watches table."""
+    fake = Faker(['en_US'])
+    if os.path.isfile('watches.parquet'):
+        # The file already exists.
+        return
+    schema = get_mystream_schema('watches')
+    with pq.ParquetWriter('watches.parquet', schema) as writer:
+        streams_file = pq.ParquetFile('streams.parquet')
+        for batch in streams_file.iter_batches():
+            for stream_id in batch[0]:
+                num_watches = fake.random_int(min=0, max=10)
+                for _ in range(num_watches):
+                    start_time = fake.date_time_between(start_date=datetime.datetime(2024, 5, 5),
+                                                        end_date=datetime.datetime(2024, 5, 6))
+                    duration = fake.pyint(min_value=0, max_value=14400000)
+                    end_time = start_time + datetime.timedelta(milliseconds=duration)
+                    if end_time > datetime.datetime(2024, 5, 6):
+                        end_time = None
+                    data = [
+                        pa.array([f'watch{fake.unique.pyint(max_value=999999999):>09}']),
+                        pa.array([f'user{fake.unique.pyint(max_value=999999999):>09}']),
+                        pa.array([stream_id]),
+                        pa.array([start_time]),
+                        pa.array([end_time]),
                     ]
                     batch = pa.record_batch(data, schema=schema)
                     writer.write_batch(batch)
@@ -127,10 +218,13 @@ def make_channels_database():
 def create_mystream_database() -> None:
     """Create all the tables that make up the mystream database."""
     Faker.seed(9999)
-    # Build all the tables in sorted order.
+
     make_users_database()
     make_categories_database()
     make_channels_database()
+    make_subscriptions_database()
+    make_streams_database()
+    make_watches_database()
 
 
 def delete_mystream_database() -> None:
