@@ -3,6 +3,7 @@
 import contextlib
 import datetime
 import os.path
+from os import unlink
 from pathlib import Path
 
 import pyarrow as pa
@@ -138,6 +139,30 @@ def make_channels_database():
                     writer.write_batch(batch)
 
 
+def rows_from_parquet_file(filename: str):
+    """Return the rows from a parquet file."""
+    file = pq.ParquetFile(filename)
+    for batch in file.iter_batches():
+        for row in batch.to_pylist():
+            yield row.values()
+
+
+def sort_parquet_file(filename: str, index: int = 0):
+    """Sort a parquet file by the specified column."""
+    # TODO -- Make this scale to larger files.
+    schema = pq.ParquetFile(filename).schema.to_arrow_schema()
+    with pq.ParquetWriter('sorted_' + filename, schema,
+                          sorting_columns=[pq.SortingColumn(0)]) as writer:
+        for row in sorted(rows_from_parquet_file(filename), key=lambda x: list(x)[index]):
+            data = []
+            for value in row:
+                data.append(pa.array([value]))
+            batch = pa.record_batch(data, schema=schema)
+            writer.write_batch(batch)
+    unlink(filename)
+    os.rename('sorted_' + filename, filename)
+
+
 # pylint: disable=fixme
 def make_subscriptions_database():
     """Construct the subscriptions table."""
@@ -146,21 +171,40 @@ def make_subscriptions_database():
         # The file already exists.
         return
     schema = get_mystream_schema('subscriptions')
-    # TODO -- Make this generator able to scale to arbitrary sizes.
-    with pq.ParquetWriter('subscriptions.parquet', schema) as writer:
+    # First create an intermediate file with the channels and intended users to join against.
+    temp_schema = pa.schema([
+        pa.field('user_number', pa.int64(), False),
+        pa.field('channel_id', pa.string(), False),
+    ])
+    with pq.ParquetWriter('temporary_subscriptions.parquet', temp_schema) as writer:
         channels_file = pq.ParquetFile('channels.parquet')
         for batch in channels_file.iter_batches():
-            for channel_id in batch[0]:
+            for channel_id in batch.column(1):
                 num_subscriptions = fake.random_int(min=0, max=3)
                 for _ in range(num_subscriptions):
-                    # TODO -- Make the user id point to a real channel.
                     data = [
-                        pa.array([f'subscription{fake.unique.pyint(max_value=999999999):>09}']),
-                        pa.array(['USERID']),
+                        pa.array([fake.random_int(min=0, max=NUMBER_OF_USERS - 1)]),
                         pa.array([channel_id]),
                     ]
-                    batch = pa.record_batch(data, schema=schema)
+                    batch = pa.record_batch(data, schema=temp_schema)
                     writer.write_batch(batch)
+    # Sort the temporary file by user number.
+    sort_parquet_file('temporary_subscriptions.parquet')
+    # Now find the user id for each user number and finish writing the subscriptions table.
+    users_iterator = enumerate(rows_from_parquet_file('users.parquet'))
+    last_user_number, last_user_row = next(users_iterator)
+    with pq.ParquetWriter('subscriptions.parquet', schema) as writer:
+        for user_number, channel_id in rows_from_parquet_file('temporary_subscriptions.parquet'):
+            while user_number > last_user_number:
+                last_user_number, last_user_row = next(users_iterator)
+            data = [
+                pa.array([f'subscription{fake.unique.pyint(max_value=999999999):>09}']),
+                pa.array([list(last_user_row)[0]]),
+                pa.array([channel_id]),
+            ]
+            batch = pa.record_batch(data, schema=schema)
+            writer.write_batch(batch)
+    unlink('temporary_subscriptions.parquet')
 
 
 def make_streams_database():
