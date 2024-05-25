@@ -88,6 +88,7 @@ def category_id(category_number: int) -> str | None:
 
 
 def make_categories_database():
+    """Construct the categories table."""
     fake = Faker(['en_US'])
     if os.path.isfile('categories.parquet'):
         # The file already exists.
@@ -135,8 +136,8 @@ def make_channels_database():
                         pa.array([' '.join(fake.words(nb=3))]),
                         pa.array([category_id(category_number)]),
                     ]
-                    batch = pa.record_batch(data, schema=schema)
-                    writer.write_batch(batch)
+                    out_batch = pa.record_batch(data, schema=schema)
+                    writer.write_batch(out_batch)
 
 
 def rows_from_parquet_file(filename: str):
@@ -163,7 +164,6 @@ def sort_parquet_file(filename: str, index: int = 0):
     os.rename('sorted_' + filename, filename)
 
 
-# pylint: disable=fixme
 def make_subscriptions_database():
     """Construct the subscriptions table."""
     fake = Faker(['en_US'])
@@ -186,8 +186,8 @@ def make_subscriptions_database():
                         pa.array([fake.random_int(min=0, max=NUMBER_OF_USERS - 1)]),
                         pa.array([channel_id]),
                     ]
-                    batch = pa.record_batch(data, schema=temp_schema)
-                    writer.write_batch(batch)
+                    out_batch = pa.record_batch(data, schema=temp_schema)
+                    writer.write_batch(out_batch)
     # Sort the temporary file by user number.
     sort_parquet_file('temporary_subscriptions.parquet')
     # Now find the user id for each user number and finish writing the subscriptions table.
@@ -199,7 +199,7 @@ def make_subscriptions_database():
                 last_user_number, last_user_row = next(users_iterator)
             data = [
                 pa.array([f'subscription{fake.unique.pyint(max_value=999999999):>09}']),
-                pa.array([list(last_user_row)[0]]),
+                pa.array([next(iter(last_user_row))]),
                 pa.array([channel_id]),
             ]
             batch = pa.record_batch(data, schema=schema)
@@ -225,8 +225,8 @@ def make_streams_database():
                         pa.array([channel_id]),
                         pa.array([' '.join(fake.words(nb=3))]),
                     ]
-                    batch = pa.record_batch(data, schema=schema)
-                    writer.write_batch(batch)
+                    out_batch = pa.record_batch(data, schema=schema)
+                    writer.write_batch(out_batch)
 
 
 def make_watches_database():
@@ -255,8 +255,8 @@ def make_watches_database():
                         pa.array([start_time]),
                         pa.array([end_time]),
                     ]
-                    batch = pa.record_batch(data, schema=schema)
-                    writer.write_batch(batch)
+                    out_batch = pa.record_batch(data, schema=schema)
+                    writer.write_batch(out_batch)
 
 
 def create_mystream_database() -> None:
