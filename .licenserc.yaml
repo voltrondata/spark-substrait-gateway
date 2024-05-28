@@ -21,7 +21,7 @@ header:
     - '**/*.splan'
     - '**/*.sql'
     - '**/*.sql-splan'
-    - '**/*.go.mod'
-    - '**/*.go.sum'
+    - '**/go.mod'
+    - '**/go.sum'
 
   comment: never
