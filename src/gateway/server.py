@@ -276,7 +276,10 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
                         index = int(key[len('spark-substrait-gateway.plan.'):])
                         if 0 <= index - 1 < len(self._statistics.plans):
                             response.pairs.add(key=key, value=self._statistics.plans[index - 1])
+                    elif key == 'spark.sql.session.timeZone':
+                        response.pairs.add(key=key, value='UTC')
                     else:
+                        _LOGGER.info(f'Unknown config item: {key}')
                         raise NotImplementedError(f'Unknown config item: {key}')
             case 'get_with_default':
                 for pair in request.operation.get_with_default.pairs:
@@ -284,6 +287,15 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
                         response.pairs.add(key=pair.key, value=str(self._options.backend.backend))
                     else:
                         response.pairs.append(pair)
+            case 'get_option':
+                for key in request.operation.get_option.keys:
+                    if key == 'spark.sql.session.timeZone':
+                        response.pairs.add(key=key, value='UTC')
+                    else:
+                        _LOGGER.info(f'Unknown config item: {key}')
+                        raise NotImplementedError(f'Unknown config item: {key}')
+            case _:
+                raise NotImplementedError(f'Unknown config operation: {op_type}')
         return response
 
     def AddArtifacts(self, request_iterator, context):
