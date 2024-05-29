@@ -27,7 +27,7 @@ SPARK_REMOTE=sc://localhost:50051 spark-connect-repl
 ```commandline
 var lineitem = spark.read.parquet("/Users/davids/projects/voltrondata-spark-substrait-gateway/third_party/tpch/parquet/lineitem")
 
-var result = lineitem.filter($"l_shipdate" <= "1998-09-02").groupBy($"l_returnflag", $"l_linestatus").agg(sum($"l_quantity"), sum($"l_extendedprice"),        sum($"l_extendedprice" * ($"l_discount" + -1) * -1), sum($"l_extendedprice" * ($"l_discount" + -1) * ($"l_tax" + 1) * -1), avg($"l_quantity"), avg($"l_extendedprice"), avg($"l_discount"), count($"l_quantity"))      sort($"l_returnflag", $"l_linestatus") 
+var result = lineitem.filter($"l_shipdate" <= "1998-09-02").groupBy($"l_returnflag", $"l_linestatus").agg(sum($"l_quantity"), sum($"l_extendedprice"), sum($"l_extendedprice" * ($"l_discount" + -1) * -1), sum($"l_extendedprice" * ($"l_discount" + -1) * ($"l_tax" + 1) * -1), avg($"l_quantity"), avg($"l_extendedprice"), avg($"l_discount"), count($"l_quantity")).sort($"l_returnflag", $"l_linestatus") 
 
 result.show()
 ```
