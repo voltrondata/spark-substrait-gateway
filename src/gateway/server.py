@@ -295,7 +295,8 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
                         _LOGGER.info(f'Unknown config item: {key}')
                         raise NotImplementedError(f'Unknown config item: {key}')
             case _:
-                raise NotImplementedError(f'Unknown config operation: {op_type}')
+                raise NotImplementedError(
+                    f'Unknown config operation: {request.operation.WhichOneof("op_type")}')
         return response
 
     def AddArtifacts(self, request_iterator, context):
