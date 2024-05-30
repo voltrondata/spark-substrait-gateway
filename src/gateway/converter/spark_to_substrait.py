@@ -334,6 +334,8 @@ class SparkSubstraitConverter:
             if unresolved_function.function_name == 'count' and arg.WhichOneof(
                     'expr_type') == 'unresolved_star':
                 # Ignore all the rest of the arguments.
+                func.arguments.append(
+                    algebra_pb2.FunctionArgument(value=bigint_literal(1)))
                 break
             func.arguments.append(
                 algebra_pb2.FunctionArgument(value=self.convert_expression(arg)))
