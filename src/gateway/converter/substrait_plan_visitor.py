@@ -175,12 +175,12 @@ class SubstraitPlanVisitor:
         for field in record.fields:
             self.visit_expression(field)
 
-    def visit_if_value(self, if_clause: algebra_pb2.Expression.SwitchExpression.IfValue) -> Any:
+    def visit_if_value(self, if_value: algebra_pb2.Expression.SwitchExpression.IfValue) -> Any:
         """Visits an if value."""
-        if if_clause.HasField('if'):
-            self.visit_expression(getattr(if_clause, 'if'))
-        if if_clause.HasField('then'):
-            self.visit_expression(if_clause.then)
+        if if_value.HasField('if'):
+            self.visit_literal(getattr(if_value, 'if'))
+        if if_value.HasField('then'):
+            self.visit_expression(if_value.then)
 
     def visit_struct(self, structure: type_pb2.Type.Struct) -> Any:
         """Visits a struct."""
@@ -239,10 +239,17 @@ class SubstraitPlanVisitor:
         if function.HasField('output_type'):
             self.visit_type(function.output_type)
 
+    def visit_if_clause(self, if_clause: algebra_pb2.Expression.IfThen.IfClause) -> Any:
+        """Visits an if value."""
+        if if_clause.HasField('if'):
+            self.visit_expression(getattr(if_clause, 'if'))
+        if if_clause.HasField('then'):
+            self.visit_expression(if_clause.then)
+
     def visit_if_then(self, if_then: algebra_pb2.Expression.IfThen) -> Any:
         """Visits an if then."""
         for if_then_if in if_then.ifs:
-            self.visit_if_value(if_then_if)
+            self.visit_if_clause(if_then_if)
         if if_then.HasField('else'):
             self.visit_expression(getattr(if_then, 'else'))
 

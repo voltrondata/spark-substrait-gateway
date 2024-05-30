@@ -39,7 +39,9 @@ def arrow():
 
 def datafusion():
     """Return standard options to connect to a Datafusion backend."""
-    return ConversionOptions(backend=BackendOptions(BackendEngine.DATAFUSION))
+    options = ConversionOptions(backend=BackendOptions(BackendEngine.DATAFUSION))
+    options.use_switch_expressions_where_possible = False
+    return options
 
 
 def duck_db():
