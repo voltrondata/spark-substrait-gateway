@@ -22,8 +22,7 @@ def execute_query(spark_session: SparkSession) -> None:
     """Run a single sample query against the gateway."""
     df_customer = get_customer_database(spark_session)
 
-    # TODO -- Enable after named table registration is implemented.
-    # df_customer.createOrReplaceTempView('customer')
+    df_customer.createOrReplaceTempView('customer')
 
     # pylint: disable=singleton-comparison
     df_result = df_customer \
