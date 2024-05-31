@@ -164,10 +164,6 @@ SPARK_SUBSTRAIT_MAPPING = {
         '/functions_string.yaml', 'regexp_strpos:str_str_i64_i64', type_pb2.Type(
             i64=type_pb2.Type.I64(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
-    'like': ExtensionFunction(
-        '/functions_string.yaml', 'like:str_str', type_pb2.Type(
-            bool=type_pb2.Type.Boolean(
-                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'regexp_like': ExtensionFunction(
         '/functions_string.yaml', 'regexp_like:str_str', type_pb2.Type(
             bool=type_pb2.Type.Boolean(

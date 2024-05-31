@@ -35,8 +35,6 @@ class RenameFunctionsForDatafusion(SubstraitPlanVisitor):
                 extension.extension_function.name = 'instr'
             elif extension.extension_function.name == 'extract':
                 extension.extension_function.name = 'date_part'
-            elif extension.extension_function.name == 'like':
-                extension.extension_function.name = 'regexp_like'
 
 
 # pylint: disable=no-member,fixme
