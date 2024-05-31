@@ -17,6 +17,7 @@ class ConversionOptions:
         self.use_emits_instead_of_direct = False
         self.use_switch_expressions_where_possible = True
         self.use_duckdb_regexp_matches_function = False
+        self.use_first_value_function = False
         self.use_regexp_like_function = False
         self.duckdb_project_emit_workaround = False
         self.safety_project_read_relations = False
@@ -43,6 +44,7 @@ def datafusion():
     options = ConversionOptions(backend=BackendOptions(BackendEngine.DATAFUSION))
     options.use_switch_expressions_where_possible = False
     options.use_regexp_like_function = True
+    options.use_first_value_function = True
     return options
 
 
