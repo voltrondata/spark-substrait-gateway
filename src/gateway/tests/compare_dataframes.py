@@ -24,7 +24,10 @@ def align_schema(source_df: list[Row], schema_df: list[Row]):
         for field_name, field_value in schema.asDict().items():
             if (type(row[field_name] is not type(field_value)) and
                     isinstance(field_value, datetime.date)):
-                new_row[field_name] = row[field_name].date()
+                if row[field_name] is None:
+                    new_row[field_name] = row[field_name]
+                else:
+                    new_row[field_name] = row[field_name].date()
             else:
                 new_row[field_name] = row[field_name]
 

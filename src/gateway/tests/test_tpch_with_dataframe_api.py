@@ -22,7 +22,7 @@ def mark_tests_as_xfail(request):
             request.node.add_marker(pytest.mark.xfail(reason='distinct not supported'))
     elif source == 'gateway-over-datafusion':
         pytest.importorskip("datafusion.substrait")
-        if originalname in ['test_query_01']:
+        if originalname in ['test_query_01', 'test_query_16', 'test_query_18']:
             request.node.add_marker(pytest.mark.xfail(reason='Results mismatch'))
         elif originalname in ['test_query_03', 'test_query_10', 'test_query_20']:
             request.node.add_marker(pytest.mark.xfail(reason='Schema mismatch'))
@@ -36,15 +36,10 @@ def mark_tests_as_xfail(request):
                 reason='Cannot create filter with non-boolean predicate - substr function'))
         elif originalname in ['test_query_11']:
             request.node.add_marker(pytest.mark.xfail(reason='Duplicate field in schema'))
-        elif originalname in ['test_query_14']:
+        elif originalname in ['test_query_08', 'test_query_14']:
             request.node.add_marker(pytest.mark.xfail(reason='Sum not implemented'))
-        elif originalname in ['test_query_15', 'test_query_19', 'test_query_22']:
-            request.node.add_marker(pytest.mark.xfail(reason='no oneof "rex_type" field'))
-        elif originalname in ['test_query_18']:
-            request.node.add_marker(pytest.mark.xfail(
-                reason='Error with assigning date attribute during schema alignment'))
-        else:
-            request.node.add_marker(pytest.mark.xfail(reason='gateway internal error'))
+        elif originalname in ['test_query_17']:
+            request.node.add_marker(pytest.mark.xfail(reason='Avg not implemented'))
 
 
 class TestTpchWithDataFrameAPI:
