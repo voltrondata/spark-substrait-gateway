@@ -32,6 +32,7 @@ from gateway.converter.substrait_builder import (
     max_agg_function,
     minus_function,
     project_relation,
+    regexp_like_function,
     regexp_strpos_function,
     repeat_function,
     string_concat_agg_function,
@@ -304,6 +305,12 @@ class SparkSubstraitConverter:
                             value=self.convert_expression(in_.arguments[1]))
                     ],
                     output_type=regexp_matches_func.output_type))
+
+        if self._conversion_options.use_regexp_like_function:
+            regexp_like_func = self.lookup_function_by_name('regexp_like')
+            return regexp_like_function(regexp_like_func,
+                                        self.convert_expression(in_.arguments[0]),
+                                        self.convert_expression(in_.arguments[1]))
 
         regexp_strpos_func = self.lookup_function_by_name('regexp_strpos')
         greater_func = self.lookup_function_by_name('>')

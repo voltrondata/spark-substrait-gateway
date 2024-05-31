@@ -254,6 +254,23 @@ def regexp_strpos_function(function_info: ExtensionFunction,
             algebra_pb2.FunctionArgument(value=position)]))
 
 
+def regexp_like_function(function_info: ExtensionFunction,
+                  input: algebra_pb2.Expression,
+                  pattern: algebra_pb2.Expression,
+                  flags: str | None = None) -> algebra_pb2.Expression:
+    """Construct a Substrait regex like expression."""
+    result = algebra_pb2.Expression(scalar_function=algebra_pb2.Expression.ScalarFunction(
+        function_reference=function_info.anchor,
+        output_type=function_info.output_type,
+        arguments=[
+            algebra_pb2.FunctionArgument(value=input),
+            algebra_pb2.FunctionArgument(value=pattern)]))
+    if flags is not None:
+        result.scalar_function.arguments.append(
+            algebra_pb2.FunctionArgument(value=string_literal(flags)))
+    return result
+
+
 def bool_literal(val: bool) -> algebra_pb2.Expression:
     """Construct a Substrait boolean literal expression."""
     return algebra_pb2.Expression(literal=algebra_pb2.Expression.Literal(boolean=val))

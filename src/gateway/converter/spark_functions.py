@@ -160,6 +160,14 @@ SPARK_SUBSTRAIT_MAPPING = {
         '/functions_string.yaml', 'rpad:str_i64_str', type_pb2.Type(
             string=type_pb2.Type.String(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'regexp_strpos': ExtensionFunction(
+        '/functions_string.yaml', 'regexp_strpos:str_str_i64_i64', type_pb2.Type(
+            i64=type_pb2.Type.I64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'regexp_like': ExtensionFunction(
+        '/functions_string.yaml', 'regexp_like:str_str', type_pb2.Type(
+            bool=type_pb2.Type.Boolean(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'count': ExtensionFunction(
         '/functions_aggregate_generic.yaml', 'count:any', type_pb2.Type(
             i64=type_pb2.Type.I64(
@@ -190,6 +198,8 @@ SPARK_SUBSTRAIT_MAPPING = {
 def lookup_spark_function(name: str, options: ConversionOptions) -> ExtensionFunction:
     """Return a Substrait function given a spark function name."""
     definition = SPARK_SUBSTRAIT_MAPPING.get(name)
+    if definition is None:
+        raise ValueError(f'Function {name} not found in the Spark to Substrait mapping table.')
     if not options.return_names_with_types:
         definition.name = definition.name.split(':', 1)[0]
     return definition
