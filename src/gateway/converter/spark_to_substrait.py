@@ -1127,7 +1127,10 @@ class SparkSubstraitConverter:
 
     def convert_deduplicate_relation(self, rel: spark_relations_pb2.Deduplicate) -> algebra_pb2.Rel:
         """Convert a Spark deduplicate relation into a Substrait aggregation."""
-        any_value_func = self.lookup_function_by_name('any_value')
+        if self._conversion_options.use_first_value_as_any_value:
+            any_value_func = self.lookup_function_by_name('first_value')
+        else:
+            any_value_func = self.lookup_function_by_name('any_value')
 
         aggregate = algebra_pb2.AggregateRel(input=self.convert_relation(rel.input))
         self.update_field_references(rel.input.common.plan_id)

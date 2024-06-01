@@ -26,9 +26,6 @@ def mark_tests_as_xfail(request):
             request.node.add_marker(pytest.mark.xfail(reason='Results mismatch'))
         elif originalname in ['test_query_03', 'test_query_10', 'test_query_20']:
             request.node.add_marker(pytest.mark.xfail(reason='Schema mismatch'))
-        elif originalname in ['test_query_04']:
-            request.node.add_marker(pytest.mark.xfail(
-                reason='Aggregated function any_value is not supported'))
         elif originalname in ['test_query_07']:
             request.node.add_marker(pytest.mark.xfail(reason='Duplicate Expression names'))
         elif originalname in ['test_query_09']:
