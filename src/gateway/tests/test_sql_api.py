@@ -23,13 +23,15 @@ def mark_tests_as_xfail(request):
     if source == 'gateway-over-duckdb':
         if originalname == 'test_tpch':
             path = request.getfixturevalue('path')
-            if path.stem in ['02', '04', '16', '17', '18', '20', '21', '22']:
+            if path.stem in ['02', '04', '16', '17', '20', '21', '22']:
                 request.node.add_marker(pytest.mark.xfail(reason='DuckDB needs Delim join'))
-            if path.stem in ['15']:
+            elif path.stem in ['15']:
                 request.node.add_marker(pytest.mark.xfail(reason='Rounding inconsistency'))
-            else:
+            elif path.stem in ['01', '06', '13', '14']:
                 request.node.add_marker(pytest.mark.xfail(reason='Too few names returned'))
-        else:
+            elif path.stem in ['19']:
+                request.node.add_marker(pytest.mark.xfail(reason='nullability mismatch'))
+        elif originalname in ['test_count', 'test_limit']:
             request.node.add_marker(pytest.mark.xfail(reason='Too few names returned'))
     if source == 'gateway-over-datafusion':
         pytest.importorskip("datafusion.substrait")
