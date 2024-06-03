@@ -100,6 +100,6 @@ relations {
   }
 }
 version {
-  minor_number: 39
+  minor_number: 48
   producer: "DuckDB"
 }
