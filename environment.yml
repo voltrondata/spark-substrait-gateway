@@ -19,7 +19,7 @@ dependencies:
     - adbc_driver_manager
     - cargo
     - pyarrow >= 16.0.0
-    - duckdb == 0.10.1
+    - duckdb >= 1.0.0
     - datafusion >= 36.0.0
     - pyspark
     - pandas >= 1.0.5
