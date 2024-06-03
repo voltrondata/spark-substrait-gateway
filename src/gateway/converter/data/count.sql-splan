@@ -1,5 +1,10 @@
+extension_uris {
+  extension_uri_anchor: 1
+  uri: "https://github.com/substrait-io/substrait/blob/main/extensions/functions_aggregate_generic.yaml"
+}
 extensions {
   extension_function {
+    extension_uri_reference: 1
     function_anchor: 1
     name: "count"
   }
