@@ -18,9 +18,9 @@ dependencies:
   - pip:
     - adbc_driver_manager
     - cargo
-    - pyarrow >= 16.0.0
-    - duckdb == 0.10.1
-    - datafusion >= 36.0.0
+    - pyarrow >= 16.1.0
+    - duckdb >= 1.0.0
+    - datafusion >= 38.0.1
     - pyspark
     - pandas >= 1.0.5
     - pyhamcrest
