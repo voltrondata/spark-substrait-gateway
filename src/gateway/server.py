@@ -174,6 +174,8 @@ class ExecutionDetails:
         self.converter: SparkSubstraitConverter | None = None
         self.statistics = Statistics()
 
+        self.failed = False
+
     def initialize(self, options: ConversionOptions):
         """Initialize the execution of the Plan by setting the backend."""
         if not self.backend:
@@ -182,8 +184,13 @@ class ExecutionDetails:
             self.converter = SparkSubstraitConverter(options)
             self.converter.set_backends(self.backend, self.sql_backend)
 
+    def mark_failed(self):
+        """Marks an execution as failed."""
+        self.failed = True
+
 
 class ExecutionFactory:
+    """Provides an ExecutionDetails per session id."""
 
     def __init__(self):
         self._session_info: dict[str, ExecutionDetails] = {}
@@ -191,7 +198,10 @@ class ExecutionFactory:
     def get(self, session_id: str) -> ExecutionDetails:
         if session_id not in self._session_info:
             self._session_info[session_id] = ExecutionDetails()
-        return self._session_info.get(session_id)
+        execution = self._session_info.get(session_id)
+        if execution.failed:
+            raise EnvironmentError("Current session had a previous failure.")
+        return execution
 
 
 # pylint: disable=E1101,fixme
@@ -260,6 +270,7 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
         try:
             results = execution.backend.execute(substrait)
         except Exception as err:
+            execution.mark_failed()
             self._ReinitializeExecution()
             raise err
         _LOGGER.debug('  results are: %s', results)
@@ -309,6 +320,7 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
             try:
                 results = execution.backend.execute(substrait)
             except Exception as err:
+                execution.mark_failed()
                 self._ReinitializeExecution()
                 raise err
             _LOGGER.debug('  results are: %s', results)
@@ -338,8 +350,6 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
                                 self._options = datafusion()
                             case _:
                                 raise ValueError(f'Unknown backend: {pair.value}')
-                    elif pair.key == 'spark-substrait-gateway.reset_statistics':
-                        execution.statistics.reset()
                 response.pairs.extend(request.operation.set.pairs)
             case 'get':
                 for key in request.operation.get.keys:

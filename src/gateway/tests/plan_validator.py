@@ -37,9 +37,7 @@ def utilizes_valid_plans(session, caplog=None):
     """Validates that the plans used by the gateway backend pass validation."""
     if hasattr(session, 'sparkSession'):
         session = session.sparkSession
-    # Reset the statistics, so we only see the plans that were created during our lifetime.
     if session.conf.get('spark-substrait-gateway.backend', 'spark') != 'spark':
-        session.conf.set('spark-substrait-gateway.reset_statistics', None)
         ignore_too_few_names = session.conf.get(
             'spark-substrait-gateway.use_duckdb_struct_name_behavior') == 'True'
     else:
