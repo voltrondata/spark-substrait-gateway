@@ -303,7 +303,14 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
         """Add the given artifacts to the server."""
         self._statistics.add_artifacts_requests += 1
         _LOGGER.info('AddArtifacts')
-        return pb2.AddArtifactsResponse()
+        response = pb2.AddArtifactsResponse()
+        for request in request_iterator:
+            _LOGGER.info('  batch: %s', request)
+            for artifact in request.batch.artifacts:
+                response.artifacts.append(pb2.AddArtifactsResponse.ArtifactSummary(
+                    name=artifact.name, is_crc_successful=True
+                ))
+        return response
 
     def ArtifactStatus(self, request, context):
         """Get the status of the given artifact."""
