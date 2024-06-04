@@ -399,11 +399,11 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
 
     def AddArtifacts(self, request_iterator, context):
         """Add the given artifacts to the server."""
-        execution = self._execution.get(request_iterator.session_id)
-        execution.statistics.add_artifacts_requests += 1
         _LOGGER.info('AddArtifacts')
         response = pb2.AddArtifactsResponse()
         for request in request_iterator:
+            execution = self._execution.get(request.session_id)
+            execution.statistics.add_artifacts_requests += 1
             _LOGGER.info('  batch: %s', request)
             for artifact in request.batch.artifacts:
                 response.artifacts.append(pb2.AddArtifactsResponse.ArtifactSummary(
