@@ -119,6 +119,57 @@ only showing top 1 row
 
         assertDataFrameEqual(outcome, expected)
 
+    def test_getattr(self, users_dataframe):
+        expected = [
+            Row(user_id='user669344115'),
+            Row(user_id='user849118289'),
+            Row(user_id='user954079192'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(users_dataframe.user_id).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_getitem(self, users_dataframe):
+        expected = [
+            Row(user_id='user669344115'),
+            Row(user_id='user849118289'),
+            Row(user_id='user954079192'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(users_dataframe['user_id']).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_column_getfield(self, spark_session):
+        expected = [
+            Row(answer='b'),
+        ]
+        expected2 = [
+            Row(answer=1),
+        ]
+
+        df = spark_session.createDataFrame([Row(r=Row(a=1, b="b"))])
+        with utilizes_valid_plans(df):
+            outcome = df.select(df.r.getField("b")).collect()
+            outcome2 = df.select(df.r.a).collect()
+
+        assertDataFrameEqual(outcome, expected)
+        assertDataFrameEqual(outcome2, expected2)
+
+    def test_column_getitem(self, spark_session):
+        expected = [
+            Row(answer=1, answer2='value'),
+        ]
+
+        df = spark_session.createDataFrame([([1, 2], {"key": "value"})], ["l", "d"])
+        with utilizes_valid_plans(df):
+            outcome = df.select(df.l.getItem(0), df.d.getItem("key")).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
     def test_join(self, spark_session_with_tpch_dataset):
         expected = [
             Row(n_nationkey=5, n_name='ETHIOPIA', n_regionkey=0,

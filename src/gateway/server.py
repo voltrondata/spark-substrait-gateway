@@ -278,6 +278,13 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
                             response.pairs.add(key=key, value=self._statistics.plans[index - 1])
                     elif key == 'spark.sql.session.timeZone':
                         response.pairs.add(key=key, value='UTC')
+                    elif key in ['spark.sql.pyspark.inferNestedDictAsStruct.enabled',
+                                 'spark.sql.pyspark.legacy.inferArrayTypeFromFirstElement.enabled']:
+                        response.pairs.add(key=key, value='false')
+                    elif key == 'spark.sql.timestampType':
+                        response.pairs.add(key=key, value='TIMESTAMP_NTZ')
+                    elif key == 'spark.sql.session.localRelationCacheThreshold':
+                        response.pairs.add(key=key, value='9999')
                     else:
                         _LOGGER.info(f'Unknown config item: {key}')
                         raise NotImplementedError(f'Unknown config item: {key}')

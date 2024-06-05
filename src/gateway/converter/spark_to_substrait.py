@@ -499,12 +499,8 @@ class SparkSubstraitConverter:
                 named_table=algebra_pb2.ReadRel.NamedTable(names=[table_name]),
                 common=self.create_common_relation()))
 
-    def convert_schema(self, schema_str: str) -> type_pb2.NamedStruct | None:
-        """Convert the Spark JSON schema string into a Substrait named type structure."""
-        if not schema_str:
-            return None
-        # TODO -- Deal with potential denial of service due to malformed JSON.
-        schema_data = json.loads(schema_str)
+    def convert_schema_dict(self, schema_data: dict) -> type_pb2.NamedStruct | None:
+        """Convert the Spark JSON schema dict into a Substrait named type structure."""
         schema = type_pb2.NamedStruct()
         schema.struct.nullability = type_pb2.Type.NULLABILITY_REQUIRED
         for field in schema_data.get('fields'):
@@ -536,11 +532,26 @@ class SparkSubstraitConverter:
                 case 'binary':
                     field_type = type_pb2.Type(binary=type_pb2.Type.Binary(nullability=nullability))
                 case _:
-                    raise NotImplementedError(
-                        f'Schema field type not yet implemented: {field.get("type")}')
+                    ft = field.get('type')
+                    if ft.get('type') != 'struct':
+                        raise NotImplementedError(
+                            f'Schema field type not yet implemented: {field.get("type")}')
+                    field_type = type_pb2.Type(struct=type_pb2.Type.Struct(nullability=nullability))
+                    sub_type = self.convert_schema_dict(ft)
+                    schema.names.extend(sub_type.names)
+                    field_type.struct.types.extend(sub_type.struct.types)
 
             schema.struct.types.append(field_type)
         return schema
+
+    def convert_schema(self, schema_str: str) -> type_pb2.NamedStruct | None:
+        """Convert the Spark JSON schema string into a Substrait named type structure."""
+        if not schema_str:
+            return None
+        # TODO -- Deal with potential denial of service due to malformed JSON.
+        schema_data = json.loads(schema_str)
+
+        return self.convert_schema_dict(schema_data)
 
     def convert_arrow_schema(self, arrow_schema: pa.Schema) -> type_pb2.NamedStruct:
         """Convert an Arrow schema into a Substrait named type structure."""
@@ -996,8 +1007,19 @@ class SparkSubstraitConverter:
         literal = algebra_pb2.Expression.Literal()
         if isinstance(val, pa.BooleanScalar):
             literal.boolean = val.as_py()
+        elif isinstance(val, pa.Int8Scalar):
+            literal.i8 = val.as_py()
+        elif isinstance(val, pa.Int16Scalar):
+            literal.i16 = val.as_py()
+        elif isinstance(val, pa.Int32Scalar):
+            literal.i32 = val.as_py()
+        elif isinstance(val, pa.Int64Scalar):
+            literal.i64 = val.as_py()
         elif isinstance(val, pa.StringScalar):
             literal.string = val.as_py()
+        elif isinstance(val, pa.StructScalar):
+            for key in val:
+                literal.struct.fields.append(self.convert_arrow_to_literal(val[key]))
         else:
             raise NotImplementedError(
                 f'Conversion from arrow type {val.type} not yet implemented.')
