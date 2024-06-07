@@ -1,6 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
 """Provides access to DuckDB."""
-import re
 from pathlib import Path
 
 import duckdb
@@ -8,37 +7,6 @@ import pyarrow as pa
 from substrait.gen.proto import plan_pb2
 
 from gateway.backends.backend import Backend
-
-_DUCKDB_TO_ARROW = {
-    'BOOLEAN': pa.bool_(),
-    'TINYINT': pa.int8(),
-    'SMALLINT': pa.int16(),
-    'INTEGER': pa.int32(),
-    'BIGINT': pa.int64(),
-    'FLOAT': pa.float32(),
-    'DOUBLE': pa.float64(),
-    'DATE': pa.date32(),
-    'TIMESTAMP': pa.timestamp('ns'),
-    'VARCHAR': pa.string(),
-}
-
-MATCH_STRUCT_TYPE = re.compile(r'STRUCT\(([^)]+)\)')
-
-
-def convert_to_arrow_data_type(name, duckdb_type: str) -> pa.Field:
-    """Convert a DuckDB type to an Arrow type."""
-    match = MATCH_STRUCT_TYPE.match(duckdb_type)
-    if match:
-        subtypes = match.group(1).split(',')
-        subtype_list = []
-        for subtype in subtypes:
-            subtype_name, type_str = subtype.strip().split(' ')
-            subtype_list.append(convert_to_arrow_data_type(subtype_name, type_str))
-        return pa.field(name, type=pa.struct(subtype_list))
-    arrow_type = _DUCKDB_TO_ARROW.get(str(duckdb_type), None)
-    if not arrow_type:
-        raise ValueError(f"Unknown DuckDB type: {duckdb_type}")
-    return pa.field(name, type=arrow_type)
 
 
 # pylint: disable=fixme
@@ -100,24 +68,20 @@ class DuckDBBackend(Backend):
         files = paths
         if len(paths) == 1:
             files = self.expand_location(paths[0])
+        # TODO -- Handle resolution of a combined schema.
         df = self._connection.read_parquet(files)
-
-        fields = []
-        for name, field_type in zip(df.columns, df.types, strict=False):
-            if name == 'aggr':
-                # This isn't a real column.
-                continue
-            fields.append(convert_to_arrow_data_type(name, field_type))
-        return pa.schema(fields)
+        schema = df.to_arrow_table().schema
+        if 'aggr' in schema.names:
+            raise ValueError("Aggr column found in schema")
+        return schema
 
     def describe_table(self, name: str):
         """Asks the backend to describe the given table."""
-        df = self._connection.execute(f'DESCRIBE {name}').fetchdf()
-
-        fields = []
-        for name, field_type in zip(df.column_name, df.column_type, strict=False):
-            fields.append(convert_to_arrow_data_type(name, field_type))
-        return pa.schema(fields)
+        table = self._connection.table(name)
+        schema = table.to_arrow_table().schema
+        if 'aggr' in schema.names:
+            raise ValueError("Aggr column found in schema")
+        return schema
 
     def convert_sql(self, sql: str) -> plan_pb2.Plan:
         """Convert SQL into a Substrait plan."""

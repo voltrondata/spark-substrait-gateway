@@ -81,6 +81,15 @@ def convert_pyarrow_datatype_to_spark(arrow_type: pa.DataType) -> types_pb2.Data
                 types_pb2.DataType.StructField(name=y.name, data_type=subfield,
                                                nullable=False))
         return field_type
+    elif str(arrow_type).startswith('list'):
+        subtype = convert_pyarrow_datatype_to_spark(arrow_type.value_type)
+        data_type = types_pb2.DataType(
+            array=types_pb2.DataType.Array(element_type=subtype))
+    elif str(arrow_type).startswith('map'):
+        key_type = convert_pyarrow_datatype_to_spark(arrow_type.key_type)
+        value_type = convert_pyarrow_datatype_to_spark(arrow_type.item_type)
+        data_type = types_pb2.DataType(
+            map=types_pb2.DataType.Map(key_type=key_type, value_type=value_type))
     else:
         raise NotImplementedError(f'Unexpected field type: {arrow_type}')
 

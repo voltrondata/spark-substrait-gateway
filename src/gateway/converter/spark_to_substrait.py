@@ -41,6 +41,7 @@ from gateway.converter.substrait_builder import (
     strlen,
 )
 from gateway.converter.symbol_table import SymbolTable
+from pyspark.sql.connect.proto import types_pb2
 from substrait.gen.proto import algebra_pb2, plan_pb2, type_pb2
 from substrait.gen.proto.extensions import extensions_pb2
 
@@ -401,6 +402,7 @@ class SparkSubstraitConverter:
             self,
             extract: spark_exprs_pb2.Expression.UnresolvedExtractValue) -> algebra_pb2.Expression:
         """Convert a Spark extract value expression into a Substrait extract value expression."""
+        # TODO -- Add support for list and map operations.
         func = algebra_pb2.Expression.ScalarFunction()
         function_def = self.lookup_function_by_name('struct_extract')
         func.function_reference = function_def.anchor
@@ -531,48 +533,93 @@ class SparkSubstraitConverter:
                 named_table=algebra_pb2.ReadRel.NamedTable(names=[table_name]),
                 common=self.create_common_relation()))
 
+    def convert_type_name(self, type_name: str) -> type_pb2.Type:
+        """Convert a Spark type name into a Substrait type."""
+        nullability = type_pb2.Type.NULLABILITY_REQUIRED
+        match type_name:
+            case 'boolean':
+                return type_pb2.Type(bool=type_pb2.Type.Boolean(nullability=nullability))
+            case 'byte':
+                return type_pb2.Type(i8=type_pb2.Type.I8(nullability=nullability))
+            case 'short':
+                return type_pb2.Type(i16=type_pb2.Type.I16(nullability=nullability))
+            case 'integer':
+                return type_pb2.Type(i32=type_pb2.Type.I32(nullability=nullability))
+            case 'long':
+                return type_pb2.Type(i64=type_pb2.Type.I64(nullability=nullability))
+            case 'float':
+                return type_pb2.Type(fp32=type_pb2.Type.FP32(nullability=nullability))
+            case 'double':
+                return type_pb2.Type(fp64=type_pb2.Type.FP64(nullability=nullability))
+            case 'decimal':
+                return type_pb2.Type(decimal=type_pb2.Type.Decimal(nullability=nullability))
+            case 'string':
+                return type_pb2.Type(string=type_pb2.Type.String(nullability=nullability))
+            case 'binary':
+                return type_pb2.Type(binary=type_pb2.Type.Binary(nullability=nullability))
+            case _:
+                raise NotImplementedError(f'Unexpected type name: {type_name}')
+
+    def convert_field(self, field: types_pb2.DataType) -> (type_pb2.Type, list[str]):
+        """Convert a Spark field into a Substrait field."""
+        if field.get('nullable'):
+            nullability = type_pb2.Type.NULLABILITY_NULLABLE
+        else:
+            nullability = type_pb2.Type.NULLABILITY_REQUIRED
+        more_names = []
+        match field.get('type'):
+            case 'boolean':
+                field_type = type_pb2.Type(bool=type_pb2.Type.Boolean(nullability=nullability))
+            case 'byte':
+                field_type = type_pb2.Type(i8=type_pb2.Type.I8(nullability=nullability))
+            case 'short':
+                field_type = type_pb2.Type(i16=type_pb2.Type.I16(nullability=nullability))
+            case 'integer':
+                field_type = type_pb2.Type(i32=type_pb2.Type.I32(nullability=nullability))
+            case 'long':
+                field_type = type_pb2.Type(i64=type_pb2.Type.I64(nullability=nullability))
+            case 'float':
+                field_type = type_pb2.Type(fp32=type_pb2.Type.FP32(nullability=nullability))
+            case 'double':
+                field_type = type_pb2.Type(fp64=type_pb2.Type.FP64(nullability=nullability))
+            case 'decimal':
+                field_type = type_pb2.Type(
+                    decimal=type_pb2.Type.Decimal(nullability=nullability))
+            case 'string':
+                field_type = type_pb2.Type(string=type_pb2.Type.String(nullability=nullability))
+            case 'binary':
+                field_type = type_pb2.Type(binary=type_pb2.Type.Binary(nullability=nullability))
+            case _:
+                ft = field.get('type')
+                if ft == 'array':
+                    field_type = type_pb2.Type(list=type_pb2.Type.List(
+                        nullability=nullability,
+                        type=self.convert_type_name(field.get('elementType'))))
+                elif ft == 'map':
+                    field_type = type_pb2.Type(map=type_pb2.Type.Map(
+                        nullability=nullability,
+                        key=self.convert_type_name(field.get('keyType')),
+                        value=self.convert_type_name(field.get('valueType'))))
+                elif ft.get('type') == 'struct':
+                    field_type = type_pb2.Type(
+                        struct=type_pb2.Type.Struct(nullability=nullability))
+                    sub_type = self.convert_schema_dict(ft)
+                    more_names.extend(sub_type.names)
+                    field_type.struct.types.extend(sub_type.struct.types)
+                else:
+                    raise NotImplementedError(
+                        f'Spark data type conversion not yet implemented: {ft.get("type")}')
+
+        return field_type, more_names
+
     def convert_schema_dict(self, schema_data: dict) -> type_pb2.NamedStruct | None:
         """Convert the Spark JSON schema dict into a Substrait named type structure."""
         schema = type_pb2.NamedStruct()
         schema.struct.nullability = type_pb2.Type.NULLABILITY_REQUIRED
         for field in schema_data.get('fields'):
             schema.names.append(field.get('name'))
-            if field.get('nullable'):
-                nullability = type_pb2.Type.NULLABILITY_NULLABLE
-            else:
-                nullability = type_pb2.Type.NULLABILITY_REQUIRED
-            match field.get('type'):
-                case 'boolean':
-                    field_type = type_pb2.Type(bool=type_pb2.Type.Boolean(nullability=nullability))
-                case 'byte':
-                    field_type = type_pb2.Type(i8=type_pb2.Type.I8(nullability=nullability))
-                case 'short':
-                    field_type = type_pb2.Type(i16=type_pb2.Type.I16(nullability=nullability))
-                case 'integer':
-                    field_type = type_pb2.Type(i32=type_pb2.Type.I32(nullability=nullability))
-                case 'long':
-                    field_type = type_pb2.Type(i64=type_pb2.Type.I64(nullability=nullability))
-                case 'float':
-                    field_type = type_pb2.Type(fp32=type_pb2.Type.FP32(nullability=nullability))
-                case 'double':
-                    field_type = type_pb2.Type(fp64=type_pb2.Type.FP64(nullability=nullability))
-                case 'decimal':
-                    field_type = type_pb2.Type(
-                        decimal=type_pb2.Type.Decimal(nullability=nullability))
-                case 'string':
-                    field_type = type_pb2.Type(string=type_pb2.Type.String(nullability=nullability))
-                case 'binary':
-                    field_type = type_pb2.Type(binary=type_pb2.Type.Binary(nullability=nullability))
-                case _:
-                    ft = field.get('type')
-                    if ft.get('type') != 'struct':
-                        raise NotImplementedError(
-                            f'Schema field type not yet implemented: {field.get("type")}')
-                    field_type = type_pb2.Type(struct=type_pb2.Type.Struct(nullability=nullability))
-                    sub_type = self.convert_schema_dict(ft)
-                    schema.names.extend(sub_type.names)
-                    field_type.struct.types.extend(sub_type.struct.types)
-
+            field_type, more_names = self.convert_field(field.get('type'))
+            schema.names.extend(more_names)
             schema.struct.types.append(field_type)
         return schema
 
@@ -675,6 +722,19 @@ class SparkSubstraitConverter:
                             sub_type, more_names = self.convert_arrow_datatype(y.type)
                             schema.names.extend(more_names)
                             field_type.struct.types.append(sub_type)
+                    elif str(field.type).startswith('list'):
+                        subtype, more_names = self.convert_arrow_datatype(field.type.value_type)
+                        schema.names.extend(more_names)
+                        field_type = type_pb2.Type(
+                            list=type_pb2.Type.List(nullability=nullability, type=subtype))
+                    elif str(field.type).startswith('map'):
+                        key_type, more_names = self.convert_arrow_datatype(field.type.key_type)
+                        schema.names.extend(more_names)
+                        value_type, more_names = self.convert_arrow_datatype(field.type.item_type)
+                        schema.names.extend(more_names)
+                        field_type = type_pb2.Type(
+                            map=type_pb2.Type.Map(nullability=nullability, key=key_type,
+                                                  value=value_type))
                     else:
                         raise NotImplementedError(f'Unexpected field type: {field.type}')
 
@@ -1109,6 +1169,9 @@ class SparkSubstraitConverter:
         elif isinstance(val, pa.StructScalar):
             for key in val:
                 literal.struct.fields.append(self.convert_arrow_to_literal(val[key]))
+        elif isinstance(val, pa.ListScalar):
+            for item in val.values:
+                literal.list.values.append(self.convert_arrow_to_literal(item))
         else:
             raise NotImplementedError(
                 f'Conversion from arrow type {val.type} not yet implemented.')

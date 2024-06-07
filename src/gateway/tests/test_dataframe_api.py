@@ -20,6 +20,8 @@ def mark_dataframe_tests_as_xfail(request):
         pytest.importorskip("datafusion.substrait")
         if originalname in ['test_column_getfield', 'test_column_getitem']:
             request.node.add_marker(pytest.mark.xfail(reason='structs not handled'))
+    if originalname == 'test_column_getitem':
+        request.node.add_marker(pytest.mark.xfail(reason='maps and lists not handled'))
 
 
 # pylint: disable=missing-function-docstring
@@ -170,14 +172,26 @@ only showing top 1 row
 
         assertDataFrameEqual(outcome, expected)
 
-    def test_column_getitem(self, spark_session):
+    def test_column_getitem(self, spark_session, caplog):
         expected = [
             Row(answer=1, answer2='value'),
         ]
 
-        df = spark_session.createDataFrame([([1, 2], {"key": "value"})], ["l", "d"])
-        with utilizes_valid_plans(df):
-            outcome = df.select(df.l.getItem(0), df.d.getItem("key")).collect()
+        list_array = pa.array([[1, 2]], type=pa.list_(pa.int64()))
+        map_array = pa.array([{"key": "value"}],
+                             type=pa.map_(pa.string(), pa.string(), False))
+        table = pa.Table.from_arrays([list_array, map_array], names=['l', 'd'])
+
+        pq.write_table(table, 'test_table.parquet')
+        table_df = spark_session.read.parquet('test_table.parquet')
+        table_df.createOrReplaceTempView('mytesttable')
+        df = spark_session.table('mytesttable')
+
+        try:
+            with utilizes_valid_plans(df):
+                outcome = df.select(df.l.getItem(0), df.d.getItem("key")).collect()
+        except:
+            pytest.fail(caplog.text, pytrace=False)
 
         assertDataFrameEqual(outcome, expected)
 
