@@ -40,8 +40,10 @@ def utilizes_valid_plans(session):
     # Reset the statistics, so we only see the plans that were created during our lifetime.
     if session.conf.get('spark-substrait-gateway.backend', 'spark') != 'spark':
         session.conf.set('spark-substrait-gateway.reset_statistics', None)
-    ignore_too_few_names = session.conf.get(
-        'spark-substrait-gateway.use_duckdb_struct_name_behavior') == 'True'
+        ignore_too_few_names = session.conf.get(
+            'spark-substrait-gateway.use_duckdb_struct_name_behavior') == 'True'
+    else:
+        ignore_too_few_names = False
     try:
         exception = None
         yield
