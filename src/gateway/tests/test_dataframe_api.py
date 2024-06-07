@@ -20,9 +20,11 @@ def mark_dataframe_tests_as_xfail(request):
         pytest.importorskip("datafusion.substrait")
         if originalname in ['test_column_getfield', 'test_column_getitem']:
             request.node.add_marker(pytest.mark.xfail(reason='structs not handled'))
-    if originalname == 'test_column_getitem':
+    elif originalname == 'test_column_getitem':
         request.node.add_marker(pytest.mark.xfail(reason='maps and lists not handled'))
-
+    elif source == 'spark':
+        if originalname == 'test_subquery_alias':
+            pytest.xfail('Subquery alias relations are not yet implemented (so no exception)')
 
 # pylint: disable=missing-function-docstring
 # ruff: noqa: E712
