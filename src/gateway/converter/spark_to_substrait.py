@@ -618,7 +618,7 @@ class SparkSubstraitConverter:
         schema.struct.nullability = type_pb2.Type.NULLABILITY_REQUIRED
         for field in schema_data.get('fields'):
             schema.names.append(field.get('name'))
-            field_type, more_names = self.convert_field(field.get('type'))
+            field_type, more_names = self.convert_field(field)
             schema.names.extend(more_names)
             schema.struct.types.append(field_type)
         return schema
