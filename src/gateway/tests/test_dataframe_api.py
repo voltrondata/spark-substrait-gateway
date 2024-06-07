@@ -172,7 +172,7 @@ only showing top 1 row
 
         assertDataFrameEqual(outcome, expected)
 
-    def test_column_getitem(self, spark_session, caplog):
+    def test_column_getitem(self, spark_session):
         expected = [
             Row(answer=1, answer2='value'),
         ]
@@ -187,11 +187,8 @@ only showing top 1 row
         table_df.createOrReplaceTempView('mytesttable')
         df = spark_session.table('mytesttable')
 
-        try:
-            with utilizes_valid_plans(df):
-                outcome = df.select(df.l.getItem(0), df.d.getItem("key")).collect()
-        except:
-            pytest.fail(caplog.text, pytrace=False)
+        with utilizes_valid_plans(df):
+            outcome = df.select(df.l.getItem(0), df.d.getItem("key")).collect()
 
         assertDataFrameEqual(outcome, expected)
 
