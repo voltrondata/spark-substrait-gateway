@@ -126,10 +126,6 @@ only showing top 1 row
         assert list(outcome[0].asDict().keys()) == ['foo']
 
     def test_subquery_alias(self, users_dataframe):
-        expected = [
-            Row(user_id='user849118289'),
-        ]
-
         with pytest.raises(Exception) as exc_info:
             users_dataframe.select(col('user_id')).alias('foo').limit(1).collect()
 
