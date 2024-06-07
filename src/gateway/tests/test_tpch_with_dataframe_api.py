@@ -226,7 +226,7 @@ class TestTpchWithDataFrameAPI:
                                       (col('l_discount') >= 0.05) &
                                       (col('l_discount') <= 0.07) &
                                       (col('l_quantity') < 24)).agg(
-                try_sum(col('l_extendedprice') * col('l_discount'))).alias('revenue').collect()
+                try_sum(col('l_extendedprice') * col('l_discount')).alias('revenue')).collect()
 
         assert_dataframes_equal(outcome, expected)
 
@@ -485,8 +485,7 @@ class TestTpchWithDataFrameAPI:
                                 (col('l_shipdate') < '1995-10-01')).select(
                 'p_type', (col('l_extendedprice') * (1 - col('l_discount'))).alias('value')).agg(
                 try_sum(when(col('p_type').contains('PROMO'), col('value'))) * 100 / try_sum(
-                    col('value'))
-            ).alias('promo_revenue').collect()
+                    col('value')).alias('promo_revenue')).collect()
 
         assert_dataframes_equal(outcome, expected)
 
@@ -562,7 +561,7 @@ class TestTpchWithDataFrameAPI:
                 col('p_partkey').alias('key'), 'avg_quantity').join(
                 fpart, col('key') == fpart.p_partkey).filter(
                 col('l_quantity') < col('avg_quantity')).agg(
-                try_sum('l_extendedprice') / 7).alias('avg_yearly').collect()
+                (try_sum('l_extendedprice') / 7).alias('avg_yearly')).collect()
 
         assert_dataframes_equal(outcome, expected)
 
