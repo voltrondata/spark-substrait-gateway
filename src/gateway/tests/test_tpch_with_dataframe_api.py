@@ -591,7 +591,7 @@ class TestTpchWithDataFrameAPI:
                 'l_quantity', 'c_name', 'c_custkey', 'o_orderkey', 'o_orderdate',
                 'o_totalprice').groupBy(
                 'c_name', 'c_custkey', 'o_orderkey', 'o_orderdate', 'o_totalprice').agg(
-                try_sum('l_quantity')).alias('sum_l_quantity')
+                try_sum('l_quantity').alias('sum_l_quantity'))
 
             sorted_outcome = outcome.sort(desc('o_totalprice'), 'o_orderdate').limit(2).collect()
 

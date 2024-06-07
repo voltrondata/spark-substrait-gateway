@@ -114,6 +114,38 @@ only showing top 1 row
 
         assertDataFrameEqual(outcome, expected)
 
+    def test_alias(self, users_dataframe):
+        expected = [
+            Row(foo='user849118289'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(col('user_id').alias('foo')).limit(1).collect()
+
+        assertDataFrameEqual(outcome, expected)
+        assert list(outcome[0].asDict().keys()) == ['foo']
+
+    def test_subquery_alias(self, users_dataframe):
+        expected = [
+            Row(user_id='user849118289'),
+        ]
+
+        with pytest.raises(Exception) as exc_info:
+            users_dataframe.select(col('user_id')).alias('foo').limit(1).collect()
+
+        assert exc_info.match('Subquery alias relations are not yet implemented')
+
+    def test_name(self, users_dataframe):
+        expected = [
+            Row(foo='user849118289'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(col('user_id').name('foo')).limit(1).collect()
+
+        assertDataFrameEqual(outcome, expected)
+        assert list(outcome[0].asDict().keys()) == ['foo']
+
     def test_cast(self, users_dataframe):
         expected = [
             Row(user_id=849, name='Brooke Jones', paid_for_service=False),
@@ -189,6 +221,15 @@ only showing top 1 row
 
         with utilizes_valid_plans(df):
             outcome = df.select(df.l.getItem(0), df.d.getItem("key")).collect()
+    def test_astype(self, users_dataframe):
+        expected = [
+            Row(user_id=849, name='Brooke Jones', paid_for_service=False),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.withColumn(
+                'user_id',
+                substring(col('user_id'), 5, 3).astype('integer')).limit(1).collect()
 
         assertDataFrameEqual(outcome, expected)
 
