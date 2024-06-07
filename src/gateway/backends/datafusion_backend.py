@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """Provides access to Datafusion."""
+import re
 from pathlib import Path
 
 import pyarrow as pa
@@ -21,6 +22,24 @@ _DATAFUSION_TO_ARROW = {
     'Timestamp(Nanosecond, None)': pa.timestamp('ns'),
     'Utf8': pa.string(),
 }
+
+MATCH_STRUCT_TYPE = re.compile(r'Struct\(([^)]+)\)')
+
+
+def convert_to_arrow_data_type(name, duckdb_type: str) -> pa.Field:
+    """Convert a DuckDB type to an Arrow type."""
+    match = MATCH_STRUCT_TYPE.match(duckdb_type)
+    if match:
+        subtypes = match.group(1).split(',')
+        subtype_list = []
+        for subtype in subtypes:
+            subtype_name, type_str = subtype.strip().split(' ')
+            subtype_list.append(convert_to_arrow_data_type(subtype_name, type_str))
+        return pa.field(name, type=pa.struct(subtype_list))
+    arrow_type = _DATAFUSION_TO_ARROW.get(str(duckdb_type), None)
+    if not arrow_type:
+        raise ValueError(f"Unknown Datafusion type: {duckdb_type}")
+    return pa.field(name, type=arrow_type)
 
 
 # pylint: disable=import-outside-toplevel
@@ -88,15 +107,8 @@ class DatafusionBackend(Backend):
     def describe_files(self, paths: list[str]):
         """Asks the backend to describe the given files."""
         # TODO -- Use the ListingTable API to resolve the combined schema.
-        df = self._connection.read_parquet(paths[0])
-        return df.schema()
+        return self._connection.read_parquet(paths[0]).schema()
 
     def describe_table(self, table_name: str):
         """Asks the backend to describe the given table."""
-        result = self._connection.sql(f"describe {table_name}").to_arrow_table().to_pylist()
-
-        fields = []
-        for index in range(len(result)):
-            fields.append(pa.field(result[index]['column_name'],
-                                   _DATAFUSION_TO_ARROW[result[index]['data_type']]))
-        return pa.schema(fields)
+        return self._connection.table(table_name).schema()

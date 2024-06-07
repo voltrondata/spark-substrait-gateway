@@ -46,40 +46,54 @@ def batch_to_bytes(batch: pa.RecordBatch, schema: pa.Schema) -> bytes:
     return buffer.getvalue()
 
 
-# pylint: disable=E1101
+def convert_pyarrow_datatype_to_spark(arrow_type: pa.DataType) -> types_pb2.DataType:
+    """Convert an Arrow datatype into a Spark type."""
+    if arrow_type == pa.bool_():
+        data_type = types_pb2.DataType(boolean=types_pb2.DataType.Boolean())
+    elif arrow_type == pa.int8():
+        data_type = types_pb2.DataType(byte=types_pb2.DataType.Byte())
+    elif arrow_type == pa.int16():
+        data_type = types_pb2.DataType(short=types_pb2.DataType.Short())
+    elif arrow_type == pa.int32():
+        data_type = types_pb2.DataType(integer=types_pb2.DataType.Integer())
+    elif arrow_type == pa.int64():
+        data_type = types_pb2.DataType(long=types_pb2.DataType.Long())
+    elif arrow_type == pa.float32():
+        data_type = types_pb2.DataType(float=types_pb2.DataType.Float())
+    elif arrow_type == pa.float64():
+        data_type = types_pb2.DataType(double=types_pb2.DataType.Double())
+    elif arrow_type == pa.string():
+        data_type = types_pb2.DataType(string=types_pb2.DataType.String())
+    elif arrow_type == pa.timestamp('us'):
+        data_type = types_pb2.DataType(timestamp=types_pb2.DataType.Timestamp())
+    elif arrow_type == pa.date32():
+        data_type = types_pb2.DataType(date=types_pb2.DataType.Date())
+    elif arrow_type == pa.null():
+        data_type = types_pb2.DataType(null=types_pb2.DataType.NULL())
+    elif str(arrow_type).startswith('struct'):
+        field_type = types_pb2.DataType(
+            struct=types_pb2.DataType.Struct())
+        x: pa.StructType = arrow_type
+        for i in range(x.num_fields):
+            y = x.field(i)
+            subfield = convert_pyarrow_datatype_to_spark(y.type)
+            field_type.struct.fields.append(
+                types_pb2.DataType.StructField(name=y.name, data_type=subfield,
+                                               nullable=False))
+        return field_type
+    else:
+        raise NotImplementedError(f'Unexpected field type: {arrow_type}')
+
+    return data_type
+
+
 def convert_pyarrow_schema_to_spark(schema: pa.Schema) -> types_pb2.DataType:
     """Convert a pyarrow schema to a SparkConnect DataType.Struct schema."""
     fields = []
     for field in schema:
-        if field.type == pa.bool_():
-            data_type = types_pb2.DataType(boolean=types_pb2.DataType.Boolean())
-        elif field.type == pa.int8():
-            data_type = types_pb2.DataType(byte=types_pb2.DataType.Byte())
-        elif field.type == pa.int16():
-            data_type = types_pb2.DataType(short=types_pb2.DataType.Short())
-        elif field.type == pa.int32():
-            data_type = types_pb2.DataType(integer=types_pb2.DataType.Integer())
-        elif field.type == pa.int64():
-            data_type = types_pb2.DataType(long=types_pb2.DataType.Long())
-        elif field.type == pa.float32():
-            data_type = types_pb2.DataType(float=types_pb2.DataType.Float())
-        elif field.type == pa.float64():
-            data_type = types_pb2.DataType(double=types_pb2.DataType.Double())
-        elif field.type == pa.string():
-            data_type = types_pb2.DataType(string=types_pb2.DataType.String())
-        elif field.type == pa.timestamp('us'):
-            data_type = types_pb2.DataType(timestamp=types_pb2.DataType.Timestamp())
-        elif field.type == pa.date32():
-            data_type = types_pb2.DataType(date=types_pb2.DataType.Date())
-        elif field.type == pa.null():
-            data_type = types_pb2.DataType(null=types_pb2.DataType.NULL())
-        else:
-            raise NotImplementedError(
-                'Conversion from Arrow schema to Spark schema not yet implemented '
-                f'for type: {field.type}')
-
-        struct_field = types_pb2.DataType.StructField(name=field.name, data_type=data_type)
-        fields.append(struct_field)
+        fields.append(types_pb2.DataType.StructField(
+            name=field.name, data_type=convert_pyarrow_datatype_to_spark(field.type),
+            nullable=field.nullable))
 
     return types_pb2.DataType(struct=types_pb2.DataType.Struct(fields=fields))
 
@@ -285,6 +299,9 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
                         response.pairs.add(key=key, value='TIMESTAMP_NTZ')
                     elif key == 'spark.sql.session.localRelationCacheThreshold':
                         response.pairs.add(key=key, value='9999')
+                    elif key == 'spark-substrait-gateway.use_duckdb_struct_name_behavior':
+                        response.pairs.add(
+                            key=key, value=str(self._options.use_duckdb_struct_name_behavior))
                     else:
                         _LOGGER.info(f'Unknown config item: {key}')
                         raise NotImplementedError(f'Unknown config item: {key}')

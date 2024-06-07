@@ -1,9 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for the Spark to Substrait Gateway server."""
+import pyarrow as pa
 import pytest
 from gateway.tests.conftest import find_tpch
 from gateway.tests.plan_validator import utilizes_valid_plans
 from hamcrest import assert_that, equal_to
+from pyarrow import parquet as pq
 from pyspark import Row
 from pyspark.sql.functions import col, substring
 from pyspark.testing import assertDataFrameEqual
@@ -13,8 +15,11 @@ from pyspark.testing import assertDataFrameEqual
 def mark_dataframe_tests_as_xfail(request):
     """Marks a subset of tests as expected to be fail."""
     source = request.getfixturevalue('source')
+    originalname = request.keywords.node.originalname
     if source == 'gateway-over-datafusion':
         pytest.importorskip("datafusion.substrait")
+        if originalname in ['test_column_getfield', 'test_column_getitem']:
+            request.node.add_marker(pytest.mark.xfail(reason='structs not handled'))
 
 
 # pylint: disable=missing-function-docstring
@@ -143,21 +148,27 @@ only showing top 1 row
 
         assertDataFrameEqual(outcome, expected)
 
-    def test_column_getfield(self, spark_session):
+    def test_column_getfield(self, spark_session, caplog):
         expected = [
-            Row(answer='b'),
-        ]
-        expected2 = [
-            Row(answer=1),
+            Row(answer='b', answer2=1),
         ]
 
-        df = spark_session.createDataFrame([Row(r=Row(a=1, b="b"))])
+        struct_type = pa.struct([('a', pa.int64()), ('b', pa.string())])
+        data = [
+            {'a': 1, 'b': 'b'}
+        ]
+        struct_array = pa.array(data, type=struct_type)
+        table = pa.Table.from_arrays([struct_array], names=['r'])
+
+        pq.write_table(table, 'test_table.parquet')
+        table_df = spark_session.read.parquet('test_table.parquet')
+        table_df.createOrReplaceTempView('mytesttable')
+        df = spark_session.table('mytesttable')
+
         with utilizes_valid_plans(df):
-            outcome = df.select(df.r.getField("b")).collect()
-            outcome2 = df.select(df.r.a).collect()
+            outcome = df.select(df.r.getField("b"), df.r.a).collect()
 
         assertDataFrameEqual(outcome, expected)
-        assertDataFrameEqual(outcome2, expected2)
 
     def test_column_getitem(self, spark_session):
         expected = [

@@ -397,6 +397,21 @@ class SparkSubstraitConverter:
                 )
         return algebra_pb2.Expression(cast=cast_rel)
 
+    def convert_extract_value(
+            self,
+            extract: spark_exprs_pb2.Expression.UnresolvedExtractValue) -> algebra_pb2.Expression:
+        """Convert a Spark extract value expression into a Substrait extract value expression."""
+        func = algebra_pb2.Expression.ScalarFunction()
+        function_def = self.lookup_function_by_name('struct_extract')
+        func.function_reference = function_def.anchor
+        func.arguments.append(
+            algebra_pb2.FunctionArgument(
+                value=self.convert_unresolved_attribute(extract.child.unresolved_attribute)))
+        func.arguments.append(
+            algebra_pb2.FunctionArgument(
+                value=string_literal(extract.extraction.literal.string)))
+        return algebra_pb2.Expression(scalar_function=func)
+
     def convert_expression(self, expr: spark_exprs_pb2.Expression) -> algebra_pb2.Expression:
         """Convert a SparkConnect expression to a Substrait expression."""
         match expr.WhichOneof('expr_type'):
@@ -429,8 +444,7 @@ class SparkSubstraitConverter:
                 raise NotImplementedError(
                     'window expression type not supported')
             case 'unresolved_extract_value':
-                raise NotImplementedError(
-                    'unresolved_extract_value expression type not supported')
+                result = self.convert_extract_value(expr.unresolved_extract_value)
             case 'update_fields':
                 raise NotImplementedError(
                     'update_fields expression type not supported')
@@ -478,6 +492,21 @@ class SparkSubstraitConverter:
         func.output_type.CopyFrom(function.output_type)
         return func
 
+    def get_number_of_names(self, type: type_pb2.Type) -> int:
+        """Get the number of names consumed used in a Substrait type."""
+        if type.WhichOneof('kind') == 'struct':
+            return sum([self.get_number_of_names(t) for t in type.struct.types]) + 1
+        return 1
+
+    def get_primary_names(self, schema: type_pb2.NamedStruct) -> list[str]:
+        """Get the primary names from a Substrait schema."""
+        primary_names = []
+        curr_type = 0
+        while curr_type < len(schema.struct.types):
+            primary_names.append(schema.names[curr_type])
+            curr_type += self.get_number_of_names(schema.struct.types[curr_type])
+        return primary_names
+
     def convert_read_named_table_relation(
             self,
             rel: spark_relations_pb2.Read.named_table
@@ -490,8 +519,11 @@ class SparkSubstraitConverter:
         schema = self.convert_arrow_schema(arrow_schema)
 
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
-        for field_name in schema.names:
-            symbol.output_fields.append(field_name)
+        if self._conversion_options.use_duckdb_struct_name_behavior:
+            for field_name in self.get_primary_names(schema):
+                symbol.output_fields.append(field_name)
+        else:
+            symbol.output_fields.extend(schema.names)
 
         return algebra_pb2.Rel(
             read=algebra_pb2.ReadRel(
@@ -553,6 +585,52 @@ class SparkSubstraitConverter:
 
         return self.convert_schema_dict(schema_data)
 
+    def convert_arrow_datatype(
+            self, arrow_type: pa.DataType, nullable: bool = False) -> (
+            type_pb2.Type, list[str]):
+        """Convert an Arrow datatype into a Substrait type."""
+        if nullable:
+            nullability = type_pb2.Type.NULLABILITY_NULLABLE
+        else:
+            nullability = type_pb2.Type.NULLABILITY_REQUIRED
+
+        more_names = []
+
+        match str(arrow_type):
+            case 'bool':
+                field_type = type_pb2.Type(bool=type_pb2.Type.Boolean(nullability=nullability))
+            case 'int16':
+                field_type = type_pb2.Type(i16=type_pb2.Type.I16(nullability=nullability))
+            case 'int32':
+                field_type = type_pb2.Type(i32=type_pb2.Type.I32(nullability=nullability))
+            case 'int64':
+                field_type = type_pb2.Type(i64=type_pb2.Type.I64(nullability=nullability))
+            case 'float':
+                field_type = type_pb2.Type(fp32=type_pb2.Type.FP32(nullability=nullability))
+            case 'double':
+                field_type = type_pb2.Type(fp64=type_pb2.Type.FP64(nullability=nullability))
+            case 'string':
+                field_type = type_pb2.Type(string=type_pb2.Type.String(nullability=nullability))
+            case 'timestamp[us]':
+                field_type = type_pb2.Type(
+                    timestamp=type_pb2.Type.Timestamp(nullability=nullability))
+            case 'date32[day]':
+                field_type = type_pb2.Type(date=type_pb2.Type.Date(nullability=nullability))
+            case _:
+                if str(arrow_type).startswith('struct'):
+                    field_type = type_pb2.Type(
+                        struct=type_pb2.Type.Struct(nullability=nullability))
+                    x: pa.StructType = arrow_type
+                    for i in range(x.num_fields):
+                        y = x.field(i)
+                        sub_type = self.convert_arrow_schema(y.type.schema)
+                        more_names.extend(y.name)
+                        field_type.struct.types.extend(sub_type.struct.types)
+                    return field_type
+                raise NotImplementedError(f'Unexpected field type: {arrow_type}')
+
+        return field_type, more_names
+
     def convert_arrow_schema(self, arrow_schema: pa.Schema) -> type_pb2.NamedStruct:
         """Convert an Arrow schema into a Substrait named type structure."""
         schema = type_pb2.NamedStruct()
@@ -587,7 +665,18 @@ class SparkSubstraitConverter:
                 case 'date32[day]':
                     field_type = type_pb2.Type(date=type_pb2.Type.Date(nullability=nullability))
                 case _:
-                    raise NotImplementedError(f'Unexpected field type: {field.type}')
+                    if str(field.type).startswith('struct'):
+                        field_type = type_pb2.Type(
+                            struct=type_pb2.Type.Struct(nullability=nullability))
+                        x: pa.StructType = field.type
+                        for i in range(x.num_fields):
+                            y = x.field(i)
+                            schema.names.append(y.name)
+                            sub_type, more_names = self.convert_arrow_datatype(y.type)
+                            schema.names.extend(more_names)
+                            field_type.struct.types.append(sub_type)
+                    else:
+                        raise NotImplementedError(f'Unexpected field type: {field.type}')
 
             schema.struct.types.append(field_type)
         return schema
@@ -1023,6 +1112,7 @@ class SparkSubstraitConverter:
         else:
             raise NotImplementedError(
                 f'Conversion from arrow type {val.type} not yet implemented.')
+        literal.nullable = True
         return literal
 
     def convert_arrow_data_to_virtual_table(self,

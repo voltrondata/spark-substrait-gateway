@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """Provides access to DuckDB."""
+import re
 from pathlib import Path
 
 import duckdb
@@ -20,6 +21,24 @@ _DUCKDB_TO_ARROW = {
     'TIMESTAMP': pa.timestamp('ns'),
     'VARCHAR': pa.string(),
 }
+
+MATCH_STRUCT_TYPE = re.compile(r'STRUCT\(([^)]+)\)')
+
+
+def convert_to_arrow_data_type(name, duckdb_type: str) -> pa.Field:
+    """Convert a DuckDB type to an Arrow type."""
+    match = MATCH_STRUCT_TYPE.match(duckdb_type)
+    if match:
+        subtypes = match.group(1).split(',')
+        subtype_list = []
+        for subtype in subtypes:
+            subtype_name, type_str = subtype.strip().split(' ')
+            subtype_list.append(convert_to_arrow_data_type(subtype_name, type_str))
+        return pa.field(name, type=pa.struct(subtype_list))
+    arrow_type = _DUCKDB_TO_ARROW.get(str(duckdb_type), None)
+    if not arrow_type:
+        raise ValueError(f"Unknown DuckDB type: {duckdb_type}")
+    return pa.field(name, type=arrow_type)
 
 
 # pylint: disable=fixme
@@ -88,7 +107,7 @@ class DuckDBBackend(Backend):
             if name == 'aggr':
                 # This isn't a real column.
                 continue
-            fields.append(pa.field(name, _DUCKDB_TO_ARROW[str(field_type)]))
+            fields.append(convert_to_arrow_data_type(name, field_type))
         return pa.schema(fields)
 
     def describe_table(self, name: str):
@@ -97,7 +116,7 @@ class DuckDBBackend(Backend):
 
         fields = []
         for name, field_type in zip(df.column_name, df.column_type, strict=False):
-            fields.append(pa.field(name, _DUCKDB_TO_ARROW[str(field_type)]))
+            fields.append(convert_to_arrow_data_type(name, field_type))
         return pa.schema(fields)
 
     def convert_sql(self, sql: str) -> plan_pb2.Plan:
