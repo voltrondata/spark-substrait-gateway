@@ -25,6 +25,9 @@ def mark_dataframe_tests_as_xfail(request):
     elif source == 'spark':
         if originalname == 'test_subquery_alias':
             pytest.xfail('Subquery alias relations are not yet implemented (so no exception)')
+    elif source == 'spark' and originalname == 'test_subquery_alias':
+        pytest.xfail('Subquery alias relations are not yet implemented (so no exception)')
+
 
 # pylint: disable=missing-function-docstring
 # ruff: noqa: E712
