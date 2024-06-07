@@ -1,6 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
 """Provides access to Datafusion."""
-import re
 from pathlib import Path
 
 import pyarrow as pa
@@ -9,37 +8,6 @@ from substrait.gen.proto import plan_pb2
 from gateway.backends.backend import Backend
 from gateway.converter.rename_functions import RenameFunctionsForDatafusion
 from gateway.converter.replace_local_files import ReplaceLocalFilesWithNamedTable
-
-_DATAFUSION_TO_ARROW = {
-    'Boolean': pa.bool_(),
-    'Int8': pa.int8(),
-    'Int16': pa.int16(),
-    'Int32': pa.int32(),
-    'Int64': pa.int64(),
-    'Float32': pa.float32(),
-    'Float64': pa.float64(),
-    'Date32': pa.date32(),
-    'Timestamp(Nanosecond, None)': pa.timestamp('ns'),
-    'Utf8': pa.string(),
-}
-
-MATCH_STRUCT_TYPE = re.compile(r'Struct\(([^)]+)\)')
-
-
-def convert_to_arrow_data_type(name, duckdb_type: str) -> pa.Field:
-    """Convert a DuckDB type to an Arrow type."""
-    match = MATCH_STRUCT_TYPE.match(duckdb_type)
-    if match:
-        subtypes = match.group(1).split(',')
-        subtype_list = []
-        for subtype in subtypes:
-            subtype_name, type_str = subtype.strip().split(' ')
-            subtype_list.append(convert_to_arrow_data_type(subtype_name, type_str))
-        return pa.field(name, type=pa.struct(subtype_list))
-    arrow_type = _DATAFUSION_TO_ARROW.get(str(duckdb_type), None)
-    if not arrow_type:
-        raise ValueError(f"Unknown Datafusion type: {duckdb_type}")
-    return pa.field(name, type=arrow_type)
 
 
 # pylint: disable=import-outside-toplevel
