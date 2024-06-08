@@ -137,42 +137,56 @@ class SparkSubstraitConverter:
         """Convert a Spark literal into a Substrait literal."""
         match literal.WhichOneof('literal_type'):
             case 'null':
-                # TODO -- Finish with the type implementation.
-                result = algebra_pb2.Expression.Literal()
+                # TODO -- Finish with the type implementation (or peek at sibling types).
+                result = algebra_pb2.Expression.Literal(
+                    null=type_pb2.Type(fp64=type_pb2.Type.FP64(
+                        nullability=type_pb2.Type.NULLABILITY_NULLABLE)))
             case 'binary':
-                result = algebra_pb2.Expression.Literal()
+                raise NotImplementedError(
+                    f'Literal type {literal.WhichOneof("literal_type")} not yet implemented.')
             case 'boolean':
                 result = self.convert_boolean_literal(literal.boolean)
             case 'byte':
-                result = algebra_pb2.Expression.Literal()
+                # TODO -- Determine the nullability of literals using a view of type information.
+                result = algebra_pb2.Expression.Literal(null=type_pb2.Type(
+                    i8=type_pb2.Type.I8(nullability=type_pb2.Type.NULLABILITY_NULLABLE)))
             case 'short':
                 result = self.convert_short_literal(literal.short)
             case 'integer':
                 result = self.convert_integer_literal(literal.integer)
             case 'long':
-                result = algebra_pb2.Expression.Literal()
+                result = algebra_pb2.Expression.Literal(null=type_pb2.Type(
+                    i64=type_pb2.Type.I64(nullability=type_pb2.Type.NULLABILITY_NULLABLE)))
             case 'float':
                 result = self.convert_float_literal(literal.float)
             case 'double':
                 result = self.convert_double_literal(literal.double)
             case 'decimal':
-                result = algebra_pb2.Expression.Literal()
+                raise NotImplementedError(
+                    f'Literal type {literal.WhichOneof("literal_type")} not yet implemented.')
             case 'string':
                 result = self.convert_string_literal(literal.string)
             case 'date':
-                result = algebra_pb2.Expression.Literal()
+                raise NotImplementedError(
+                    f'Literal type {literal.WhichOneof("literal_type")} not yet implemented.')
             case 'timestamp':
-                result = algebra_pb2.Expression.Literal()
+                raise NotImplementedError(
+                    f'Literal type {literal.WhichOneof("literal_type")} not yet implemented.')
             case 'timestamp_ntz':
-                result = algebra_pb2.Expression.Literal()
+                raise NotImplementedError(
+                    f'Literal type {literal.WhichOneof("literal_type")} not yet implemented.')
             case 'calendar_interval':
-                result = algebra_pb2.Expression.Literal()
+                raise NotImplementedError(
+                    f'Literal type {literal.WhichOneof("literal_type")} not yet implemented.')
             case 'year_month_interval':
-                result = algebra_pb2.Expression.Literal()
+                raise NotImplementedError(
+                    f'Literal type {literal.WhichOneof("literal_type")} not yet implemented.')
             case 'day_time_interval':
-                result = algebra_pb2.Expression.Literal()
+                raise NotImplementedError(
+                    f'Literal type {literal.WhichOneof("literal_type")} not yet implemented.')
             case 'array':
-                result = algebra_pb2.Expression.Literal()
+                raise NotImplementedError(
+                    f'Literal type {literal.WhichOneof("literal_type")} not yet implemented.')
             case _:
                 raise NotImplementedError(
                     f'Unexpected literal type: {literal.WhichOneof("literal_type")}')

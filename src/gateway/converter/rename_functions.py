@@ -37,6 +37,44 @@ class RenameFunctionsForDatafusion(SubstraitPlanVisitor):
                 extension.extension_function.name = 'date_part'
 
 
+class RenameFunctionsForDuckDB(SubstraitPlanVisitor):
+    """Renames Substrait functions to match what DuckDB expects."""
+
+    def visit_plan(self, plan: plan_pb2.Plan) -> None:
+        """Modify the provided plan so that functions are DuckDB compatible."""
+        super().visit_plan(plan)
+
+        for extension in plan.extensions:
+            if extension.WhichOneof('mapping_type') != 'extension_function':
+                continue
+
+            if ':' in extension.extension_function.name:
+                name, signature = extension.extension_function.name.split(':', 2)
+            else:
+                name = extension.extension_function.name
+                signature = None
+
+            # TODO -- Take the URI references into account.
+            changed = False
+            if name == 'bitwise_and':
+                changed = True
+                name = '&'
+            elif name == 'bitwise_or':
+                changed = True
+                name = '|'
+            elif name == 'bitwise_xor':
+                changed = True
+                name = 'xor'
+
+            if not changed:
+                continue
+
+            if signature:
+                extension.extension_function.name = f'{name}:{signature}'
+            else:
+                extension.extension_function.name = name
+
+
 # pylint: disable=no-member,fixme
 class RenameFunctionsForArrow(SubstraitPlanVisitor):
     """Renames Substrait functions to match what Datafusion expects."""

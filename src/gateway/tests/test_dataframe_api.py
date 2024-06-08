@@ -453,6 +453,77 @@ only showing top 1 row
             outcome = df.unionByName(df2, allowMissingColumns=True).collect()
             assertDataFrameEqual(outcome, expected)
 
+    def test_between(self, spark_session_with_tpch_dataset):
+        expected = [
+            Row(n_name='ARGENTINA', is_between=False),
+            Row(n_name='BRAZIL', is_between=False),
+            Row(n_name='CANADA', is_between=False),
+            Row(n_name='EGYPT', is_between=True),
+            Row(n_name='ETHIOPIA', is_between=False),
+        ]
+
+        with utilizes_valid_plans(spark_session_with_tpch_dataset):
+            nation = spark_session_with_tpch_dataset.table('nation')
+
+            outcome = nation.select(
+                nation.n_name,
+                nation.n_regionkey.between(2, 4).name('is_between')).limit(5).collect()
+
+            assertDataFrameEqual(outcome, expected)
+
+    def test_eqnullsafe(self, spark_session):
+        expected = [
+            Row(a=None, b=False, c=True),
+            Row(a=True, b=True, c=False),
+        ]
+        expected2 = [
+            Row(a=False, b=False, c=True),
+            Row(a=False, b=True, c=False),
+            Row(a=True, b=False, c=False),
+        ]
+
+        string_array = pa.array(['foo', None, None], type=pa.string())
+        float_array = pa.array([float('NaN'), 42.0, None], type=pa.float64())
+        table = pa.Table.from_arrays([string_array, float_array], names=['s', 'f'])
+
+        pq.write_table(table, 'test_table.parquet')
+        table_df = spark_session.read.parquet('test_table.parquet')
+        table_df.createOrReplaceTempView('mytesttable')
+        df = spark_session.table('mytesttable')
+
+        with utilizes_valid_plans(df):
+            outcome = df.select(df.s == 'foo',
+                                df.s.eqNullSafe('foo'),
+                                df.s.eqNullSafe(None)).limit(2).collect()
+            assertDataFrameEqual(outcome, expected)
+
+            outcome = df.select(df.f.eqNullSafe(None),
+                                df.f.eqNullSafe(float('NaN')),
+                                df.f.eqNullSafe(42.0)).collect()
+            assertDataFrameEqual(outcome, expected2)
+
+    def test_bitwise(self, spark_session):
+        expected = [
+            Row(a=0, b=42, c=42),
+            Row(a=42, b=42, c=0),
+            Row(a=8, b=255, c=247),
+            Row(a=None, b=None, c=None),
+        ]
+
+        int_array = pa.array([221, 0, 42, None], type=pa.int64())
+        table = pa.Table.from_arrays([int_array], names=['i'])
+
+        pq.write_table(table, 'test_table.parquet')
+        table_df = spark_session.read.parquet('test_table.parquet')
+        table_df.createOrReplaceTempView('mytesttable')
+        df = spark_session.table('mytesttable')
+
+        with utilizes_valid_plans(df):
+            outcome = df.select(df.i.bitwiseAND(42),
+                                df.i.bitwiseOR(42),
+                                df.i.bitwiseXOR(42)).collect()
+            assertDataFrameEqual(outcome, expected)
+
     def test_data_source_schema(self, spark_session):
         location_customer = str(find_tpch() / 'customer')
         schema = spark_session.read.parquet(location_customer).schema
