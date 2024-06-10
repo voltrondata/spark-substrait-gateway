@@ -5,7 +5,8 @@ import pytest
 from gateway.tests.conftest import find_tpch
 from gateway.tests.plan_validator import utilizes_valid_plans
 from hamcrest import assert_that, equal_to
-from pyarrow import parquet as pq
+import pyarrow as pa
+import pyarrow.parquet as pq
 from pyspark import Row
 from pyspark.sql.functions import col, substring
 from pyspark.testing import assertDataFrameEqual
@@ -251,6 +252,148 @@ only showing top 1 row
             outcome = nat.filter(col('s_suppkey') == 2).limit(1).collect()
 
         assertDataFrameEqual(outcome, expected)
+
+    def test_crossjoin(self, spark_session_with_tpch_dataset):
+        expected = [
+            Row(n_nationkey=1, n_name='ARGENTINA', s_name='Supplier#000000002'),
+            Row(n_nationkey=2, n_name='BRAZIL', s_name='Supplier#000000002'),
+            Row(n_nationkey=3, n_name='CANADA', s_name='Supplier#000000002'),
+            Row(n_nationkey=4, n_name='EGYPT', s_name='Supplier#000000002'),
+            Row(n_nationkey=5, n_name='ETHIOPIA', s_name='Supplier#000000002'),
+        ]
+
+        with utilizes_valid_plans(spark_session_with_tpch_dataset):
+            nation = spark_session_with_tpch_dataset.table('nation')
+            supplier = spark_session_with_tpch_dataset.table('supplier')
+
+            nat = nation.crossJoin(supplier).filter(col('s_suppkey') == 2)
+            outcome = nat.select('n_nationkey', 'n_name', 's_name').limit(5).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_union(self, spark_session_with_tpch_dataset):
+        expected = [
+            Row(n_nationkey=23, n_name='UNITED KINGDOM', n_regionkey=3,
+                n_comment='eans boost carefully special requests. accounts are. carefull'),
+            Row(n_nationkey=23, n_name='UNITED KINGDOM', n_regionkey=3,
+                n_comment='eans boost carefully special requests. accounts are. carefull'),
+        ]
+
+        with utilizes_valid_plans(spark_session_with_tpch_dataset):
+            nation = spark_session_with_tpch_dataset.table('nation')
+
+            outcome = nation.union(nation).filter(col('n_nationkey') == 23).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_union_distinct(self, spark_session_with_tpch_dataset):
+        expected = [
+            Row(n_nationkey=23, n_name='UNITED KINGDOM', n_regionkey=3,
+                n_comment='eans boost carefully special requests. accounts are. carefull'),
+        ]
+
+        with utilizes_valid_plans(spark_session_with_tpch_dataset):
+            nation = spark_session_with_tpch_dataset.table('nation')
+
+            outcome = nation.union(nation).distinct().filter(col('n_nationkey') == 23).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_unionall(self, spark_session_with_tpch_dataset):
+        expected = [
+            Row(n_nationkey=23, n_name='UNITED KINGDOM', n_regionkey=3,
+                n_comment='eans boost carefully special requests. accounts are. carefull'),
+            Row(n_nationkey=23, n_name='UNITED KINGDOM', n_regionkey=3,
+                n_comment='eans boost carefully special requests. accounts are. carefull'),
+        ]
+
+        with utilizes_valid_plans(spark_session_with_tpch_dataset):
+            nation = spark_session_with_tpch_dataset.table('nation')
+
+            outcome = nation.unionAll(nation).filter(col('n_nationkey') == 23).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_exceptall(self, spark_session_with_tpch_dataset):
+        expected = [
+            Row(n_nationkey=21, n_name='VIETNAM', n_regionkey=2,
+                n_comment='hely enticingly express accounts. even, final '),
+            Row(n_nationkey=21, n_name='VIETNAM', n_regionkey=2,
+                n_comment='hely enticingly express accounts. even, final '),
+            Row(n_nationkey=22, n_name='RUSSIA', n_regionkey=3,
+                n_comment=' requests against the platelets use never according to the '
+                          'quickly regular pint'),
+            Row(n_nationkey=22, n_name='RUSSIA', n_regionkey=3,
+                n_comment=' requests against the platelets use never according to the '
+                          'quickly regular pint'),
+            Row(n_nationkey=23, n_name='UNITED KINGDOM', n_regionkey=3,
+                n_comment='eans boost carefully special requests. accounts are. carefull'),
+            Row(n_nationkey=24, n_name='UNITED STATES', n_regionkey=1,
+                n_comment='y final packages. slow foxes cajole quickly. quickly silent platelets '
+                          'breach ironic accounts. unusual pinto be'),
+            Row(n_nationkey=24, n_name='UNITED STATES', n_regionkey=1,
+                n_comment='y final packages. slow foxes cajole quickly. quickly silent platelets '
+                          'breach ironic accounts. unusual pinto be'),
+        ]
+
+        with utilizes_valid_plans(spark_session_with_tpch_dataset):
+            nation = spark_session_with_tpch_dataset.table('nation').filter(col('n_nationkey') > 20)
+            nation1 = nation.union(nation)
+            nation2 = nation.filter(col('n_nationkey') == 23)
+
+            outcome = nation1.exceptAll(nation2).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_subtract(self, spark_session_with_tpch_dataset):
+        expected = [
+            Row(n_nationkey=21, n_name='VIETNAM', n_regionkey=2,
+                n_comment='hely enticingly express accounts. even, final '),
+            Row(n_nationkey=22, n_name='RUSSIA', n_regionkey=3,
+                n_comment=' requests against the platelets use never according to the '
+                          'quickly regular pint'),
+            Row(n_nationkey=24, n_name='UNITED STATES', n_regionkey=1,
+                n_comment='y final packages. slow foxes cajole quickly. quickly silent platelets '
+                          'breach ironic accounts. unusual pinto be'),
+        ]
+
+        with utilizes_valid_plans(spark_session_with_tpch_dataset):
+            nation = spark_session_with_tpch_dataset.table('nation').filter(col('n_nationkey') > 20)
+            nation1 = nation.union(nation)
+            nation2 = nation.filter(col('n_nationkey') == 23)
+
+            outcome = nation1.subtract(nation2).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_unionbyname(self, spark_session):
+        expected = [
+            Row(a=1, b=2, c=3, d=None),
+            Row(a=None, b=4, c=5, d=6),
+        ]
+
+        int1_array = pa.array([1], type=pa.int32())
+        int2_array = pa.array([2], type=pa.int32())
+        int3_array = pa.array([3], type=pa.int32())
+        table = pa.Table.from_arrays([int1_array, int2_array, int3_array], names=['a', 'b', 'c'])
+        int4_array = pa.array([4], type=pa.int32())
+        int5_array = pa.array([5], type=pa.int32())
+        int6_array = pa.array([6], type=pa.int32())
+        table2 = pa.Table.from_arrays([int4_array, int5_array, int6_array], names=['b', 'c', 'd'])
+
+        pq.write_table(table, 'test_table1.parquet')
+        table_df = spark_session.read.parquet('test_table1.parquet')
+        table_df.createOrReplaceTempView('mytesttable1')
+        df = spark_session.table('mytesttable1')
+
+        pq.write_table(table2, 'test_table2.parquet')
+        table_df2 = spark_session.read.parquet('test_table2.parquet')
+        table_df2.createOrReplaceTempView('mytesttable2')
+        df2 = spark_session.table('mytesttable2')
+
+        with utilizes_valid_plans(df):
+            outcome = df.unionByName(df2, allowMissingColumns=True).collect()
+            assertDataFrameEqual(outcome, expected)
 
     def test_data_source_schema(self, spark_session):
         location_customer = str(find_tpch() / 'customer')
