@@ -1326,7 +1326,8 @@ class SparkSubstraitConverter:
             project.project.common.emit.output_mapping.append(idx)
         return project
 
-    def convert_set_operation_relation(self, rel: spark_relations_pb2.SetOperation) -> algebra_pb2.Rel:
+    def convert_set_operation_relation(
+            self, rel: spark_relations_pb2.SetOperation) -> algebra_pb2.Rel:
         """Convert a Spark set operation relation into a Substrait set operation relation."""
         left = self.convert_relation(rel.left_input)
         right = self.convert_relation(rel.right_input)
