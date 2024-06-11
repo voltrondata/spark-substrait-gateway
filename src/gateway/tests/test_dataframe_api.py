@@ -219,6 +219,9 @@ only showing top 1 row
 
         with utilizes_valid_plans(df):
             outcome = df.select(df.l.getItem(0), df.d.getItem("key")).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
     def test_astype(self, users_dataframe):
         expected = [
             Row(user_id=849, name='Brooke Jones', paid_for_service=False),
