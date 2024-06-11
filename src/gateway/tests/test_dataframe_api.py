@@ -22,11 +22,8 @@ def mark_dataframe_tests_as_xfail(request):
             request.node.add_marker(pytest.mark.xfail(reason='structs not handled'))
     elif originalname == 'test_column_getitem':
         request.node.add_marker(pytest.mark.xfail(reason='maps and lists not handled'))
-    elif source == 'spark':
-        if originalname == 'test_subquery_alias':
-            pytest.xfail('Subquery alias relations are not yet implemented (so no exception)')
     elif source == 'spark' and originalname == 'test_subquery_alias':
-        pytest.xfail('Subquery alias relations are not yet implemented (so no exception)')
+        pytest.xfail('Spark supports subquery_alias but everyone else does not')
 
 
 # pylint: disable=missing-function-docstring
