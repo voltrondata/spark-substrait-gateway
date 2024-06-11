@@ -8,19 +8,6 @@ from substrait.gen.proto import plan_pb2
 
 from gateway.backends.backend import Backend
 
-_DUCKDB_TO_ARROW = {
-    'BOOLEAN': pa.bool_(),
-    'TINYINT': pa.int8(),
-    'SMALLINT': pa.int16(),
-    'INTEGER': pa.int32(),
-    'BIGINT': pa.int64(),
-    'FLOAT': pa.float32(),
-    'DOUBLE': pa.float64(),
-    'DATE': pa.date32(),
-    'TIMESTAMP': pa.timestamp('ns'),
-    'VARCHAR': pa.string(),
-}
-
 
 # pylint: disable=fixme
 class DuckDBBackend(Backend):
@@ -81,24 +68,20 @@ class DuckDBBackend(Backend):
         files = paths
         if len(paths) == 1:
             files = self.expand_location(paths[0])
+        # TODO -- Handle resolution of a combined schema.
         df = self._connection.read_parquet(files)
-
-        fields = []
-        for name, field_type in zip(df.columns, df.types, strict=False):
-            if name == 'aggr':
-                # This isn't a real column.
-                continue
-            fields.append(pa.field(name, _DUCKDB_TO_ARROW[str(field_type)]))
-        return pa.schema(fields)
+        schema = df.to_arrow_table().schema
+        if 'aggr' in schema.names:
+            raise ValueError("Aggr column found in schema")
+        return schema
 
     def describe_table(self, name: str):
         """Asks the backend to describe the given table."""
-        df = self._connection.execute(f'DESCRIBE {name}').fetchdf()
-
-        fields = []
-        for name, field_type in zip(df.column_name, df.column_type, strict=False):
-            fields.append(pa.field(name, _DUCKDB_TO_ARROW[str(field_type)]))
-        return pa.schema(fields)
+        table = self._connection.table(name)
+        schema = table.to_arrow_table().schema
+        if 'aggr' in schema.names:
+            raise ValueError("Aggr column found in schema")
+        return schema
 
     def convert_sql(self, sql: str) -> plan_pb2.Plan:
         """Convert SQL into a Substrait plan."""

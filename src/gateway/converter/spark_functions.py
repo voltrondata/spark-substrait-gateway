@@ -195,7 +195,11 @@ SPARK_SUBSTRAIT_MAPPING = {
     'not': ExtensionFunction(
         '/functions_boolean.yaml', 'not:bool', type_pb2.Type(
             bool=type_pb2.Type.Boolean(
-                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED)))
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'struct_extract': ExtensionFunction(
+        '/functions_structs.yaml', 'struct_extract:any_str', type_pb2.Type(
+            i64=type_pb2.Type.I64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
 }
 
 

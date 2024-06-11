@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+import traceback
 from contextlib import contextmanager
 
 import google.protobuf.message
@@ -9,10 +10,15 @@ from pyspark.errors.exceptions.connect import SparkConnectGrpcException
 from substrait_validator.substrait import plan_pb2
 
 
-def validate_plan(json_plan: str):
+def validate_plan(json_plan: str, ignore_too_few_names: bool):
     substrait_plan = json_format.Parse(json_plan, plan_pb2.Plan())
     try:
-        diagnostics = substrait_validator.plan_to_diagnostics(substrait_plan.SerializeToString())
+        config = substrait_validator.Config()
+        if ignore_too_few_names:
+            config.override_diagnostic_level(4003, "error", "info")
+            config.override_diagnostic_level(1002, "error", "info")
+        diagnostics = substrait_validator.plan_to_diagnostics(
+            substrait_plan.SerializeToString(), config)
     except google.protobuf.message.DecodeError:
         # Probable protobuf mismatch internal to Substrait Validator, ignore for now.
         return
@@ -34,6 +40,10 @@ def utilizes_valid_plans(session):
     # Reset the statistics, so we only see the plans that were created during our lifetime.
     if session.conf.get('spark-substrait-gateway.backend', 'spark') != 'spark':
         session.conf.set('spark-substrait-gateway.reset_statistics', None)
+        ignore_too_few_names = session.conf.get(
+            'spark-substrait-gateway.use_duckdb_struct_name_behavior') == 'True'
+    else:
+        ignore_too_few_names = False
     try:
         exception = None
         yield
@@ -47,8 +57,9 @@ def utilizes_valid_plans(session):
     plans_as_text = []
     for i in range(plan_count):
         plan = session.conf.get(f'spark-substrait-gateway.plan.{i + 1}')
-        plans_as_text.append( f'Plan #{i+1}:\n{plan}\n')
-        validate_plan(plan)
+        plans_as_text.append(f'Plan #{i + 1}:\n{plan}\n')
+        validate_plan(plan, ignore_too_few_names)
     if exception:
-        pytest.fail(f'Exception raised during execution: {exception.message}\n\n' +
+        pytest.fail('Exception raised during execution: ' +
+                    '\n'.join(traceback.format_exception(exception)) +
                     '\n\n'.join(plans_as_text), pytrace=False)

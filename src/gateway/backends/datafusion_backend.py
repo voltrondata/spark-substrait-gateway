@@ -9,19 +9,6 @@ from gateway.backends.backend import Backend
 from gateway.converter.rename_functions import RenameFunctionsForDatafusion
 from gateway.converter.replace_local_files import ReplaceLocalFilesWithNamedTable
 
-_DATAFUSION_TO_ARROW = {
-    'Boolean': pa.bool_(),
-    'Int8': pa.int8(),
-    'Int16': pa.int16(),
-    'Int32': pa.int32(),
-    'Int64': pa.int64(),
-    'Float32': pa.float32(),
-    'Float64': pa.float64(),
-    'Date32': pa.date32(),
-    'Timestamp(Nanosecond, None)': pa.timestamp('ns'),
-    'Utf8': pa.string(),
-}
-
 
 # pylint: disable=import-outside-toplevel
 class DatafusionBackend(Backend):
@@ -88,15 +75,8 @@ class DatafusionBackend(Backend):
     def describe_files(self, paths: list[str]):
         """Asks the backend to describe the given files."""
         # TODO -- Use the ListingTable API to resolve the combined schema.
-        df = self._connection.read_parquet(paths[0])
-        return df.schema()
+        return self._connection.read_parquet(paths[0]).schema()
 
     def describe_table(self, table_name: str):
         """Asks the backend to describe the given table."""
-        result = self._connection.sql(f"describe {table_name}").to_arrow_table().to_pylist()
-
-        fields = []
-        for index in range(len(result)):
-            fields.append(pa.field(result[index]['column_name'],
-                                   _DATAFUSION_TO_ARROW[result[index]['data_type']]))
-        return pa.schema(fields)
+        return self._connection.table(table_name).schema()
