@@ -57,6 +57,10 @@ SPARK_SUBSTRAIT_MAPPING = {
         '/functions_comparison.yaml', 'gt:i64_i64', type_pb2.Type(
             bool=type_pb2.Type.Boolean(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    '<=>': ExtensionFunction(
+        '/functions_comparison.yaml', 'is_not_distinct_from:any_any', type_pb2.Type(
+            bool=type_pb2.Type.Boolean(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_NULLABLE))),
     'isnull': ExtensionFunction(
         '/functions_comparison.yaml', 'is_null:int', type_pb2.Type(
             bool=type_pb2.Type.Boolean(
@@ -75,6 +79,18 @@ SPARK_SUBSTRAIT_MAPPING = {
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     '/': ExtensionFunction(
         '/functions_arithmetic.yaml', 'divide:i64_i64', type_pb2.Type(
+            i64=type_pb2.Type.I64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    '&': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'bitwise_and:i64_i64', type_pb2.Type(
+            i64=type_pb2.Type.I64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    '|': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'bitwise_or:i64_i64', type_pb2.Type(
+            i64=type_pb2.Type.I64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    '^': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'bitwise_xor:i64_i64', type_pb2.Type(
             i64=type_pb2.Type.I64(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'array_contains': ExtensionFunction(

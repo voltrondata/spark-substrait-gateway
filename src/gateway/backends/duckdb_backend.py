@@ -7,6 +7,7 @@ import pyarrow as pa
 from substrait.gen.proto import plan_pb2
 
 from gateway.backends.backend import Backend
+from src.gateway.converter.rename_functions import RenameFunctionsForDuckDB
 
 
 # pylint: disable=fixme
@@ -36,6 +37,8 @@ class DuckDBBackend(Backend):
     # ruff: noqa: BLE001
     def execute(self, plan: plan_pb2.Plan) -> pa.lib.Table:
         """Execute the given Substrait plan against DuckDB."""
+        RenameFunctionsForDuckDB().visit_plan(plan)
+
         plan_data = plan.SerializeToString()
 
         try:
