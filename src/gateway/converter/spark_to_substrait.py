@@ -1294,11 +1294,7 @@ class SparkSubstraitConverter:
     def convert_subquery_alias_relation(self,
                                         rel: spark_relations_pb2.SubqueryAlias) -> algebra_pb2.Rel:
         """Convert a Spark subquery alias relation into a Substrait relation."""
-        result = self.convert_relation(rel.input)
-        self.update_field_references(rel.input.common.plan_id)
-        symbol = self._symbol_table.get_symbol(self._current_plan_id)
-        symbol.output_fields[-1] = rel.alias
-        return result
+        raise NotImplementedError('Subquery alias relations are not yet implemented')
 
     def convert_deduplicate_relation(self, rel: spark_relations_pb2.Deduplicate) -> algebra_pb2.Rel:
         """Convert a Spark deduplicate relation into a Substrait aggregation."""
