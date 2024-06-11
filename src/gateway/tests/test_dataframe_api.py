@@ -44,8 +44,10 @@ def mark_dataframe_tests_as_xfail(request):
         request.node.add_marker(pytest.mark.xfail(reason='subtract not supported'))
     if source == 'gateway-over-datafusion' and originalname == 'test_intersect':
         request.node.add_marker(pytest.mark.xfail(reason='intersect not supported'))
+    if source == 'gateway-over-datafusion' and originalname == 'test_offset':
+        request.node.add_marker(pytest.mark.xfail(reason='offset not supported'))
 
-            # pylint: disable=missing-function-docstring
+
 # ruff: noqa: E712
 class TestDataFrameAPI:
     """Tests of the dataframe side of SparkConnect."""
@@ -522,6 +524,59 @@ only showing top 1 row
             outcome = df.select(df.i.bitwiseAND(42),
                                 df.i.bitwiseOR(42),
                                 df.i.bitwiseXOR(42)).collect()
+            assertDataFrameEqual(outcome, expected)
+
+    def test_first(self, users_dataframe):
+        expected = Row(user_id='user012015386', name='Kelly Mcdonald', paid_for_service=False)
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.sort('user_id').first()
+
+        assert outcome == expected
+
+    def test_head(self, users_dataframe):
+        expected = [
+            Row(user_id='user012015386', name='Kelly Mcdonald', paid_for_service=False),
+            Row(user_id='user041132632', name='Tina Atkinson', paid_for_service=False),
+            Row(user_id='user056872864', name='Kenneth Castro', paid_for_service=False),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.sort('user_id').head(3)
+            assertDataFrameEqual(outcome, expected)
+
+    def test_take(self, users_dataframe):
+        expected = [
+            Row(user_id='user012015386', name='Kelly Mcdonald', paid_for_service=False),
+            Row(user_id='user041132632', name='Tina Atkinson', paid_for_service=False),
+            Row(user_id='user056872864', name='Kenneth Castro', paid_for_service=False),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.sort('user_id').take(3)
+            assertDataFrameEqual(outcome, expected)
+
+    def test_offset(self, users_dataframe):
+        expected = [
+            Row(user_id='user056872864', name='Kenneth Castro', paid_for_service=False),
+            Row(user_id='user058232666', name='Collin Goodwin', paid_for_service=False),
+            Row(user_id='user065694278', name='Rachel Mclean', paid_for_service=False),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.sort('user_id').offset(2).head(3)
+            assertDataFrameEqual(outcome, expected)
+
+    @pytest.mark.interesting
+    def test_tail(self, users_dataframe):
+        expected = [
+            Row(user_id='user990459354', name='Kevin Hall', paid_for_service=False),
+            Row(user_id='user995187670', name='Rebecca Valentine', paid_for_service=False),
+            Row(user_id='user995208610', name='Helen Clark', paid_for_service=False),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.sort('user_id').tail(3)
             assertDataFrameEqual(outcome, expected)
 
     def test_data_source_schema(self, spark_session):

@@ -41,6 +41,7 @@ from gateway.converter.substrait_builder import (
     strlen,
 )
 from gateway.converter.symbol_table import SymbolTable
+from google.protobuf.internal.wire_format import INT64_MAX
 from pyspark.sql.connect.proto import types_pb2
 from substrait.gen.proto import algebra_pb2, plan_pb2, type_pb2
 from substrait.gen.proto.extensions import extensions_pb2
@@ -1372,6 +1373,16 @@ class SparkSubstraitConverter:
         set_operation.op = operation
         return algebra_pb2.Rel(set=set_operation)
 
+    def convert_offset_relation(self, rel: spark_relations_pb2.Offset) -> algebra_pb2.Rel:
+        """Convert a Spark offset relation into a Substrait fetch relation."""
+        input_rel = self.convert_relation(rel.input)
+        rest_of_input = INT64_MAX if self._conversion_options.fetch_return_all_workaround else -1
+        fetch = algebra_pb2.FetchRel(input=input_rel, offset=rel.offset,
+                                     count=rest_of_input)
+        self.update_field_references(rel.input.common.plan_id)
+        fetch.common.CopyFrom(self.create_common_relation())
+        return algebra_pb2.Rel(fetch=fetch)
+
     def convert_relation(self, rel: spark_relations_pb2.Relation) -> algebra_pb2.Rel:
         """Convert a Spark relation into a Substrait one."""
         self._symbol_table.add_symbol(rel.common.plan_id, parent=self._current_plan_id,
@@ -1409,6 +1420,8 @@ class SparkSubstraitConverter:
                 result = self.convert_deduplicate_relation(rel.deduplicate)
             case 'set_op':
                 result = self.convert_set_operation_relation(rel.set_op)
+            case 'offset':
+                result = self.convert_offset_relation(rel.offset)
             case _:
                 raise ValueError(
                     f'Unexpected Spark plan rel_type: {rel.WhichOneof("rel_type")}')

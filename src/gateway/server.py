@@ -302,11 +302,14 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
                     elif key == 'spark.sql.session.timeZone':
                         response.pairs.add(key=key, value='UTC')
                     elif key in ['spark.sql.pyspark.inferNestedDictAsStruct.enabled',
+                                 'spark.sql.repl.eagerEval.enabled',
+                                 'spark.sql.repl.eagerEval.truncate',
                                  'spark.sql.pyspark.legacy.inferArrayTypeFromFirstElement.enabled']:
                         response.pairs.add(key=key, value='false')
                     elif key == 'spark.sql.timestampType':
                         response.pairs.add(key=key, value='TIMESTAMP_NTZ')
-                    elif key == 'spark.sql.session.localRelationCacheThreshold':
+                    elif key in ['spark.sql.session.localRelationCacheThreshold',
+                                 'spark.sql.repl.eagerEval.maxNumRows']:
                         response.pairs.add(key=key, value='9999')
                     elif key == 'spark-substrait-gateway.use_duckdb_struct_name_behavior':
                         response.pairs.add(
