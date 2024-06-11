@@ -772,6 +772,8 @@ class SubstraitPlanVisitor:
                 self.visit_exchange_relation(rel.exchange)
             case 'expand':
                 self.visit_expand_relation(rel.expand)
+            case 'set':
+                self.visit_set_relation(rel.set)
             case _:
                 raise ValueError(f'Unexpected rel type: {rel.WhichOneof("rel_type")}')
 
