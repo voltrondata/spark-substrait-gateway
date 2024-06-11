@@ -211,10 +211,7 @@ only showing top 1 row
         struct_array = pa.array(data, type=struct_type)
         table = pa.Table.from_arrays([struct_array], names=['r'])
 
-        pq.write_table(table, 'test_table.parquet')
-        table_df = spark_session.read.parquet('test_table.parquet')
-        table_df.createOrReplaceTempView('mytesttable')
-        df = spark_session.table('mytesttable')
+        df = create_parquet_table(spark_session, 'mytesttable', table)
 
         with utilizes_valid_plans(df):
             outcome = df.select(df.r.getField("b"), df.r.a).collect()
@@ -231,10 +228,7 @@ only showing top 1 row
                              type=pa.map_(pa.string(), pa.string(), False))
         table = pa.Table.from_arrays([list_array, map_array], names=['l', 'd'])
 
-        pq.write_table(table, 'test_table.parquet')
-        table_df = spark_session.read.parquet('test_table.parquet')
-        table_df.createOrReplaceTempView('mytesttable')
-        df = spark_session.table('mytesttable')
+        df = create_parquet_table(spark_session, 'mytesttable', table)
 
         with utilizes_valid_plans(df):
             outcome = df.select(df.l.getItem(0), df.d.getItem("key")).collect()
