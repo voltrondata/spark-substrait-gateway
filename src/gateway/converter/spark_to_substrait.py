@@ -1326,6 +1326,32 @@ class SparkSubstraitConverter:
             project.project.common.emit.output_mapping.append(idx)
         return project
 
+    def convert_set_operation_relation(self, rel: spark_relations_pb2.SetOperation) -> algebra_pb2.Rel:
+        """Convert a Spark set operation relation into a Substrait set operation relation."""
+        left = self.convert_relation(rel.left_input)
+        right = self.convert_relation(rel.right_input)
+        set_operation = algebra_pb2.SetRel(inputs=[left, right])
+        self.update_field_references(rel.left_input.common.plan_id)
+        set_operation.common.CopyFrom(self.create_common_relation())
+
+        match rel.set_op_type:
+            case spark_relations_pb2.SetOperation.SetOpType.SET_OP_TYPE_UNION:
+                # TODO -- Support by_name
+                # TODO -- Support allow_missing_columns
+                if rel.is_all:
+                    operation = algebra_pb2.SetRel.SET_OP_UNION_ALL
+                else:
+                    operation = algebra_pb2.SetRel.SET_OP_UNION_DISTINCT
+            case spark_relations_pb2.SetOperation.SetOpType.SET_OP_TYPE_INTERSECT:
+                operation = algebra_pb2.SetRel.SET_OP_INTERSECTION_PRIMARY
+            case spark_relations_pb2.SetOperation.SetOpType.SET_OP_TYPE_EXCEPT:
+                operation = algebra_pb2.SetRel.SET_OP_MINUS_PRIMARY
+            case _:
+                raise ValueError(f'Unexpected set operation type: {rel.set_op_type}')
+
+        set_operation.op = operation
+        return algebra_pb2.Rel(set=set_operation)
+
     def convert_relation(self, rel: spark_relations_pb2.Relation) -> algebra_pb2.Rel:
         """Convert a Spark relation into a Substrait one."""
         self._symbol_table.add_symbol(rel.common.plan_id, parent=self._current_plan_id,
@@ -1361,6 +1387,8 @@ class SparkSubstraitConverter:
                 result = self.convert_subquery_alias_relation(rel.subquery_alias)
             case 'deduplicate':
                 result = self.convert_deduplicate_relation(rel.deduplicate)
+            case 'set_op':
+                result = self.convert_set_operation_relation(rel.set_op)
             case _:
                 raise ValueError(
                     f'Unexpected Spark plan rel_type: {rel.WhichOneof("rel_type")}')

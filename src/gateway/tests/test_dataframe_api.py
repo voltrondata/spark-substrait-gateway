@@ -1,15 +1,23 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for the Spark to Substrait Gateway server."""
-import pyarrow as pa
 import pytest
 from gateway.tests.conftest import find_tpch
 from gateway.tests.plan_validator import utilizes_valid_plans
 from hamcrest import assert_that, equal_to
 import pyarrow as pa
 import pyarrow.parquet as pq
+import pyspark
 from pyspark import Row
 from pyspark.sql.functions import col, substring
 from pyspark.testing import assertDataFrameEqual
+
+
+def create_parquet_table(spark_session, table_name, table):
+    """Creates a parquet table from a PyArrow table and registers it to the session."""
+    pq.write_table(table, f'{table_name}.parquet')
+    table_df = spark_session.read.parquet(f'{table_name}.parquet')
+    table_df.createOrReplaceTempView(table_name)
+    return spark_session.table(table_name)
 
 
 @pytest.fixture(autouse=True)
@@ -366,7 +374,44 @@ only showing top 1 row
 
         assertDataFrameEqual(outcome, expected)
 
+    def test_intersect(self, spark_session_with_tpch_dataset):
+        expected = [
+            Row(n_nationkey=23, n_name='UNITED KINGDOM', n_regionkey=3,
+                n_comment='eans boost carefully special requests. accounts are. carefull'),
+        ]
+
+        with utilizes_valid_plans(spark_session_with_tpch_dataset):
+            nation = spark_session_with_tpch_dataset.table('nation')
+            nation1 = nation.union(nation).filter(col('n_nationkey') >= 23)
+            nation2 = nation.filter(col('n_nationkey') <= 23)
+
+            outcome = nation1.intersect(nation2).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
     def test_unionbyname(self, spark_session):
+        expected = [
+            Row(a=1, b=2, c=3),
+            Row(a=4, b=5, c=6),
+        ]
+
+        int1_array = pa.array([1], type=pa.int32())
+        int2_array = pa.array([2], type=pa.int32())
+        int3_array = pa.array([3], type=pa.int32())
+        table = pa.Table.from_arrays([int1_array, int2_array, int3_array], names=['a', 'b', 'c'])
+        int4_array = pa.array([4], type=pa.int32())
+        int5_array = pa.array([5], type=pa.int32())
+        int6_array = pa.array([6], type=pa.int32())
+        table2 = pa.Table.from_arrays([int4_array, int5_array, int6_array], names=['a', 'b', 'c'])
+
+        df = create_parquet_table(spark_session, 'mytesttable1', table)
+        df2 = create_parquet_table(spark_session, 'mytesttable2', table2)
+
+        with utilizes_valid_plans(df):
+            outcome = df.unionByName(df2).collect()
+            assertDataFrameEqual(outcome, expected)
+
+    def test_unionbyname_with_mismatched_columns(self, spark_session):
         expected = [
             Row(a=1, b=2, c=3, d=None),
             Row(a=None, b=4, c=5, d=6),
@@ -381,15 +426,29 @@ only showing top 1 row
         int6_array = pa.array([6], type=pa.int32())
         table2 = pa.Table.from_arrays([int4_array, int5_array, int6_array], names=['b', 'c', 'd'])
 
-        pq.write_table(table, 'test_table1.parquet')
-        table_df = spark_session.read.parquet('test_table1.parquet')
-        table_df.createOrReplaceTempView('mytesttable1')
-        df = spark_session.table('mytesttable1')
+        df = create_parquet_table(spark_session, 'mytesttable1', table)
+        df2 = create_parquet_table(spark_session, 'mytesttable2', table2)
 
-        pq.write_table(table2, 'test_table2.parquet')
-        table_df2 = spark_session.read.parquet('test_table2.parquet')
-        table_df2.createOrReplaceTempView('mytesttable2')
-        df2 = spark_session.table('mytesttable2')
+        with pytest.raises(pyspark.errors.exceptions.captured.AnalysisException):
+            df.unionByName(df2).collect()
+
+    def test_unionbyname_with_missing_columns(self, spark_session):
+        expected = [
+            Row(a=1, b=2, c=3, d=None),
+            Row(a=None, b=4, c=5, d=6),
+        ]
+
+        int1_array = pa.array([1], type=pa.int32())
+        int2_array = pa.array([2], type=pa.int32())
+        int3_array = pa.array([3], type=pa.int32())
+        table = pa.Table.from_arrays([int1_array, int2_array, int3_array], names=['a', 'b', 'c'])
+        int4_array = pa.array([4], type=pa.int32())
+        int5_array = pa.array([5], type=pa.int32())
+        int6_array = pa.array([6], type=pa.int32())
+        table2 = pa.Table.from_arrays([int4_array, int5_array, int6_array], names=['b', 'c', 'd'])
+
+        df = create_parquet_table(spark_session, 'mytesttable1', table)
+        df2 = create_parquet_table(spark_session, 'mytesttable2', table2)
 
         with utilizes_valid_plans(df):
             outcome = df.unionByName(df2, allowMissingColumns=True).collect()
