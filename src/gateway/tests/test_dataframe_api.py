@@ -34,8 +34,18 @@ def mark_dataframe_tests_as_xfail(request):
     elif source == 'spark' and originalname == 'test_subquery_alias':
         pytest.xfail('Spark supports subquery_alias but everyone else does not')
 
+    if source != 'spark' and originalname.startswith('test_unionbyname'):
+        request.node.add_marker(pytest.mark.xfail(reason='unionByName not supported in Substrait'))
+    if source != 'spark' and originalname.startswith('test_exceptall'):
+        request.node.add_marker(pytest.mark.xfail(reason='exceptAll not supported in Substrait'))
+    if source == 'gateway-over-duckdb' and originalname in ['test_union', 'test_unionall']:
+        request.node.add_marker(pytest.mark.xfail(reason='DuckDB treats all unions as distinct'))
+    if source == 'gateway-over-datafusion' and originalname == 'test_subtract':
+        request.node.add_marker(pytest.mark.xfail(reason='subtract not supported"))
+    if source == 'gateway-over-datafusion' and originalname == 'test_intersect':
+        request.node.add_marker(pytest.mark.xfail(reason='intersect not supported"))
 
-# pylint: disable=missing-function-docstring
+            # pylint: disable=missing-function-docstring
 # ruff: noqa: E712
 class TestDataFrameAPI:
     """Tests of the dataframe side of SparkConnect."""
@@ -279,6 +289,7 @@ only showing top 1 row
 
         assertDataFrameEqual(outcome, expected)
 
+    @pytest.mark.interesting
     def test_union(self, spark_session_with_tpch_dataset):
         expected = [
             Row(n_nationkey=23, n_name='UNITED KINGDOM', n_regionkey=3,
@@ -294,6 +305,7 @@ only showing top 1 row
 
         assertDataFrameEqual(outcome, expected)
 
+    @pytest.mark.interesting
     def test_union_distinct(self, spark_session_with_tpch_dataset):
         expected = [
             Row(n_nationkey=23, n_name='UNITED KINGDOM', n_regionkey=3,
@@ -307,6 +319,7 @@ only showing top 1 row
 
         assertDataFrameEqual(outcome, expected)
 
+    @pytest.mark.interesting
     def test_unionall(self, spark_session_with_tpch_dataset):
         expected = [
             Row(n_nationkey=23, n_name='UNITED KINGDOM', n_regionkey=3,
@@ -322,6 +335,7 @@ only showing top 1 row
 
         assertDataFrameEqual(outcome, expected)
 
+    @pytest.mark.interesting
     def test_exceptall(self, spark_session_with_tpch_dataset):
         expected = [
             Row(n_nationkey=21, n_name='VIETNAM', n_regionkey=2,
@@ -353,6 +367,7 @@ only showing top 1 row
 
         assertDataFrameEqual(outcome, expected)
 
+    @pytest.mark.interesting
     def test_subtract(self, spark_session_with_tpch_dataset):
         expected = [
             Row(n_nationkey=21, n_name='VIETNAM', n_regionkey=2,
@@ -374,6 +389,7 @@ only showing top 1 row
 
         assertDataFrameEqual(outcome, expected)
 
+    @pytest.mark.interesting
     def test_intersect(self, spark_session_with_tpch_dataset):
         expected = [
             Row(n_nationkey=23, n_name='UNITED KINGDOM', n_regionkey=3,
@@ -389,6 +405,7 @@ only showing top 1 row
 
         assertDataFrameEqual(outcome, expected)
 
+    @pytest.mark.interesting
     def test_unionbyname(self, spark_session):
         expected = [
             Row(a=1, b=2, c=3),
@@ -411,6 +428,7 @@ only showing top 1 row
             outcome = df.unionByName(df2).collect()
             assertDataFrameEqual(outcome, expected)
 
+    @pytest.mark.interesting
     def test_unionbyname_with_mismatched_columns(self, spark_session):
         expected = [
             Row(a=1, b=2, c=3, d=None),
@@ -432,6 +450,7 @@ only showing top 1 row
         with pytest.raises(pyspark.errors.exceptions.captured.AnalysisException):
             df.unionByName(df2).collect()
 
+    @pytest.mark.interesting
     def test_unionbyname_with_missing_columns(self, spark_session):
         expected = [
             Row(a=1, b=2, c=3, d=None),

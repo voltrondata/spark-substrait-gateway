@@ -1334,17 +1334,22 @@ class SparkSubstraitConverter:
         self.update_field_references(rel.left_input.common.plan_id)
         set_operation.common.CopyFrom(self.create_common_relation())
 
+        if rel.by_name:
+            # TODO -- Support by_name and allow_missing_columns.
+            raise NotImplementedError('Substrait cannot represent set operations by name')
         match rel.set_op_type:
             case spark_relations_pb2.SetOperation.SetOpType.SET_OP_TYPE_UNION:
-                # TODO -- Support by_name
-                # TODO -- Support allow_missing_columns
                 if rel.is_all:
                     operation = algebra_pb2.SetRel.SET_OP_UNION_ALL
                 else:
                     operation = algebra_pb2.SetRel.SET_OP_UNION_DISTINCT
             case spark_relations_pb2.SetOperation.SetOpType.SET_OP_TYPE_INTERSECT:
+                if rel.is_all:
+                    raise NotImplementedError('Substrait cannot represent INTERSECT ALL')
                 operation = algebra_pb2.SetRel.SET_OP_INTERSECTION_PRIMARY
             case spark_relations_pb2.SetOperation.SetOpType.SET_OP_TYPE_EXCEPT:
+                if rel.is_all:
+                    raise NotImplementedError('Substrait cannot represent MINUS ALL')
                 operation = algebra_pb2.SetRel.SET_OP_MINUS_PRIMARY
             case _:
                 raise ValueError(f'Unexpected set operation type: {rel.set_op_type}')
