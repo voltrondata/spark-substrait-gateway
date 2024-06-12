@@ -1116,7 +1116,7 @@ class SparkSubstraitConverter:
         field_number = len(symbol.input_fields)
         for alias in rel.aliases:
             if len(alias.name) != 1:
-                raise ValueError('every column alias must have exactly one name')
+                raise ValueError('Only one name part is supported in an alias.')
             name = alias.name[0]
             project.expressions.append(self.convert_expression(alias.expr))
             if name in symbol.input_fields:
