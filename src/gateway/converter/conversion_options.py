@@ -22,6 +22,7 @@ class ConversionOptions:
         self.duckdb_project_emit_workaround = False
         self.safety_project_read_relations = False
         self.use_duckdb_struct_name_behavior = False
+        self.fetch_return_all_workaround = True
 
         self.return_names_with_types = False
 
