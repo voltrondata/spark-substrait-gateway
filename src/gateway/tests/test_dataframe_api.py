@@ -567,17 +567,19 @@ only showing top 1 row
             outcome = users_dataframe.sort('user_id').offset(2).head(3)
             assertDataFrameEqual(outcome, expected)
 
-    @pytest.mark.interesting
-    def test_tail(self, users_dataframe):
+    def test_tail(self, users_dataframe, source):
         expected = [
             Row(user_id='user990459354', name='Kevin Hall', paid_for_service=False),
             Row(user_id='user995187670', name='Rebecca Valentine', paid_for_service=False),
             Row(user_id='user995208610', name='Helen Clark', paid_for_service=False),
         ]
 
-        with utilizes_valid_plans(users_dataframe):
+        if source == 'spark':
             outcome = users_dataframe.sort('user_id').tail(3)
             assertDataFrameEqual(outcome, expected)
+        else:
+            with pytest.raises(Exception):
+                users_dataframe.sort('user_id').tail(3)
 
     def test_data_source_schema(self, spark_session):
         location_customer = str(find_tpch() / 'customer')

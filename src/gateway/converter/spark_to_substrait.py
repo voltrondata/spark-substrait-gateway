@@ -1383,6 +1383,12 @@ class SparkSubstraitConverter:
         fetch.common.CopyFrom(self.create_common_relation())
         return algebra_pb2.Rel(fetch=fetch)
 
+    def convert_tail_relation(self, rel: spark_relations_pb2.Tail) -> algebra_pb2.Rel:
+        """Convert a Spark tail relation into a set of Substrait relation."""
+        # TODO -- Consider finding a nearby sort relation and rewriting the order.
+        raise NotImplementedError(
+            'Substrait does not represent tail relations.  Use sort and head relations instead.')
+
     def convert_relation(self, rel: spark_relations_pb2.Relation) -> algebra_pb2.Rel:
         """Convert a Spark relation into a Substrait one."""
         self._symbol_table.add_symbol(rel.common.plan_id, parent=self._current_plan_id,
@@ -1422,6 +1428,8 @@ class SparkSubstraitConverter:
                 result = self.convert_set_operation_relation(rel.set_op)
             case 'offset':
                 result = self.convert_offset_relation(rel.offset)
+            case 'tail':
+                result = self.convert_tail_relation(rel.tail)
             case _:
                 raise ValueError(
                     f'Unexpected Spark plan rel_type: {rel.WhichOneof("rel_type")}')
