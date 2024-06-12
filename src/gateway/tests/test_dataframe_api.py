@@ -211,7 +211,6 @@ only showing top 1 row
         assertDataFrameEqual(outcome, expected)
         assert list(outcome[0].asDict().keys()) == list(expected[0].asDict().keys())
 
-    @pytest.mark.interesting
     def test_drop(self, users_dataframe):
         expected = [
             Row(name='Brooke Jones', paid_for_service=False),

@@ -20,6 +20,7 @@ class ConversionOptions:
         self.use_first_value_as_any_value = False
         self.use_regexp_like_function = False
         self.duckdb_project_emit_workaround = False
+        self.drop_emit_workaround = True
         self.safety_project_read_relations = False
         self.use_duckdb_struct_name_behavior = False
         self.fetch_return_all_workaround = True

@@ -1151,6 +1151,43 @@ class SparkSubstraitConverter:
                 project.common.emit.output_mapping.append(field_number + len(symbol.input_fields))
         return algebra_pb2.Rel(project=project)
 
+    def convert_with_columns_renamed_relation(
+            self, rel: spark_relations_pb2.WithColumnsRenamed) -> algebra_pb2.Rel:
+        """Updates the columns names based on the Spark columns renamed relation."""
+        input_rel = self.convert_relation(rel.input)
+        symbol = self._symbol_table.get_symbol(self._current_plan_id)
+        self.update_field_references(rel.input.common.plan_id)
+        symbol.output_fields.clear()
+        if hasattr(rel, 'renames'):
+            aliases = {r.col_name: r.new_col_name for r in rel.renames}
+        else:
+            aliases = rel.rename_columns_map
+        for field_name in symbol.input_fields:
+            if field_name in aliases:
+                symbol.output_fields.append(aliases[field_name])
+            else:
+                symbol.output_fields.append(field_name)
+        return input_rel
+
+    def convert_drop_relation(self, rel: spark_relations_pb2.Drop) -> algebra_pb2.Rel:
+        """Convert a drop relation into a Substrait project relation."""
+        input_rel = self.convert_relation(rel.input)
+        project = algebra_pb2.ProjectRel(input=input_rel)
+        self.update_field_references(rel.input.common.plan_id)
+        symbol = self._symbol_table.get_symbol(self._current_plan_id)
+        if rel.columns:
+            raise ValueError('The gateway does not support column expressions to drop.  Use names.')
+        symbol.output_fields.clear()
+        for field_number, field_name in enumerate(symbol.input_fields):
+            if field_name not in rel.column_names:
+                symbol.output_fields.append(field_name)
+                if self._conversion_options.drop_emit_workaround:
+                    project.common.emit.output_mapping.append(len(project.expressions))
+                    project.expressions.append(field_reference(field_number))
+                else:
+                    project.expressions.append(field_reference(field_number))
+        return algebra_pb2.Rel(project=project)
+
     def convert_to_df_relation(self, rel: spark_relations_pb2.ToDF) -> algebra_pb2.Rel:
         """Convert a to dataframe relation into a Substrait project relation."""
         input_rel = self.convert_relation(rel.input)
@@ -1410,6 +1447,10 @@ class SparkSubstraitConverter:
                 result = self.convert_show_string_relation(rel.show_string)
             case 'with_columns':
                 result = self.convert_with_columns_relation(rel.with_columns)
+            case 'with_columns_renamed':
+                result = self.convert_with_columns_renamed_relation(rel.with_columns_renamed)
+            case 'drop':
+                result = self.convert_drop_relation(rel.drop)
             case 'to_df':
                 result = self.convert_to_df_relation(rel.to_df)
             case 'local_relation':
