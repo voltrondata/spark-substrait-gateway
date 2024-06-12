@@ -217,6 +217,17 @@ only showing top 1 row
         ]
 
         with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.drop(users_dataframe.user_id).limit(1).collect()
+
+        assertDataFrameEqual(outcome, expected)
+        assert list(outcome[0].asDict().keys()) == list(expected[0].asDict().keys())
+
+    def test_drop_by_name(self, users_dataframe):
+        expected = [
+            Row(name='Brooke Jones', paid_for_service=False),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
             outcome = users_dataframe.drop('user_id').limit(1).collect()
 
         assertDataFrameEqual(outcome, expected)

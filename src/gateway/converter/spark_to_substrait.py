@@ -1176,10 +1176,12 @@ class SparkSubstraitConverter:
         self.update_field_references(rel.input.common.plan_id)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         if rel.columns:
-            raise ValueError('The gateway does not support column expressions to drop.  Use names.')
+            column_names = [c.unresolved_attribute.unparsed_identifier for c in rel.columns]
+        else:
+            column_names = rel.column_names
         symbol.output_fields.clear()
         for field_number, field_name in enumerate(symbol.input_fields):
-            if field_name not in rel.column_names:
+            if field_name not in column_names:
                 symbol.output_fields.append(field_name)
                 if self._conversion_options.drop_emit_workaround:
                     project.common.emit.output_mapping.append(len(project.expressions))
