@@ -8,6 +8,7 @@ from gateway.tests.conftest import find_tpch
 from gateway.tests.plan_validator import utilizes_valid_plans
 from hamcrest import assert_that, equal_to
 from pyspark import Row
+from pyspark.errors.exceptions.connect import SparkConnectGrpcException
 from pyspark.sql.functions import col, substring
 from pyspark.testing import assertDataFrameEqual
 
@@ -578,7 +579,7 @@ only showing top 1 row
             outcome = users_dataframe.sort('user_id').tail(3)
             assertDataFrameEqual(outcome, expected)
         else:
-            with pytest.raises(Exception):
+            with pytest.raises(SparkConnectGrpcException):
                 users_dataframe.sort('user_id').tail(3)
 
     def test_data_source_schema(self, spark_session):
