@@ -143,13 +143,13 @@ only showing top 1 row
     @pytest.mark.interesting
     def test_with_column_changed(self, users_dataframe):
         expected = [
-            Row(user_id='user849118289', name='Brooke Jones', paid_for_service=True),
+            Row(user_id='user849118289', name='Brooke', paid_for_service=False),
         ]
 
         with utilizes_valid_plans(users_dataframe):
             outcome = users_dataframe.withColumn(
-                'paid_for_service',
-                ~users_dataframe.paid_for_service).limit(1).collect()
+                'name',
+                substring(col('name'), 1, 6)).limit(1).collect()
 
         assertDataFrameEqual(outcome, expected)
         assert list(outcome[0].asDict().keys()) == list(expected[0].asDict().keys())
@@ -184,14 +184,14 @@ only showing top 1 row
     @pytest.mark.interesting
     def test_with_columns(self, users_dataframe):
         expected = [
-            Row(user_id='user849118289', name='Brooke Jones', paid_for_service=True,
+            Row(user_id='user849118289', name='Brooke', paid_for_service=False,
                 not_paid_for_service=True),
         ]
 
         with utilizes_valid_plans(users_dataframe):
             outcome = users_dataframe.withColumns(
                 {'user_id': col('user_id'),
-                 'paid_for_service': ~users_dataframe.paid_for_service,
+                 'name': substring(col('name'), 1, 6),
                  'not_paid_for_service': ~users_dataframe.paid_for_service,
                  }).limit(1).collect()
 
