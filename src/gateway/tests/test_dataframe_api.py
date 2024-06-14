@@ -205,7 +205,6 @@ only showing top 1 row
         assertDataFrameEqual(outcome, expected)
         assert list(outcome[0].asDict().keys()) == list(expected[0].asDict().keys())
 
-    @pytest.mark.interesting
     def test_drop(self, users_dataframe):
         expected = [
             Row(name='Brooke Jones', paid_for_service=False),
@@ -217,7 +216,6 @@ only showing top 1 row
         assertDataFrameEqual(outcome, expected)
         assert list(outcome[0].asDict().keys()) == list(expected[0].asDict().keys())
 
-    @pytest.mark.interesting
     def test_drop_by_name(self, users_dataframe):
         expected = [
             Row(name='Brooke Jones', paid_for_service=False),
@@ -229,14 +227,13 @@ only showing top 1 row
         assertDataFrameEqual(outcome, expected)
         assert list(outcome[0].asDict().keys()) == list(expected[0].asDict().keys())
 
-    @pytest.mark.interesting
     def test_drop_all(self, users_dataframe, source):
 
         if source == 'spark':
             outcome = users_dataframe.drop('user_id').drop('name').drop('paid_for_service').limit(
                 1).collect()
 
-            assert list(outcome[0].asDict().keys()) == list()
+            assert not outcome[0].asDict().keys()
         else:
             with pytest.raises(SparkConnectGrpcException):
                 users_dataframe.drop('user_id').drop('name').drop('paid_for_service').limit(
