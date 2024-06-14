@@ -1465,22 +1465,21 @@ class SparkSubstraitConverter:
         is_null_func = self.lookup_function_by_name('isnull')
         and_func = self.lookup_function_by_name('and')
         condition = algebra_pb2.Expression(literal=self.convert_boolean_literal(True))
-        for col_number in cols:
-            if condition.WhichOneof('rex_type') == 'literal':
-                condition = is_null_function(is_null_func, field_reference(col_number))
-            elif (condition.WhichOneof('rex_type') == 'scalar_function' and
-                  condition.scalar_function.function_reference == is_null_func.anchor):
+        for col_count, field_number in enumerate(cols):
+            if col_count == 0:
+                condition = is_null_function(is_null_func, field_reference(field_number))
+            elif col_count == 1:
                 condition = and_function(
                     and_func, condition,
-                    is_null_function(is_null_func, field_reference(col_number)))
+                    is_null_function(is_null_func, field_reference(field_number)))
             else:
                 if self._conversion_options.only_use_binary_boolean_operators:
                     condition = and_function(
                         and_func, condition,
-                        is_null_function(is_null_func, field_reference(col_number)))
+                        is_null_function(is_null_func, field_reference(field_number)))
                 else:
                     condition.scalar_function.arguments.append(
-                        is_null_function(is_null_func, field_reference(col_number)))
+                        is_null_function(is_null_func, field_reference(field_number)))
         filter_rel.condition.CopyFrom(condition)
         return algebra_pb2.Rel(filter=filter_rel)
 
