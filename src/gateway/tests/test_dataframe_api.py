@@ -128,7 +128,6 @@ only showing top 1 row
 
         assertDataFrameEqual(outcome, expected)
 
-    @pytest.mark.interesting
     def test_with_column(self, users_dataframe):
         expected = [
             Row(user_id='user849118289', name='Brooke Jones', paid_for_service=False),
@@ -140,7 +139,6 @@ only showing top 1 row
         assertDataFrameEqual(outcome, expected)
         assert list(outcome[0].asDict().keys()) == list(expected[0].asDict().keys())
 
-    @pytest.mark.interesting
     def test_with_column_changed(self, users_dataframe):
         expected = [
             Row(user_id='user849118289', name='Brooke', paid_for_service=False),
@@ -154,7 +152,6 @@ only showing top 1 row
         assertDataFrameEqual(outcome, expected)
         assert list(outcome[0].asDict().keys()) == list(expected[0].asDict().keys())
 
-    @pytest.mark.interesting
     def test_with_column_added(self, users_dataframe):
         expected = [
             Row(user_id='user849118289', name='Brooke Jones', paid_for_service=False,
@@ -169,7 +166,6 @@ only showing top 1 row
         assertDataFrameEqual(outcome, expected)
         assert list(outcome[0].asDict().keys()) == list(expected[0].asDict().keys())
 
-    @pytest.mark.interesting
     def test_with_column_renamed(self, users_dataframe):
         expected = [
             Row(old_user_id='user849118289', name='Brooke Jones', paid_for_service=False),
@@ -181,7 +177,6 @@ only showing top 1 row
         assertDataFrameEqual(outcome, expected)
         assert list(outcome[0].asDict().keys()) == list(expected[0].asDict().keys())
 
-    @pytest.mark.interesting
     def test_with_columns(self, users_dataframe):
         expected = [
             Row(user_id='user849118289', name='Brooke', paid_for_service=False,
@@ -198,7 +193,6 @@ only showing top 1 row
         assertDataFrameEqual(outcome, expected)
         assert list(outcome[0].asDict().keys()) == list(expected[0].asDict().keys())
 
-    @pytest.mark.interesting
     def test_with_columns_renamed(self, users_dataframe):
         expected = [
             Row(old_user_id='user849118289', old_name='Brooke Jones', paid_for_service=False),
@@ -211,6 +205,7 @@ only showing top 1 row
         assertDataFrameEqual(outcome, expected)
         assert list(outcome[0].asDict().keys()) == list(expected[0].asDict().keys())
 
+    @pytest.mark.interesting
     def test_drop(self, users_dataframe):
         expected = [
             Row(name='Brooke Jones', paid_for_service=False),
@@ -222,6 +217,7 @@ only showing top 1 row
         assertDataFrameEqual(outcome, expected)
         assert list(outcome[0].asDict().keys()) == list(expected[0].asDict().keys())
 
+    @pytest.mark.interesting
     def test_drop_by_name(self, users_dataframe):
         expected = [
             Row(name='Brooke Jones', paid_for_service=False),
@@ -232,6 +228,14 @@ only showing top 1 row
 
         assertDataFrameEqual(outcome, expected)
         assert list(outcome[0].asDict().keys()) == list(expected[0].asDict().keys())
+
+    @pytest.mark.interesting
+    def test_drop_all(self, users_dataframe):
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.drop('user_id').drop('name').drop('paid_for_service').limit(
+                1).collect()
+
+        assert list(outcome[0].asDict().keys()) == list()
 
     def test_alias(self, users_dataframe):
         expected = [
