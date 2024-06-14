@@ -904,11 +904,13 @@ class SparkSubstraitConverter:
         self.update_field_references(rel.input.common.plan_id)
         aggregate.common.CopyFrom(self.create_common_relation())
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
+        grouping_expression_list = []
         for grouping in rel.grouping_expressions:
-            aggregate.groupings.append(
-                algebra_pb2.AggregateRel.Grouping(
-                    grouping_expressions=[self.convert_expression(grouping)]))
+            grouping_expression_list.append(self.convert_expression(grouping))
             symbol.generated_fields.append(self.determine_name_for_grouping(grouping))
+        aggregate.groupings.append(
+            algebra_pb2.AggregateRel.Grouping(
+                grouping_expressions=grouping_expression_list))
         for expr in rel.aggregate_expressions:
             aggregate.measures.append(
                 algebra_pb2.AggregateRel.Measure(
