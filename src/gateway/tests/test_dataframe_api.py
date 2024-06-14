@@ -10,10 +10,11 @@ from hamcrest import assert_that, equal_to
 from pyspark import Row
 from pyspark.errors.exceptions.connect import SparkConnectGrpcException
 from pyspark.sql.functions import col, substring
+from pyspark.sql.types import StructType, StructField, StringType, IntegerType
 from pyspark.testing import assertDataFrameEqual
 
 
-def create_parquet_table(spark_session, table_name, table):
+def create_parquet_table(spark_session, table_name: str, table: pa.Table):
     """Creates a parquet table from a PyArrow table and registers it to the session."""
     pq.write_table(table, f'{table_name}.parquet')
     table_df = spark_session.read.parquet(f'{table_name}.parquet')
@@ -65,6 +66,45 @@ class TestDataFrameAPI:
             outcome = users_dataframe.filter(col('paid_for_service') == True).collect()
 
         assert len(outcome) == 29
+
+    @pytest.mark.interesting
+    def test_dropna(self, spark_session, caplog):
+        schema = pa.schema({'name': pa.string(), 'age': pa.int32()})
+        table = pa.Table.from_pydict(
+            {'name': [None, 'Joe', 'Sarah', None],
+             'age': [99, None, 42, None]}, schema=schema)
+        test_df = create_parquet_table(spark_session, 'mytesttable', table)
+
+        with utilizes_valid_plans(test_df, caplog):
+            outcome = test_df.dropna().collect()
+
+        assert len(outcome) == 1
+
+    @pytest.mark.interesting
+    def test_dropna_by_name(self, spark_session, caplog):
+        schema = pa.schema({'name': pa.string(), 'age': pa.int32()})
+        table = pa.Table.from_pydict(
+            {'name': [None, 'Joe', 'Sarah', None],
+             'age': [99, None, 42, None]}, schema=schema)
+        test_df = create_parquet_table(spark_session, 'mytesttable', table)
+
+        with utilizes_valid_plans(test_df, caplog):
+            outcome = test_df.dropna(subset='name').collect()
+
+        assert len(outcome) == 2
+
+    @pytest.mark.interesting
+    def test_dropna_by_count(self, spark_session, caplog):
+        schema = pa.schema({'name': pa.string(), 'age': pa.int32()})
+        table = pa.Table.from_pydict(
+            {'name': [None, 'Joe', 'Sarah', None],
+             'age': [99, None, 42, None]}, schema=schema)
+        test_df = create_parquet_table(spark_session, 'mytesttable', table)
+
+        with utilizes_valid_plans(test_df, caplog):
+            outcome = test_df.dropna(thresh=1).collect()
+
+        assert len(outcome) == 3
 
     # pylint: disable=singleton-comparison
     def test_filter_with_show(self, users_dataframe, capsys):
@@ -682,6 +722,28 @@ only showing top 1 row
         else:
             with pytest.raises(SparkConnectGrpcException):
                 users_dataframe.sort('user_id').tail(3)
+
+    @pytest.mark.skip(reason='Not implemented by Spark Connect')
+    def test_foreach(self, users_dataframe):
+        def print_row(row):
+            print(row)
+
+        with utilizes_valid_plans(users_dataframe):
+            users_dataframe.limit(3).foreach(print_row)
+
+    @pytest.mark.skip(reason='Spark Connect throws an exception on empty tables')
+    def test_isempty(self, users_dataframe, spark_session, caplog):
+        with utilizes_valid_plans(users_dataframe, caplog):
+            outcome = users_dataframe.limit(3)
+            assert not outcome.isEmpty()
+
+        with utilizes_valid_plans(users_dataframe, caplog):
+            outcome = users_dataframe.limit(0)
+            assert outcome.isEmpty()
+
+        with utilizes_valid_plans(users_dataframe, caplog):
+            empty = spark_session.createDataFrame([], users_dataframe.schema)
+            assert empty.isEmpty()
 
     def test_data_source_schema(self, spark_session):
         location_customer = str(find_tpch() / 'customer')

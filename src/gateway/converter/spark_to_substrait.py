@@ -14,6 +14,7 @@ from gateway.converter.conversion_options import ConversionOptions
 from gateway.converter.spark_functions import ExtensionFunction, lookup_spark_function
 from gateway.converter.substrait_builder import (
     aggregate_relation,
+    and_function,
     bigint_literal,
     bool_literal,
     bool_type,
@@ -26,6 +27,7 @@ from gateway.converter.substrait_builder import (
     greater_function,
     greatest_function,
     if_then_else_operation,
+    is_null_function,
     join_relation,
     least_function,
     lpad_function,
@@ -1190,6 +1192,23 @@ class SparkSubstraitConverter:
     def convert_arrow_to_literal(self, val: pa.Scalar) -> algebra_pb2.Expression.Literal:
         """Convert an Arrow scalar into a Substrait literal."""
         literal = algebra_pb2.Expression.Literal()
+        if val.as_py() is None:
+            if isinstance(val, pa.BooleanScalar):
+                literal.null.binary.nullability = type_pb2.Type.NULLABILITY_NULLABLE
+            elif isinstance(val, pa.Int8Scalar):
+                literal.null.i8.nullability = type_pb2.Type.NULLABILITY_NULLABLE
+            elif isinstance(val, pa.Int16Scalar):
+                literal.null.i16.nullability = type_pb2.Type.NULLABILITY_NULLABLE
+            elif isinstance(val, pa.Int32Scalar):
+                literal.null.i32.nullability = type_pb2.Type.NULLABILITY_NULLABLE
+            elif isinstance(val, pa.Int64Scalar):
+                literal.null.i64.nullability = type_pb2.Type.NULLABILITY_NULLABLE
+            elif isinstance(val, pa.StringScalar):
+                literal.null.string.nullability = type_pb2.Type.NULLABILITY_NULLABLE
+            else:
+                raise NotImplementedError(
+                    f'Null conversion for arrow type {val.type} not yet implemented.')
+            return literal
         if isinstance(val, pa.BooleanScalar):
             literal.boolean = val.as_py()
         elif isinstance(val, pa.Int8Scalar):
@@ -1218,6 +1237,8 @@ class SparkSubstraitConverter:
                                             data: bytes) -> algebra_pb2.ReadRel.VirtualTable:
         """Convert a Spark local relation into a virtual table."""
         table = algebra_pb2.ReadRel.VirtualTable()
+        if not data:
+            return table
         # Use pyarrow to convert the bytes into an arrow structure.
         with pa.ipc.open_stream(data) as arrow:
             for batch in arrow.iter_batches_with_custom_metadata():
@@ -1410,6 +1431,38 @@ class SparkSubstraitConverter:
         raise NotImplementedError(
             'Substrait does not represent tail relations.  Use sort and head relations instead.')
 
+    def convert_dropna_relation(self, rel: spark_relations_pb2.NADrop) -> algebra_pb2.Rel:
+        """Convert a Spark NADrop relation into a Substrait filter relation."""
+        filter_rel = algebra_pb2.FilterRel(input=self.convert_relation(rel.input))
+        self.update_field_references(rel.input.common.plan_id)
+        filter_rel.common.CopyFrom(self.create_common_relation())
+        symbol = self._symbol_table.get_symbol(self._current_plan_id)
+        if rel.cols:
+            cols = [symbol.input_fields.index(col) for col in rel.cols]
+        else:
+            cols = range(len(symbol.input_fields))
+        is_null_func = self.lookup_function_by_name('isnull')
+        and_func = self.lookup_function_by_name('and')
+        condition = algebra_pb2.Expression(literal=self.convert_boolean_literal(True))
+        for col_number in cols:
+            if condition.WhichOneof('rex_type') == 'literal':
+                condition = is_null_function(is_null_func, field_reference(col_number))
+            elif (condition.WhichOneof('rex_type') == 'scalar_function' and
+                  condition.scalar_function.function_reference == is_null_func.anchor):
+                condition = and_function(
+                    and_func, condition,
+                    is_null_function(is_null_func, field_reference(col_number)))
+            else:
+                if self._conversion_options.only_use_binary_boolean_operators:
+                    condition = and_function(
+                        and_func, condition,
+                        is_null_function(is_null_func, field_reference(col_number)))
+                else:
+                    condition.scalar_function.arguments.append(
+                        is_null_function(is_null_func, field_reference(col_number)))
+        filter_rel.condition.CopyFrom(condition)
+        return algebra_pb2.Rel(filter=filter_rel)
+
     def convert_relation(self, rel: spark_relations_pb2.Relation) -> algebra_pb2.Rel:
         """Convert a Spark relation into a Substrait one."""
         self._symbol_table.add_symbol(rel.common.plan_id, parent=self._current_plan_id,
@@ -1455,6 +1508,8 @@ class SparkSubstraitConverter:
                 result = self.convert_offset_relation(rel.offset)
             case 'tail':
                 result = self.convert_tail_relation(rel.tail)
+            case 'drop_na':
+                result = self.convert_dropna_relation(rel.drop_na)
             case _:
                 raise ValueError(
                     f'Unexpected Spark plan rel_type: {rel.WhichOneof("rel_type")}')

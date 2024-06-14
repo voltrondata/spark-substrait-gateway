@@ -24,6 +24,7 @@ class ConversionOptions:
         self.safety_project_read_relations = False
         self.use_duckdb_struct_name_behavior = False
         self.fetch_return_all_workaround = True
+        self.only_use_binary_boolean_operators = False
 
         self.return_names_with_types = False
 
@@ -48,6 +49,7 @@ def datafusion():
     options.use_switch_expressions_where_possible = False
     options.use_regexp_like_function = True
     options.use_first_value_as_any_value = True
+    options.only_use_binary_boolean_operators = True
     return options
 
 

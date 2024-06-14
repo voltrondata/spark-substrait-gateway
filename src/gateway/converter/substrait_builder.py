@@ -72,6 +72,16 @@ def strlen(function_info: ExtensionFunction,
             arguments=[algebra_pb2.FunctionArgument(value=expression)]))
 
 
+def is_null_function(function_info: ExtensionFunction,
+                     expression: algebra_pb2.Expression) -> algebra_pb2.Expression:
+    """Construct a Substrait is_null function expression."""
+    return algebra_pb2.Expression(
+        scalar_function=algebra_pb2.Expression.ScalarFunction(
+            function_reference=function_info.anchor,
+            output_type=function_info.output_type,
+            arguments=[algebra_pb2.FunctionArgument(value=expression)]))
+
+
 def cast_operation(expression: algebra_pb2.Expression,
                    output_type: type_pb2.Type) -> algebra_pb2.Expression:
     """Construct a Substrait cast expression."""
@@ -181,6 +191,18 @@ def greater_function(function_info: ExtensionFunction,
                    algebra_pb2.FunctionArgument(value=expr2)]))
 
 
+def and_function(function_info: ExtensionFunction,
+                 expr1: algebra_pb2.Expression,
+                 expr2: algebra_pb2.Expression) -> algebra_pb2.Expression:
+    """Construct a Substrait and expression (binary)."""
+    return algebra_pb2.Expression(scalar_function=
+    algebra_pb2.Expression.ScalarFunction(
+        function_reference=function_info.anchor,
+        output_type=function_info.output_type,
+        arguments=[algebra_pb2.FunctionArgument(value=expr1),
+                   algebra_pb2.FunctionArgument(value=expr2)]))
+
+
 def minus_function(function_info: ExtensionFunction,
                    expr1: algebra_pb2.Expression,
                    expr2: algebra_pb2.Expression) -> algebra_pb2.Expression:
@@ -255,9 +277,9 @@ def regexp_strpos_function(function_info: ExtensionFunction,
 
 
 def regexp_like_function(function_info: ExtensionFunction,
-                  input: algebra_pb2.Expression,
-                  pattern: algebra_pb2.Expression,
-                  flags: str | None = None) -> algebra_pb2.Expression:
+                         input: algebra_pb2.Expression,
+                         pattern: algebra_pb2.Expression,
+                         flags: str | None = None) -> algebra_pb2.Expression:
     """Construct a Substrait regex like expression."""
     result = algebra_pb2.Expression(scalar_function=algebra_pb2.Expression.ScalarFunction(
         function_reference=function_info.anchor,

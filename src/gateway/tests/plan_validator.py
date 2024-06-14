@@ -33,7 +33,7 @@ def validate_plan(json_plan: str, ignore_too_few_names: bool):
 
 
 @contextmanager
-def utilizes_valid_plans(session):
+def utilizes_valid_plans(session, caplog=None):
     """Validates that the plans used by the gateway backend pass validation."""
     if hasattr(session, 'sparkSession'):
         session = session.sparkSession
@@ -60,6 +60,8 @@ def utilizes_valid_plans(session):
         plans_as_text.append(f'Plan #{i + 1}:\n{plan}\n')
         validate_plan(plan, ignore_too_few_names)
     if exception:
+        print(caplog.text)
         pytest.fail('Exception raised during execution: ' +
                     '\n'.join(traceback.format_exception(exception)) +
                     '\n\n'.join(plans_as_text), pytrace=False)
+
