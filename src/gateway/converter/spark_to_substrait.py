@@ -1445,20 +1445,16 @@ class SparkSubstraitConverter:
         and_func = self.lookup_function_by_name('and')
         condition = algebra_pb2.Expression(literal=self.convert_boolean_literal(True))
         for col_count, field_number in enumerate(cols):
+            new_condition = is_null_function(is_null_func, field_reference(field_number))
             if col_count == 0:
-                condition = is_null_function(is_null_func, field_reference(field_number))
+                condition = new_condition
             elif col_count == 1:
-                condition = and_function(
-                    and_func, condition,
-                    is_null_function(is_null_func, field_reference(field_number)))
+                condition = and_function(and_func, condition, new_condition)
             else:
                 if self._conversion_options.only_use_binary_boolean_operators:
-                    condition = and_function(
-                        and_func, condition,
-                        is_null_function(is_null_func, field_reference(field_number)))
+                    condition = and_function(and_func, condition, new_condition)
                 else:
-                    condition.scalar_function.arguments.append(
-                        is_null_function(is_null_func, field_reference(field_number)))
+                    condition.scalar_function.arguments.append(new_condition)
         filter_rel.condition.CopyFrom(condition)
         return algebra_pb2.Rel(filter=filter_rel)
 
