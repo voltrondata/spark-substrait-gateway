@@ -15,6 +15,7 @@ from gateway.converter.spark_functions import ExtensionFunction, lookup_spark_fu
 from gateway.converter.substrait_builder import (
     add_function,
     aggregate_relation,
+    and_function,
     bigint_literal,
     bool_literal,
     bool_type,
@@ -1461,21 +1462,26 @@ class SparkSubstraitConverter:
             cols = [symbol.input_fields.index(col) for col in rel.cols]
         else:
             cols = range(len(symbol.input_fields))
-        min_non_nulls = rel.min_non_nulls if rel.min_non_nulls else len(cols)
         is_null_func = self.lookup_function_by_name('isnull')
-        add_func = self.lookup_function_by_name('+')
-        ge_func = self.lookup_function_by_name('>=')
+        and_func = self.lookup_function_by_name('and')
         condition = algebra_pb2.Expression(literal=self.convert_boolean_literal(True))
-        for col_count, field_number in enumerate(cols):
-            new_condition = if_then_else_operation(
-                is_null_function(is_null_func, field_reference(field_number)),
-                integer_literal(1), integer_literal(0))
-            if col_count == 0:
-                condition = new_condition
+        for col_number in cols:
+            if condition.WhichOneof('rex_type') == 'literal':
+                condition = is_null_function(is_null_func, field_reference(col_number))
+            elif (condition.WhichOneof('rex_type') == 'scalar_function' and
+                  condition.scalar_function.function_reference == is_null_func.anchor):
+                condition = and_function(
+                    and_func, condition,
+                    is_null_function(is_null_func, field_reference(col_number)))
             else:
-                condition = add_function(add_func, condition, new_condition)
-        filter_rel.condition.CopyFrom(
-            greater_or_equal_function(ge_func, condition, integer_literal(min_non_nulls)))
+                if self._conversion_options.only_use_binary_boolean_operators:
+                    condition = and_function(
+                        and_func, condition,
+                        is_null_function(is_null_func, field_reference(col_number)))
+                else:
+                    condition.scalar_function.arguments.append(
+                        is_null_function(is_null_func, field_reference(col_number)))
+        filter_rel.condition.CopyFrom(condition)
         return algebra_pb2.Rel(filter=filter_rel)
 
     def convert_hint_relation(self, rel: spark_relations_pb2.Hint) -> algebra_pb2.Rel:

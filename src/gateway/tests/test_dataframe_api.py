@@ -23,6 +23,7 @@ from pyspark.sql.functions import (
     nanvl,
     substring,
 )
+from pyspark.sql.types import StructType, StructField, StringType, IntegerType
 from pyspark.testing import assertDataFrameEqual
 
 
