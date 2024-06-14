@@ -16,6 +16,7 @@ from gateway.converter.spark_functions import ExtensionFunction, lookup_spark_fu
 from gateway.converter.substrait_builder import (
     add_function,
     aggregate_relation,
+    and_function,
     bigint_literal,
     bool_literal,
     bool_type,
