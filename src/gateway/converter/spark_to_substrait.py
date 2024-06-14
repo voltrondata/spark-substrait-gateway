@@ -1131,7 +1131,7 @@ class SparkSubstraitConverter:
 
     def convert_with_columns_renamed_relation(
             self, rel: spark_relations_pb2.WithColumnsRenamed) -> algebra_pb2.Rel:
-        """Updates the columns names based on the Spark columns renamed relation."""
+        """Update the columns names based on the Spark with columns renamed relation."""
         input_rel = self.convert_relation(rel.input)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         self.update_field_references(rel.input.common.plan_id)
