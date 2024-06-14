@@ -1166,7 +1166,8 @@ class SparkSubstraitConverter:
                     project.expressions.append(field_reference(field_number))
                 else:
                     project.expressions.append(field_reference(field_number))
-        # TODO -- Handle projections without expressions by modifying the input output mapping.
+        if not project.expressions:
+            raise ValueError(f"No columns remaining after drop in plan id {self._current_plan_id}")
         return algebra_pb2.Rel(project=project)
 
     def convert_to_df_relation(self, rel: spark_relations_pb2.ToDF) -> algebra_pb2.Rel:

@@ -230,12 +230,17 @@ only showing top 1 row
         assert list(outcome[0].asDict().keys()) == list(expected[0].asDict().keys())
 
     @pytest.mark.interesting
-    def test_drop_all(self, users_dataframe):
-        with utilizes_valid_plans(users_dataframe):
+    def test_drop_all(self, users_dataframe, source):
+
+        if source == 'spark':
             outcome = users_dataframe.drop('user_id').drop('name').drop('paid_for_service').limit(
                 1).collect()
 
-        assert list(outcome[0].asDict().keys()) == list()
+            assert list(outcome[0].asDict().keys()) == list()
+        else:
+            with pytest.raises(SparkConnectGrpcException):
+                users_dataframe.drop('user_id').drop('name').drop('paid_for_service').limit(
+                    1).collect()
 
     def test_alias(self, users_dataframe):
         expected = [
