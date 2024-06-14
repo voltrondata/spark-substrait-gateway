@@ -1489,10 +1489,25 @@ class SparkSubstraitConverter:
                 integer_literal(1), integer_literal(0))
             if col_count == 0:
                 condition = new_condition
+        for col_count, field_number in enumerate(cols):
+            if col_count == 0:
+                condition = is_null_function(is_null_func, field_reference(field_number))
+            elif col_count == 1:
+                condition = and_function(
+                    and_func, condition,
+                    is_null_function(is_null_func, field_reference(field_number)))
             else:
                 condition = add_function(add_func, condition, new_condition)
         filter_rel.condition.CopyFrom(
             greater_or_equal_function(ge_func, condition, integer_literal(min_non_nulls)))
+                if self._conversion_options.only_use_binary_boolean_operators:
+                    condition = and_function(
+                        and_func, condition,
+                        is_null_function(is_null_func, field_reference(field_number)))
+                else:
+                    condition.scalar_function.arguments.append(
+                        is_null_function(is_null_func, field_reference(field_number)))
+        filter_rel.condition.CopyFrom(condition)
         return algebra_pb2.Rel(filter=filter_rel)
 
     def convert_hint_relation(self, rel: spark_relations_pb2.Hint) -> algebra_pb2.Rel:
