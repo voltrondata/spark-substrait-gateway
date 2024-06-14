@@ -1111,44 +1111,63 @@ class SparkSubstraitConverter:
         project = algebra_pb2.ProjectRel(input=input_rel)
         self.update_field_references(rel.input.common.plan_id)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
-        remapped = False
-        mapping = list(range(len(symbol.input_fields)))
-        field_number = len(symbol.input_fields)
+        proposed_expressions = [field_reference(i) for i in range(len(symbol.input_fields))]
         for alias in rel.aliases:
             if len(alias.name) != 1:
-                raise ValueError('every column alias must have exactly one name')
+                raise ValueError('Only one name part is supported in an alias.')
             name = alias.name[0]
-            project.expressions.append(self.convert_expression(alias.expr))
             if name in symbol.input_fields:
-                remapped = True
-                mapping[symbol.input_fields.index(name)] = len(symbol.input_fields) + (
-                    len(project.expressions)) - 1
+                proposed_expressions[symbol.input_fields.index(name)] = self.convert_expression(
+                    alias.expr)
             else:
-                mapping.append(field_number)
-                field_number += 1
+                proposed_expressions.append(self.convert_expression(alias.expr))
                 symbol.generated_fields.append(name)
                 symbol.output_fields.append(name)
         project.common.CopyFrom(self.create_common_relation())
-        if remapped:
-            if self._conversion_options.duckdb_project_emit_workaround:
-                for field_number in range(len(symbol.input_fields)):
-                    if field_number == mapping[field_number]:
-                        project.expressions.append(field_reference(field_number))
-                        mapping[field_number] = len(symbol.input_fields) + (
-                            len(project.expressions)) - 1
-            for item in mapping:
-                project.common.emit.output_mapping.append(item)
+        project.expressions.extend(proposed_expressions)
+        for i in range(len(proposed_expressions)):
+            project.common.emit.output_mapping.append(len(symbol.input_fields) + i)
+        return algebra_pb2.Rel(project=project)
+
+    def convert_with_columns_renamed_relation(
+            self, rel: spark_relations_pb2.WithColumnsRenamed) -> algebra_pb2.Rel:
+        """Update the columns names based on the Spark with columns renamed relation."""
+        input_rel = self.convert_relation(rel.input)
+        symbol = self._symbol_table.get_symbol(self._current_plan_id)
+        self.update_field_references(rel.input.common.plan_id)
+        symbol.output_fields.clear()
+        if hasattr(rel, 'renames'):
+            aliases = {r.col_name: r.new_col_name for r in rel.renames}
         else:
-            new_expressions = []
-            for field_number in range(len(symbol.input_fields)):
-                new_expressions.append(field_reference(field_number))
-                project.common.emit.output_mapping.append(
-                    field_number + len(symbol.input_fields))
-            new_expressions.extend(list(project.expressions))
-            del project.expressions[:]
-            project.expressions.extend(new_expressions)
-            for field_number in range(len(symbol.generated_fields)):
-                project.common.emit.output_mapping.append(field_number + len(symbol.input_fields))
+            aliases = rel.rename_columns_map
+        for field_name in symbol.input_fields:
+            if field_name in aliases:
+                symbol.output_fields.append(aliases[field_name])
+            else:
+                symbol.output_fields.append(field_name)
+        return input_rel
+
+    def convert_drop_relation(self, rel: spark_relations_pb2.Drop) -> algebra_pb2.Rel:
+        """Convert a drop relation into a Substrait project relation."""
+        input_rel = self.convert_relation(rel.input)
+        project = algebra_pb2.ProjectRel(input=input_rel)
+        self.update_field_references(rel.input.common.plan_id)
+        symbol = self._symbol_table.get_symbol(self._current_plan_id)
+        if rel.columns:
+            column_names = [c.unresolved_attribute.unparsed_identifier for c in rel.columns]
+        else:
+            column_names = rel.column_names
+        symbol.output_fields.clear()
+        for field_number, field_name in enumerate(symbol.input_fields):
+            if field_name not in column_names:
+                symbol.output_fields.append(field_name)
+                if self._conversion_options.drop_emit_workaround:
+                    project.common.emit.output_mapping.append(len(project.expressions))
+                    project.expressions.append(field_reference(field_number))
+                else:
+                    project.expressions.append(field_reference(field_number))
+        if not project.expressions:
+            raise ValueError(f"No columns remaining after drop in plan id {self._current_plan_id}")
         return algebra_pb2.Rel(project=project)
 
     def convert_to_df_relation(self, rel: spark_relations_pb2.ToDF) -> algebra_pb2.Rel:
@@ -1410,6 +1429,10 @@ class SparkSubstraitConverter:
                 result = self.convert_show_string_relation(rel.show_string)
             case 'with_columns':
                 result = self.convert_with_columns_relation(rel.with_columns)
+            case 'with_columns_renamed':
+                result = self.convert_with_columns_renamed_relation(rel.with_columns_renamed)
+            case 'drop':
+                result = self.convert_drop_relation(rel.drop)
             case 'to_df':
                 result = self.convert_to_df_relation(rel.to_df)
             case 'local_relation':

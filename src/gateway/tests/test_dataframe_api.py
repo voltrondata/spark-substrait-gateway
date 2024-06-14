@@ -137,6 +137,107 @@ only showing top 1 row
             outcome = users_dataframe.withColumn('user_id', col('user_id')).limit(1).collect()
 
         assertDataFrameEqual(outcome, expected)
+        assert list(outcome[0].asDict().keys()) == list(expected[0].asDict().keys())
+
+    def test_with_column_changed(self, users_dataframe):
+        expected = [
+            Row(user_id='user849118289', name='Brooke', paid_for_service=False),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.withColumn(
+                'name',
+                substring(col('name'), 1, 6)).limit(1).collect()
+
+        assertDataFrameEqual(outcome, expected)
+        assert list(outcome[0].asDict().keys()) == list(expected[0].asDict().keys())
+
+    def test_with_column_added(self, users_dataframe):
+        expected = [
+            Row(user_id='user849118289', name='Brooke Jones', paid_for_service=False,
+                not_paid_for_service=True),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.withColumn(
+                'not_paid_for_service',
+                ~users_dataframe.paid_for_service).limit(1).collect()
+
+        assertDataFrameEqual(outcome, expected)
+        assert list(outcome[0].asDict().keys()) == list(expected[0].asDict().keys())
+
+    def test_with_column_renamed(self, users_dataframe):
+        expected = [
+            Row(old_user_id='user849118289', name='Brooke Jones', paid_for_service=False),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.withColumnRenamed('user_id', 'old_user_id').limit(1).collect()
+
+        assertDataFrameEqual(outcome, expected)
+        assert list(outcome[0].asDict().keys()) == list(expected[0].asDict().keys())
+
+    def test_with_columns(self, users_dataframe):
+        expected = [
+            Row(user_id='user849118289', name='Brooke', paid_for_service=False,
+                not_paid_for_service=True),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.withColumns(
+                {'user_id': col('user_id'),
+                 'name': substring(col('name'), 1, 6),
+                 'not_paid_for_service': ~users_dataframe.paid_for_service,
+                 }).limit(1).collect()
+
+        assertDataFrameEqual(outcome, expected)
+        assert list(outcome[0].asDict().keys()) == list(expected[0].asDict().keys())
+
+    def test_with_columns_renamed(self, users_dataframe):
+        expected = [
+            Row(old_user_id='user849118289', old_name='Brooke Jones', paid_for_service=False),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.withColumnsRenamed({'user_id': 'old_user_id',
+                                                          'name': 'old_name'}).limit(1).collect()
+
+        assertDataFrameEqual(outcome, expected)
+        assert list(outcome[0].asDict().keys()) == list(expected[0].asDict().keys())
+
+    def test_drop(self, users_dataframe):
+        expected = [
+            Row(name='Brooke Jones', paid_for_service=False),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.drop(users_dataframe.user_id).limit(1).collect()
+
+        assertDataFrameEqual(outcome, expected)
+        assert list(outcome[0].asDict().keys()) == list(expected[0].asDict().keys())
+
+    def test_drop_by_name(self, users_dataframe):
+        expected = [
+            Row(name='Brooke Jones', paid_for_service=False),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.drop('user_id').limit(1).collect()
+
+        assertDataFrameEqual(outcome, expected)
+        assert list(outcome[0].asDict().keys()) == list(expected[0].asDict().keys())
+
+    def test_drop_all(self, users_dataframe, source):
+
+        if source == 'spark':
+            outcome = users_dataframe.drop('user_id').drop('name').drop('paid_for_service').limit(
+                1).collect()
+
+            assert not outcome[0].asDict().keys()
+        else:
+            with pytest.raises(SparkConnectGrpcException):
+                users_dataframe.drop('user_id').drop('name').drop('paid_for_service').limit(
+                    1).collect()
 
     def test_alias(self, users_dataframe):
         expected = [
