@@ -842,7 +842,7 @@ only showing top 1 row
             empty = spark_session.createDataFrame([], users_dataframe.schema)
             assert empty.isEmpty()
 
-   def test_select_expr(self, users_dataframe, source, caplog):
+    def test_select_expr(self, users_dataframe, source, caplog):
         expected = [
             Row(user_id='849118289', b=True),
         ]
@@ -850,13 +850,13 @@ only showing top 1 row
         if source == 'spark':
             with utilizes_valid_plans(users_dataframe, caplog):
                 outcome = users_dataframe.selectExpr(
-                    "substr(user_id, 5, 9)", "not paid_for_service").limit(1).collect()
+                    'substr(user_id, 5, 9)', 'not paid_for_service').limit(1).collect()
 
             assertDataFrameEqual(outcome, expected)
         else:
             with pytest.raises(SparkConnectGrpcException):
                 users_dataframe.selectExpr(
-                    "substr(user_id, 5, 9)", "not paid_for_service").limit(1).collect()
+                    'substr(user_id, 5, 9)', 'not paid_for_service').limit(1).collect()
 
     def test_data_source_schema(self, spark_session):
         location_customer = str(find_tpch() / 'customer')
