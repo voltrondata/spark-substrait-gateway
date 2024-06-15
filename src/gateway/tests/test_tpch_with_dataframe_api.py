@@ -22,11 +22,7 @@ def mark_tests_as_xfail(request):
             request.node.add_marker(pytest.mark.xfail(reason='distinct not supported'))
     elif source == 'gateway-over-datafusion':
         pytest.importorskip("datafusion.substrait")
-        if originalname in ['test_query_01', 'test_query_16', 'test_query_18']:
-            request.node.add_marker(pytest.mark.xfail(reason='Results mismatch'))
-        elif originalname in ['test_query_03', 'test_query_10', 'test_query_20']:
-            request.node.add_marker(pytest.mark.xfail(reason='Schema mismatch'))
-        elif originalname in ['test_query_07']:
+        if originalname in ['test_query_07']:
             request.node.add_marker(pytest.mark.xfail(reason='Duplicate Expression names'))
         elif originalname in ['test_query_09']:
             request.node.add_marker(pytest.mark.xfail(
