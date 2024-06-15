@@ -842,8 +842,7 @@ only showing top 1 row
             empty = spark_session.createDataFrame([], users_dataframe.schema)
             assert empty.isEmpty()
 
-    @pytest.mark.interesting
-    def test_select_expr(self, users_dataframe, source, caplog):
+   def test_select_expr(self, users_dataframe, source, caplog):
         expected = [
             Row(user_id='849118289', b=True),
         ]
