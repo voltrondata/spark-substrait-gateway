@@ -16,7 +16,6 @@ from gateway.converter.spark_functions import ExtensionFunction, lookup_spark_fu
 from gateway.converter.substrait_builder import (
     add_function,
     aggregate_relation,
-    and_function,
     bigint_literal,
     bool_literal,
     bool_type,
@@ -1490,19 +1489,15 @@ class SparkSubstraitConverter:
             if col_count == 0:
                 condition = new_condition
         for col_count, field_number in enumerate(cols):
-            new_condition = is_null_function(is_null_func, field_reference(field_number))
+            new_condition = if_then_else_operation(
+                is_null_function(is_null_func, field_reference(field_number)),
+                integer_literal(1), integer_literal(0))
             if col_count == 0:
                 condition = new_condition
-            elif col_count == 1:
-                condition = and_function(and_func, condition, new_condition)
             else:
                 condition = add_function(add_func, condition, new_condition)
         filter_rel.condition.CopyFrom(
             greater_or_equal_function(ge_func, condition, integer_literal(min_non_nulls)))
-                if self._conversion_options.only_use_binary_boolean_operators:
-                    condition = and_function(and_func, condition, new_condition)
-                else:
-                    condition.scalar_function.arguments.append(new_condition)
         filter_rel.condition.CopyFrom(condition)
         return algebra_pb2.Rel(filter=filter_rel)
 
