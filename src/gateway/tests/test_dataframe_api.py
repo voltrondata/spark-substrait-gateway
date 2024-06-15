@@ -566,7 +566,6 @@ only showing top 1 row
 
         assertDataFrameEqual(outcome, expected)
 
-    @pytest.mark.interesting
     def test_colregex(self, spark_session, caplog):
         expected = [
             Row(a1=1, col2='a'),
