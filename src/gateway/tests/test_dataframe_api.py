@@ -843,6 +843,18 @@ only showing top 1 row
             empty = spark_session.createDataFrame([], users_dataframe.schema)
             assert empty.isEmpty()
 
+    @pytest.mark.intersting
+    def test_select_expr(self, users_dataframe):
+        expected = [
+            Row(foo='user849118289'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.selectExpr(
+                "substr(user, 5, 9)", "not paid_for_service").limit(1).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
     def test_data_source_schema(self, spark_session):
         location_customer = str(find_tpch() / 'customer')
         schema = spark_session.read.parquet(location_customer).schema
