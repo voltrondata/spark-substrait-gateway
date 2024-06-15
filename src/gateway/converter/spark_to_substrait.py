@@ -4,6 +4,7 @@ import glob
 import json
 import operator
 import pathlib
+import re
 
 import pyarrow as pa
 import pyspark.sql.connect.proto.base_pb2 as spark_pb2
@@ -472,7 +473,7 @@ class SparkSubstraitConverter:
                 result = self.convert_cast_expression(expr.cast)
             case 'unresolved_regex':
                 raise NotImplementedError(
-                    'unresolved_regex expression type not supported')
+                    'colRegex is only supported at the top level of an expression')
             case 'sort_order':
                 raise NotImplementedError(
                     'sort_order expression type not supported')
@@ -1353,6 +1354,21 @@ class SparkSubstraitConverter:
         self.update_field_references(rel.input.common.plan_id)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         for field_number, expr in enumerate(rel.expressions):
+            if expr.WhichOneof('expr_type') == 'unresolved_regex':
+                regex = expr.unresolved_regex.col_name.replace('`', '')
+                matcher = re.compile(regex)
+                found = False
+                for column in symbol.input_fields:
+                    if matcher.match(column):
+                        project.expressions.append(
+                            field_reference(symbol.input_fields.index(column)))
+                        symbol.generated_fields.append(column)
+                        symbol.output_fields.append(column)
+                        found = True
+                if not found:
+                    raise ValueError(
+                        f'No columns match the regex {regex} in plan id {self._current_plan_id}')
+                continue
             project.expressions.append(self.convert_expression(expr))
             if expr.WhichOneof('expr_type') == 'alias':
                 name = expr.alias.name[0]
@@ -1364,7 +1380,7 @@ class SparkSubstraitConverter:
             symbol.output_fields.append(name)
         project.common.CopyFrom(self.create_common_relation())
         symbol.output_fields = symbol.generated_fields
-        for field_number in range(len(rel.expressions)):
+        for field_number in range(len(symbol.output_fields)):
             project.common.emit.output_mapping.append(field_number + len(symbol.input_fields))
         return algebra_pb2.Rel(project=project)
 
