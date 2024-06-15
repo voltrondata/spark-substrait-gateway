@@ -203,6 +203,18 @@ def and_function(function_info: ExtensionFunction,
                    algebra_pb2.FunctionArgument(value=expr2)]))
 
 
+def add_function(function_info: ExtensionFunction,
+                 expr1: algebra_pb2.Expression,
+                 expr2: algebra_pb2.Expression) -> algebra_pb2.Expression:
+    """Construct a Substrait and expression (binary)."""
+    return algebra_pb2.Expression(scalar_function=
+    algebra_pb2.Expression.ScalarFunction(
+        function_reference=function_info.anchor,
+        output_type=function_info.output_type,
+        arguments=[algebra_pb2.FunctionArgument(value=expr1),
+                   algebra_pb2.FunctionArgument(value=expr2)]))
+
+
 def minus_function(function_info: ExtensionFunction,
                    expr1: algebra_pb2.Expression,
                    expr2: algebra_pb2.Expression) -> algebra_pb2.Expression:
@@ -311,6 +323,10 @@ def string_literal(val: str) -> algebra_pb2.Expression:
     """Construct a Substrait string literal expression."""
     return algebra_pb2.Expression(literal=algebra_pb2.Expression.Literal(string=val))
 
+
+def integer_literal(val: int) -> algebra_pb2.Expression:
+    """Construct a Substrait string literal expression."""
+    return algebra_pb2.Expression(literal=algebra_pb2.Expression.Literal(i32=val))
 
 def bigint_literal(val: int) -> algebra_pb2.Expression:
     """Construct a Substrait string literal expression."""

@@ -60,8 +60,8 @@ def utilizes_valid_plans(session, caplog=None):
         plans_as_text.append(f'Plan #{i + 1}:\n{plan}\n')
         validate_plan(plan, ignore_too_few_names)
     if exception:
-        print(caplog.text)
+        log_text = "\n\n" + caplog.text if caplog else ""
         pytest.fail('Exception raised during execution: ' +
                     '\n'.join(traceback.format_exception(exception)) +
-                    '\n\n'.join(plans_as_text), pytrace=False)
+                    '\n\n'.join(plans_as_text)+log_text, pytrace=False)
 

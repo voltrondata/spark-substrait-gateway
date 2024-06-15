@@ -10,7 +10,6 @@ from hamcrest import assert_that, equal_to
 from pyspark import Row
 from pyspark.errors.exceptions.connect import SparkConnectGrpcException
 from pyspark.sql.functions import col, substring
-from pyspark.sql.types import StructType, StructField, StringType, IntegerType
 from pyspark.testing import assertDataFrameEqual
 
 
@@ -67,7 +66,6 @@ class TestDataFrameAPI:
 
         assert len(outcome) == 29
 
-    @pytest.mark.interesting
     def test_dropna(self, spark_session, caplog):
         schema = pa.schema({'name': pa.string(), 'age': pa.int32()})
         table = pa.Table.from_pydict(
@@ -80,7 +78,6 @@ class TestDataFrameAPI:
 
         assert len(outcome) == 1
 
-    @pytest.mark.interesting
     def test_dropna_by_name(self, spark_session, caplog):
         schema = pa.schema({'name': pa.string(), 'age': pa.int32()})
         table = pa.Table.from_pydict(
@@ -93,7 +90,6 @@ class TestDataFrameAPI:
 
         assert len(outcome) == 2
 
-    @pytest.mark.interesting
     def test_dropna_by_count(self, spark_session, caplog):
         schema = pa.schema({'name': pa.string(), 'age': pa.int32()})
         table = pa.Table.from_pydict(
@@ -725,11 +721,11 @@ only showing top 1 row
 
     @pytest.mark.skip(reason='Not implemented by Spark Connect')
     def test_foreach(self, users_dataframe):
-        def print_row(row):
-            print(row)
+        def noop(_):
+            pass
 
         with utilizes_valid_plans(users_dataframe):
-            users_dataframe.limit(3).foreach(print_row)
+            users_dataframe.limit(3).foreach(noop)
 
     @pytest.mark.skip(reason='Spark Connect throws an exception on empty tables')
     def test_isempty(self, users_dataframe, spark_session, caplog):
