@@ -652,10 +652,7 @@ only showing top 1 row
         float_array = pa.array([float('NaN'), 42.0, None], type=pa.float64())
         table = pa.Table.from_arrays([string_array, float_array], names=['s', 'f'])
 
-        pq.write_table(table, 'test_table.parquet')
-        table_df = spark_session.read.parquet('test_table.parquet')
-        table_df.createOrReplaceTempView('mytesttable')
-        df = spark_session.table('mytesttable')
+        df = create_parquet_table(spark_session, 'mytesttable', table)
 
         with utilizes_valid_plans(df):
             outcome = df.select(df.s == 'foo',
@@ -679,10 +676,7 @@ only showing top 1 row
         int_array = pa.array([221, 0, 42, None], type=pa.int64())
         table = pa.Table.from_arrays([int_array], names=['i'])
 
-        pq.write_table(table, 'test_table.parquet')
-        table_df = spark_session.read.parquet('test_table.parquet')
-        table_df.createOrReplaceTempView('mytesttable')
-        df = spark_session.table('mytesttable')
+        df = create_parquet_table(spark_session, 'mytesttable', table)
 
         with utilizes_valid_plans(df):
             outcome = df.select(df.i.bitwiseAND(42),
@@ -865,10 +859,7 @@ class TestDataFrameAPIFunctions:
         float_array = pa.array([float('NaN'), 42.0, None], type=pa.float64())
         table = pa.Table.from_arrays([string_array, float_array], names=['s', 'f'])
 
-        pq.write_table(table, 'test_table.parquet')
-        table_df = spark_session.read.parquet('test_table.parquet')
-        table_df.createOrReplaceTempView('mytesttable')
-        df = spark_session.table('mytesttable')
+        df = create_parquet_table(spark_session, 'mytesttable', table)
 
         with utilizes_valid_plans(df):
             outcome = df.select(coalesce('s', 'f')).collect()
@@ -886,10 +877,7 @@ class TestDataFrameAPIFunctions:
         float_array = pa.array([float('NaN'), 42.0, None], type=pa.float64())
         table = pa.Table.from_arrays([string_array, float_array], names=['s', 'f'])
 
-        pq.write_table(table, 'test_table.parquet')
-        table_df = spark_session.read.parquet('test_table.parquet')
-        table_df.createOrReplaceTempView('mytesttable')
-        df = spark_session.table('mytesttable')
+        df = create_parquet_table(spark_session, 'mytesttable', table)
 
         with utilizes_valid_plans(df):
             outcome = df.select(isnull('s'), isnull('f')).collect()
@@ -906,10 +894,7 @@ class TestDataFrameAPIFunctions:
         float_array = pa.array([float('NaN'), 42.0, None], type=pa.float64())
         table = pa.Table.from_arrays([float_array], names=['f'])
 
-        pq.write_table(table, 'test_table.parquet')
-        table_df = spark_session.read.parquet('test_table.parquet')
-        table_df.createOrReplaceTempView('mytesttable')
-        df = spark_session.table('mytesttable')
+        df = create_parquet_table(spark_session, 'mytesttable', table)
 
         with utilizes_valid_plans(df):
             outcome = df.select(col('f'), isnan('f')).collect()
@@ -926,10 +911,7 @@ class TestDataFrameAPIFunctions:
         float_array = pa.array([float('NaN'), 42.0, None], type=pa.float64())
         table = pa.Table.from_arrays([float_array], names=['f'])
 
-        pq.write_table(table, 'test_table.parquet')
-        table_df = spark_session.read.parquet('test_table.parquet')
-        table_df.createOrReplaceTempView('mytesttable')
-        df = spark_session.table('mytesttable')
+        df = create_parquet_table(spark_session, 'mytesttable', table)
 
         with utilizes_valid_plans(df):
             outcome = df.select(nanvl('f', lit(float(9999)))).collect()
@@ -960,10 +942,7 @@ class TestDataFrameAPIFunctions:
         float2_array = pa.array([float('NaN'), 42.0, None, -12], type=pa.float64())
         table = pa.Table.from_arrays([float1_array, float2_array], names=['f1', 'f2'])
 
-        pq.write_table(table, 'test_table.parquet')
-        table_df = spark_session.read.parquet('test_table.parquet')
-        table_df.createOrReplaceTempView('mytesttable')
-        df = spark_session.table('mytesttable')
+        df = create_parquet_table(spark_session, 'mytesttable', table)
 
         with utilizes_valid_plans(df):
             outcome = df.select(least('f1', 'f2')).collect()
@@ -982,10 +961,7 @@ class TestDataFrameAPIFunctions:
         float2_array = pa.array([float('NaN'), 42.0, None, -12], type=pa.float64())
         table = pa.Table.from_arrays([float1_array, float2_array], names=['f1', 'f2'])
 
-        pq.write_table(table, 'test_table.parquet')
-        table_df = spark_session.read.parquet('test_table.parquet')
-        table_df.createOrReplaceTempView('mytesttable')
-        df = spark_session.table('mytesttable')
+        df = create_parquet_table(spark_session, 'mytesttable', table)
 
         with utilizes_valid_plans(df):
             outcome = df.select(greatest('f1', 'f2')).collect()
@@ -1002,10 +978,7 @@ class TestDataFrameAPIFunctions:
         string_array = pa.array(['foo', 'bar'], type=pa.string())
         table = pa.Table.from_arrays([int_array, string_array], names=['i', 's'])
 
-        pq.write_table(table, 'test_table.parquet')
-        table_df = spark_session.read.parquet('test_table.parquet')
-        table_df.createOrReplaceTempView('mytesttable')
-        df = spark_session.table('mytesttable')
+        df = create_parquet_table(spark_session, 'mytesttable', table)
 
         with utilizes_valid_plans(df):
             outcome = df.select(named_struct(lit('a'), col('s'), lit('b'), col('i'))).collect()
