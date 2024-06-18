@@ -160,6 +160,14 @@ SPARK_SUBSTRAIT_MAPPING = {
         '/functions_comparison.yaml', 'greatest:i64', type_pb2.Type(
             i64=type_pb2.Type.I64(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'coalesce': ExtensionFunction(
+        '/functions_comparison.yaml', 'coalesce:any', type_pb2.Type(
+            string=type_pb2.Type.String(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_NULLABLE))),
+    'isnan': ExtensionFunction(
+        '/functions_comparison.yaml', 'is_nan:fp64', type_pb2.Type(
+            bool=type_pb2.Type.Boolean(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'concat': ExtensionFunction(
         '/functions_string.yaml', 'concat:str_str', type_pb2.Type(
             string=type_pb2.Type.String(

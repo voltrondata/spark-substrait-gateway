@@ -1460,6 +1460,13 @@ class SparkSubstraitConverter:
             greater_or_equal_function(ge_func, condition, integer_literal(min_non_nulls)))
         return algebra_pb2.Rel(filter=filter_rel)
 
+    def convert_hint_relation(self, rel: spark_relations_pb2.Hint) -> algebra_pb2.Rel:
+        """Convert a Spark hint relation into a Substrait relation."""
+        result = self.convert_relation(rel.input)
+        self.update_field_references(rel.input.common.plan_id)
+        # There are no well-defined hints yet in Substrait so just ignore them for now.
+        return result
+
     def convert_relation(self, rel: spark_relations_pb2.Relation) -> algebra_pb2.Rel:
         """Convert a Spark relation into a Substrait one."""
         self._symbol_table.add_symbol(rel.common.plan_id, parent=self._current_plan_id,
@@ -1507,6 +1514,8 @@ class SparkSubstraitConverter:
                 result = self.convert_tail_relation(rel.tail)
             case 'drop_na':
                 result = self.convert_dropna_relation(rel.drop_na)
+            case 'hint':
+                result = self.convert_hint_relation(rel.hint)
             case _:
                 raise ValueError(
                     f'Unexpected Spark plan rel_type: {rel.WhichOneof("rel_type")}')
