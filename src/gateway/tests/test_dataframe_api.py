@@ -1028,7 +1028,6 @@ class TestDataFrameAPIFunctions:
 
         assertDataFrameEqual(outcome, expected)
 
-    @pytest.mark.interesting
     def test_concat(self, users_dataframe):
         expected = [
             Row(a='user669344115Joshua Browntrue'),
