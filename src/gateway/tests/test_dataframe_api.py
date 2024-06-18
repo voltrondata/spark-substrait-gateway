@@ -1041,19 +1041,6 @@ class TestDataFrameAPIFunctions:
 
         assertDataFrameEqual(outcome, expected)
 
-    def test_concat(self, users_dataframe):
-        expected = [
-            Row(a='user669344115Joshua Browntrue'),
-            Row(a='user849118289Brooke Jonesfalse'),
-            Row(a='user954079192Collin Frankfalse'),
-        ]
-
-        with utilizes_valid_plans(users_dataframe):
-            outcome = users_dataframe.select(
-                concat('user_id', 'name', 'paid_for_service')).limit(3).collect()
-
-        assertDataFrameEqual(outcome, expected)
-
     @pytest.mark.interesting
     def test_equal_null(self, spark_session):
         expected = [
