@@ -14,6 +14,7 @@ dependencies:
   - python-substrait >= 0.14.1
   - mypy-protobuf
   - types-protobuf
+  - numpy < 2.0.0
   - Faker
   - pip:
     - adbc_driver_manager
