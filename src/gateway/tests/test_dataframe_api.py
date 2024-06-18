@@ -497,6 +497,48 @@ only showing top 1 row
 
         assertDataFrameEqual(outcome, expected)
 
+    def test_distinct(self, spark_session):
+        expected = [
+            Row(a=1, b=10, c='a'),
+            Row(a=2, b=11, c='a'),
+            Row(a=3, b=12, c='a'),
+            Row(a=4, b=13, c='a'),
+        ]
+
+        int1_array = pa.array([1, 2, 3, 3, 4], type=pa.int32())
+        int2_array = pa.array([10, 11, 12, 12, 13], type=pa.int32())
+        string_array = pa.array(['a', 'a', 'a', 'a', 'a'], type=pa.string())
+        table = pa.Table.from_arrays([int1_array, int2_array, string_array],
+                                     names=['a', 'b', 'c'])
+
+        df = create_parquet_table(spark_session, 'mytesttable1', table)
+
+        with utilizes_valid_plans(df):
+            outcome = df.distinct().collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_dropduplicates(self, spark_session):
+        expected = [
+            Row(a=1, b=10, c='a'),
+            Row(a=2, b=11, c='a'),
+            Row(a=3, b=12, c='a'),
+            Row(a=4, b=13, c='a'),
+        ]
+
+        int1_array = pa.array([1, 2, 3, 3, 4], type=pa.int32())
+        int2_array = pa.array([10, 11, 12, 12, 13], type=pa.int32())
+        string_array = pa.array(['a', 'a', 'a', 'a', 'a'], type=pa.string())
+        table = pa.Table.from_arrays([int1_array, int2_array, string_array],
+                                     names=['a', 'b', 'c'])
+
+        df = create_parquet_table(spark_session, 'mytesttable1', table)
+
+        with utilizes_valid_plans(df):
+            outcome = df.dropDuplicates().collect()
+
+        assertDataFrameEqual(outcome, expected)
+
     def test_subtract(self, spark_session_with_tpch_dataset):
         expected = [
             Row(n_nationkey=21, n_name='VIETNAM', n_regionkey=2,
