@@ -209,8 +209,8 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
                             result_complete=pb2.ExecutePlanResponse.ResultComplete())
                         return
                     case _:
-                        type = request.plan.command.WhichOneof("command_type")
-                        raise NotImplementedError(f'Unsupported command type: {type}')
+                        cmd_type = request.plan.command.WhichOneof("command_type")
+                        raise NotImplementedError(f'Unsupported command type: {cmd_type}')
             case _:
                 raise ValueError(f'Unknown plan type: {request.plan}')
         _LOGGER.debug('  as Substrait: %s', substrait)
