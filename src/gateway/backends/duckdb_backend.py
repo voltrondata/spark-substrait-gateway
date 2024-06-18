@@ -45,8 +45,7 @@ class DuckDBBackend(Backend):
             query_result = self._connection.from_substrait(proto=plan_data)
         except Exception as err:
             raise ValueError(f'DuckDB Execution Error: {err}') from err
-        df = query_result.df()
-        return pa.Table.from_pandas(df=df)
+        return query_result.arrow()
 
     def register_table(
             self,

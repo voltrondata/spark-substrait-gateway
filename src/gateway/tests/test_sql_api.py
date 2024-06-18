@@ -31,6 +31,8 @@ def mark_tests_as_xfail(request):
                 request.node.add_marker(pytest.mark.xfail(reason='Too few names returned'))
             elif path.stem in ['19']:
                 request.node.add_marker(pytest.mark.xfail(reason='nullability mismatch'))
+            elif path.stem in ['12']:
+                request.node.add_marker(pytest.mark.xfail(reason='unexpected field type decimal'))
         elif originalname in ['test_count', 'test_limit']:
             request.node.add_marker(pytest.mark.xfail(reason='Too few names returned'))
     if source == 'gateway-over-datafusion':

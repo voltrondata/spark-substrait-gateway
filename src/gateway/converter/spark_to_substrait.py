@@ -341,6 +341,22 @@ class SparkSubstraitConverter:
                                              bigint_literal(1), bigint_literal(1))
         return greater_function(greater_func, regexp_expr, bigint_literal(0))
 
+    def convert_nanvl_function(
+            self, in_: spark_exprs_pb2.Expression.UnresolvedFunction) -> algebra_pb2.Expression:
+        """Convert a Spark nanvl function into a Substrait expression."""
+        isnan_func = self.lookup_function_by_name('isnan')
+        arg0 = self.convert_expression(in_.arguments[0])
+        arg1 = self.convert_expression(in_.arguments[1])
+        expr = algebra_pb2.Expression(
+            scalar_function=algebra_pb2.Expression.ScalarFunction(
+                function_reference=isnan_func.anchor,
+                arguments=[
+                    algebra_pb2.FunctionArgument(value=arg0),
+                ],
+                output_type=isnan_func.output_type))
+
+        return if_then_else_operation(expr, arg1, arg0)
+
     def convert_unresolved_function(
             self,
             unresolved_function: spark_exprs_pb2.Expression.UnresolvedFunction
@@ -352,6 +368,8 @@ class SparkSubstraitConverter:
             return self.convert_in_function(unresolved_function)
         if unresolved_function.function_name == 'rlike':
             return self.convert_rlike_function(unresolved_function)
+        if unresolved_function.function_name == 'nanvl':
+            return self.convert_nanvl_function(unresolved_function)
         func = algebra_pb2.Expression.ScalarFunction()
         function_def = self.lookup_function_by_name(unresolved_function.function_name)
         func.function_reference = function_def.anchor
@@ -1460,6 +1478,13 @@ class SparkSubstraitConverter:
             greater_or_equal_function(ge_func, condition, integer_literal(min_non_nulls)))
         return algebra_pb2.Rel(filter=filter_rel)
 
+    def convert_hint_relation(self, rel: spark_relations_pb2.Hint) -> algebra_pb2.Rel:
+        """Convert a Spark hint relation into a Substrait relation."""
+        result = self.convert_relation(rel.input)
+        self.update_field_references(rel.input.common.plan_id)
+        # There are no well-defined hints yet in Substrait so just ignore them for now.
+        return result
+
     def convert_relation(self, rel: spark_relations_pb2.Relation) -> algebra_pb2.Rel:
         """Convert a Spark relation into a Substrait one."""
         self._symbol_table.add_symbol(rel.common.plan_id, parent=self._current_plan_id,
@@ -1507,6 +1532,8 @@ class SparkSubstraitConverter:
                 result = self.convert_tail_relation(rel.tail)
             case 'drop_na':
                 result = self.convert_dropna_relation(rel.drop_na)
+            case 'hint':
+                result = self.convert_hint_relation(rel.hint)
             case _:
                 raise ValueError(
                     f'Unexpected Spark plan rel_type: {rel.WhichOneof("rel_type")}')

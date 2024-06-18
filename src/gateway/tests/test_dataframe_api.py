@@ -9,7 +9,20 @@ from gateway.tests.plan_validator import utilizes_valid_plans
 from hamcrest import assert_that, equal_to
 from pyspark import Row
 from pyspark.errors.exceptions.connect import SparkConnectGrpcException
-from pyspark.sql.functions import col, substring
+from pyspark.sql.functions import (
+    broadcast,
+    coalesce,
+    col,
+    expr,
+    greatest,
+    isnan,
+    isnull,
+    least,
+    lit,
+    named_struct,
+    nanvl,
+    substring,
+)
 from pyspark.testing import assertDataFrameEqual
 
 
@@ -47,6 +60,19 @@ def mark_dataframe_tests_as_xfail(request):
         request.node.add_marker(pytest.mark.xfail(reason='intersect not supported'))
     if source == 'gateway-over-datafusion' and originalname == 'test_offset':
         request.node.add_marker(pytest.mark.xfail(reason='offset not supported'))
+    if source == 'gateway-over-datafusion' and originalname == 'test_broadcast':
+        request.node.add_marker(pytest.mark.xfail(reason='duplicate name problem with joins'))
+    if source == 'gateway-over-duckdb' and originalname == 'test_coalesce':
+        request.node.add_marker(pytest.mark.xfail(reason='missing Substrait mapping'))
+    if source == 'spark' and originalname == 'test_isnan':
+        request.node.add_marker(pytest.mark.xfail(reason='None not preserved'))
+    if source == 'gateway-over-datafusion' and originalname in [
+        'test_isnan', 'test_nanvl', 'test_least', 'test_greatest']:
+        request.node.add_marker(pytest.mark.xfail(reason='missing Substrait mapping'))
+    if source != 'spark' and originalname == 'test_expr':
+        request.node.add_marker(pytest.mark.xfail(reason='SQL support needed in gateway'))
+    if source != 'spark' and originalname == 'test_named_struct':
+        request.node.add_marker(pytest.mark.xfail(reason='needs better type tracking in gateway'))
 
 
 # ruff: noqa: E712
@@ -626,10 +652,7 @@ only showing top 1 row
         float_array = pa.array([float('NaN'), 42.0, None], type=pa.float64())
         table = pa.Table.from_arrays([string_array, float_array], names=['s', 'f'])
 
-        pq.write_table(table, 'test_table.parquet')
-        table_df = spark_session.read.parquet('test_table.parquet')
-        table_df.createOrReplaceTempView('mytesttable')
-        df = spark_session.table('mytesttable')
+        df = create_parquet_table(spark_session, 'mytesttable', table)
 
         with utilizes_valid_plans(df):
             outcome = df.select(df.s == 'foo',
@@ -653,10 +676,7 @@ only showing top 1 row
         int_array = pa.array([221, 0, 42, None], type=pa.int64())
         table = pa.Table.from_arrays([int_array], names=['i'])
 
-        pq.write_table(table, 'test_table.parquet')
-        table_df = spark_session.read.parquet('test_table.parquet')
-        table_df.createOrReplaceTempView('mytesttable')
-        df = spark_session.table('mytesttable')
+        df = create_parquet_table(spark_session, 'mytesttable', table)
 
         with utilizes_valid_plans(df):
             outcome = df.select(df.i.bitwiseAND(42),
@@ -794,3 +814,173 @@ only showing top 1 row
             outcome2 = spark_session.table('mytempview2').collect()
 
         assert len(outcome1) == len(outcome2) == 149999
+
+
+class TestDataFrameAPIFunctions:
+    """Tests functions of the dataframe side of SparkConnect."""
+
+    def test_lit(self, users_dataframe):
+        expected = [
+            Row(a=42),
+            Row(a=42),
+            Row(a=42),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(lit(42)).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_broadcast(self, users_dataframe):
+        expected = [
+            Row(user_id='user849118289', name='Brooke Jones', paid_for_service=False,
+                revised_user_id='user849118289', short_name='Brooke'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            revised_users_df = users_dataframe.withColumns(
+                {'revised_user_id': col('user_id'),
+                 'short_name': substring(col('name'), 1, 6),
+                 }).drop('user_id', 'name', 'paid_for_service')
+            outcome = users_dataframe.join(
+                broadcast(revised_users_df),
+                revised_users_df.revised_user_id == users_dataframe.user_id).limit(1).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_coalesce(self, spark_session):
+        expected = [
+            Row(a='42.0'),
+            Row(a='foo'),
+            Row(a=None),
+        ]
+
+        string_array = pa.array(['foo', None, None], type=pa.string())
+        float_array = pa.array([float('NaN'), 42.0, None], type=pa.float64())
+        table = pa.Table.from_arrays([string_array, float_array], names=['s', 'f'])
+
+        df = create_parquet_table(spark_session, 'mytesttable', table)
+
+        with utilizes_valid_plans(df):
+            outcome = df.select(coalesce('s', 'f')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_isnull(self, spark_session):
+        expected = [
+            Row(a=False, b=False),
+            Row(a=True, b=False),
+            Row(a=True, b=True),
+        ]
+
+        string_array = pa.array(['foo', None, None], type=pa.string())
+        float_array = pa.array([float('NaN'), 42.0, None], type=pa.float64())
+        table = pa.Table.from_arrays([string_array, float_array], names=['s', 'f'])
+
+        df = create_parquet_table(spark_session, 'mytesttable', table)
+
+        with utilizes_valid_plans(df):
+            outcome = df.select(isnull('s'), isnull('f')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_isnan(self, spark_session):
+        expected = [
+            Row(f=42.0, a=False),
+            Row(f=None, a=None),
+            Row(f=float('NaN'), a=True),
+        ]
+
+        float_array = pa.array([float('NaN'), 42.0, None], type=pa.float64())
+        table = pa.Table.from_arrays([float_array], names=['f'])
+
+        df = create_parquet_table(spark_session, 'mytesttable', table)
+
+        with utilizes_valid_plans(df):
+            outcome = df.select(col('f'), isnan('f')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_nanvl(self, spark_session):
+        expected = [
+            Row(a=42.0),
+            Row(a=9999.0),
+            Row(a=None),
+        ]
+
+        float_array = pa.array([float('NaN'), 42.0, None], type=pa.float64())
+        table = pa.Table.from_arrays([float_array], names=['f'])
+
+        df = create_parquet_table(spark_session, 'mytesttable', table)
+
+        with utilizes_valid_plans(df):
+            outcome = df.select(nanvl('f', lit(float(9999)))).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_expr(self, users_dataframe):
+        expected = [
+            Row(name='Brooke Jones', a=12),
+            Row(name='Collin Frank', a=12),
+            Row(name='Joshua Brown', a=12),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select('name', expr('length(name)')).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_least(self, spark_session):
+        expected = [
+            Row(a=-12.0),
+            Row(a=42.0),
+            Row(a=63.0),
+            Row(a=None),
+        ]
+
+        float1_array = pa.array([63, 42.0, None, 12], type=pa.float64())
+        float2_array = pa.array([float('NaN'), 42.0, None, -12], type=pa.float64())
+        table = pa.Table.from_arrays([float1_array, float2_array], names=['f1', 'f2'])
+
+        df = create_parquet_table(spark_session, 'mytesttable', table)
+
+        with utilizes_valid_plans(df):
+            outcome = df.select(least('f1', 'f2')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_greatest(self, spark_session):
+        expected = [
+            Row(a=12.0),
+            Row(a=42.0),
+            Row(a=None),
+            Row(a=float('NaN')),
+        ]
+
+        float1_array = pa.array([63, 42.0, None, 12], type=pa.float64())
+        float2_array = pa.array([float('NaN'), 42.0, None, -12], type=pa.float64())
+        table = pa.Table.from_arrays([float1_array, float2_array], names=['f1', 'f2'])
+
+        df = create_parquet_table(spark_session, 'mytesttable', table)
+
+        with utilizes_valid_plans(df):
+            outcome = df.select(greatest('f1', 'f2')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_named_struct(self, spark_session):
+        expected = [
+            Row(named_struct=Row(a='bar', b=2)),
+            Row(named_struct=Row(a='foo', b=1)),
+        ]
+
+        int_array = pa.array([1, 2], type=pa.int32())
+        string_array = pa.array(['foo', 'bar'], type=pa.string())
+        table = pa.Table.from_arrays([int_array, string_array], names=['i', 's'])
+
+        df = create_parquet_table(spark_session, 'mytesttable', table)
+
+        with utilizes_valid_plans(df):
+            outcome = df.select(named_struct(lit('a'), col('s'), lit('b'), col('i'))).collect()
+
+        assertDataFrameEqual(outcome, expected)
