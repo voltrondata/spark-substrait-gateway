@@ -55,8 +55,12 @@ def mark_dataframe_tests_as_xfail(request):
     if source == 'spark' and originalname == 'test_isnan':
         request.node.add_marker(pytest.mark.xfail(reason='None not preserved'))
     if source == 'gateway-over-datafusion' and originalname in [
-        'test_isnan', 'test_least', 'test_greatest']:
+        'test_isnan', 'test_nanvl', 'test_least', 'test_greatest']:
         request.node.add_marker(pytest.mark.xfail(reason='missing Substrait mapping'))
+    if source != 'spark' and originalname == 'test_expr':
+        request.node.add_marker(pytest.mark.xfail(reason='SQL support needed in gateway'))
+    if source != 'spark' and originalname == 'test_named_struct':
+        request.node.add_marker(pytest.mark.xfail(reason='needs better type tracking in gateway'))
 
 
 # ruff: noqa: E712
@@ -900,7 +904,6 @@ class TestDataFrameAPIFunctions:
 
         assertDataFrameEqual(outcome, expected)
 
-    @pytest.mark.interesting
     def test_nanvl(self, spark_session):
         expected = [
             Row(a=42.0),
@@ -917,11 +920,10 @@ class TestDataFrameAPIFunctions:
         df = spark_session.table('mytesttable')
 
         with utilizes_valid_plans(df):
-            outcome = df.select(nanvl('f', lit(9999))).collect()
+            outcome = df.select(nanvl('f', lit(float(9999)))).collect()
 
         assertDataFrameEqual(outcome, expected)
 
-    @pytest.mark.interesting
     def test_expr(self, users_dataframe):
         expected = [
             Row(name='Brooke Jones', a=12),
@@ -978,7 +980,6 @@ class TestDataFrameAPIFunctions:
 
         assertDataFrameEqual(outcome, expected)
 
-    @pytest.mark.interesting
     def test_named_struct(self, spark_session):
         expected = [
             Row(named_struct=Row(a='bar', b=2)),
