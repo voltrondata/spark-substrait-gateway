@@ -1040,3 +1040,48 @@ class TestDataFrameAPIFunctions:
                 concat('user_id', 'name', 'paid_for_service')).limit(3).collect()
 
         assertDataFrameEqual(outcome, expected)
+
+    def test_concat(self, users_dataframe):
+        expected = [
+            Row(a='user669344115Joshua Browntrue'),
+            Row(a='user849118289Brooke Jonesfalse'),
+            Row(a='user954079192Collin Frankfalse'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                concat('user_id', 'name', 'paid_for_service')).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    @pytest.mark.interesting
+    def test_equal_null(self, spark_session):
+        expected = [
+            Row(a=None, b=False, c=True),
+            Row(a=True, b=True, c=False),
+        ]
+        expected2 = [
+            Row(a=False, b=False, c=True),
+            Row(a=False, b=True, c=False),
+            Row(a=True, b=False, c=False),
+        ]
+
+        string_array = pa.array(['foo', None, None], type=pa.string())
+        float_array = pa.array([float('NaN'), 42.0, None], type=pa.float64())
+        table = pa.Table.from_arrays([string_array, float_array], names=['s', 'f'])
+
+        pq.write_table(table, 'test_table.parquet')
+        table_df = spark_session.read.parquet('test_table.parquet')
+        table_df.createOrReplaceTempView('mytesttable')
+        df = spark_session.table('mytesttable')
+
+        with utilizes_valid_plans(df):
+            outcome = df.select(df.s == 'foo',
+                                df.s.eqNullSafe('foo'),
+                                df.s.eqNullSafe(None)).limit(2).collect()
+            assertDataFrameEqual(outcome, expected)
+
+            outcome = df.select(df.f.eqNullSafe(None),
+                                df.f.eqNullSafe(float('NaN')),
+                                df.f.eqNullSafe(42.0)).collect()
+            assertDataFrameEqual(outcome, expected2)

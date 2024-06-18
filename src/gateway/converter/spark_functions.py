@@ -41,6 +41,10 @@ SPARK_SUBSTRAIT_MAPPING = {
         '/functions_comparison.yaml', 'equal:str_str', type_pb2.Type(
             bool=type_pb2.Type.Boolean(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'equal_null': ExtensionFunction(
+        '/functions_comparison.yaml', 'is_not_distinct_from:str_str', type_pb2.Type(
+            bool=type_pb2.Type.Boolean(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     '<=': ExtensionFunction(
         '/functions_comparison.yaml', 'lte:i64_i64', type_pb2.Type(
             bool=type_pb2.Type.Boolean(
