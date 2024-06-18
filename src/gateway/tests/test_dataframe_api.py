@@ -9,8 +9,20 @@ from gateway.tests.plan_validator import utilizes_valid_plans
 from hamcrest import assert_that, equal_to
 from pyspark import Row
 from pyspark.errors.exceptions.connect import SparkConnectGrpcException
-from pyspark.sql.functions import col, substring, lit, broadcast, coalesce, isnull, isnan, \
-    named_struct, nanvl, expr, least, greatest
+from pyspark.sql.functions import (
+    broadcast,
+    coalesce,
+    col,
+    expr,
+    greatest,
+    isnan,
+    isnull,
+    least,
+    lit,
+    named_struct,
+    nanvl,
+    substring,
+)
 from pyspark.testing import assertDataFrameEqual
 
 
