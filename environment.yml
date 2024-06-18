@@ -13,6 +13,7 @@ dependencies:
   - setuptools_scm >= 6.2.0
   - python-substrait >= 0.14.1
   - mypy-protobuf
+  - numpy < 2.0.0
   - types-protobuf
   - Faker
   - pip:
