@@ -22,7 +22,7 @@ from pyspark.sql.functions import (
     lit,
     named_struct,
     nanvl,
-    substring,
+    substring, equal_null, ifnull,
 )
 from pyspark.testing import assertDataFrameEqual
 
@@ -1044,18 +1044,15 @@ class TestDataFrameAPIFunctions:
     @pytest.mark.interesting
     def test_equal_null(self, spark_session):
         expected = [
-            Row(a=None, b=False, c=True),
-            Row(a=True, b=True, c=False),
-        ]
-        expected2 = [
-            Row(a=False, b=False, c=True),
-            Row(a=False, b=True, c=False),
-            Row(a=True, b=False, c=False),
+            Row(f1=12.0, f2=-12.0, a=False),
+            Row(f1=42.0, f2=42.0, a=True),
+            Row(f1=63.0, f2=float('NaN'), a=False),
+            Row(f1=None, f2=None, a=True),
         ]
 
-        string_array = pa.array(['foo', None, None], type=pa.string())
-        float_array = pa.array([float('NaN'), 42.0, None], type=pa.float64())
-        table = pa.Table.from_arrays([string_array, float_array], names=['s', 'f'])
+        float1_array = pa.array([63, 42.0, None, 12], type=pa.float64())
+        float2_array = pa.array([float('NaN'), 42.0, None, -12], type=pa.float64())
+        table = pa.Table.from_arrays([float1_array, float2_array], names=['f1', 'f2'])
 
         pq.write_table(table, 'test_table.parquet')
         table_df = spark_session.read.parquet('test_table.parquet')
@@ -1063,12 +1060,27 @@ class TestDataFrameAPIFunctions:
         df = spark_session.table('mytesttable')
 
         with utilizes_valid_plans(df):
-            outcome = df.select(df.s == 'foo',
-                                df.s.eqNullSafe('foo'),
-                                df.s.eqNullSafe(None)).limit(2).collect()
+            outcome = df.select('f1', 'f2', equal_null('f1', 'f2')).collect()
             assertDataFrameEqual(outcome, expected)
 
-            outcome = df.select(df.f.eqNullSafe(None),
-                                df.f.eqNullSafe(float('NaN')),
-                                df.f.eqNullSafe(42.0)).collect()
-            assertDataFrameEqual(outcome, expected2)
+    @pytest.mark.interesting
+    def test_ifnull(self, spark_session):
+        expected = [
+            Row(f1=12.0, f2=-12.0, a=12.0),
+            Row(f1=None, f2=42.0, a=42.0),
+            Row(f1=float('NaN'), f2=63.0, a=float('NaN')),
+            Row(f1=None, f2=None, a=None),
+        ]
+
+        float1_array = pa.array([float('NaN'), None, None, 12], type=pa.float64())
+        float2_array = pa.array([63.0, 42.0, None, -12], type=pa.float64())
+        table = pa.Table.from_arrays([float1_array, float2_array], names=['f1', 'f2'])
+
+        pq.write_table(table, 'test_table.parquet')
+        table_df = spark_session.read.parquet('test_table.parquet')
+        table_df.createOrReplaceTempView('mytesttable')
+        df = spark_session.table('mytesttable')
+
+        with utilizes_valid_plans(df):
+            outcome = df.select('f1', 'f2', ifnull('f1', 'f2')).collect()
+            assertDataFrameEqual(outcome, expected)
