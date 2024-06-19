@@ -90,7 +90,10 @@ def convert_pyarrow_datatype_to_spark(arrow_type: pa.DataType) -> types_pb2.Data
         value_type = convert_pyarrow_datatype_to_spark(arrow_type.item_type)
         data_type = types_pb2.DataType(
             map=types_pb2.DataType.Map(key_type=key_type, value_type=value_type))
-    elif isinstance(arrow_type, pa.Decimal128Type) or isinstance(arrow_type, pa.Decimal256Type):
+    elif isinstance(arrow_type, pa.Decimal128Type):
+        data_type = types_pb2.DataType(decimal=types_pb2.DataType.Decimal(
+            precision=arrow_type.precision, scale=arrow_type.scale))
+    elif isinstance(arrow_type, pa.Decimal256Type):
         data_type = types_pb2.DataType(decimal=types_pb2.DataType.Decimal(
             precision=arrow_type.precision, scale=arrow_type.scale))
     else:
