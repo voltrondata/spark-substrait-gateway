@@ -1451,13 +1451,6 @@ class SparkSubstraitConverter:
         raise NotImplementedError(
             'Substrait does not represent tail relations.  Use sort and head relations instead.')
 
-    def convert_hint_relation(self, rel: spark_relations_pb2.Hint) -> algebra_pb2.Rel:
-        """Convert a Spark hint relation into a Substrait relation."""
-        result = self.convert_relation(rel.input)
-        self.update_field_references(rel.input.common.plan_id)
-        # There are no well-defined hints yet in Substrait so just ignore them for now.
-        return result
-
     def convert_dropna_relation(self, rel: spark_relations_pb2.NADrop) -> algebra_pb2.Rel:
         """Convert a Spark NADrop relation into a Substrait filter relation."""
         filter_rel = algebra_pb2.FilterRel(input=self.convert_relation(rel.input))
@@ -1484,13 +1477,6 @@ class SparkSubstraitConverter:
         filter_rel.condition.CopyFrom(
             greater_or_equal_function(ge_func, condition, integer_literal(min_non_nulls)))
         return algebra_pb2.Rel(filter=filter_rel)
-
-    def convert_hint_relation(self, rel: spark_relations_pb2.Hint) -> algebra_pb2.Rel:
-        """Convert a Spark hint relation into a Substrait relation."""
-        result = self.convert_relation(rel.input)
-        self.update_field_references(rel.input.common.plan_id)
-        # There are no well-defined hints yet in Substrait so just ignore them for now.
-        return result
 
     def convert_hint_relation(self, rel: spark_relations_pb2.Hint) -> algebra_pb2.Rel:
         """Convert a Spark hint relation into a Substrait relation."""
