@@ -93,9 +93,6 @@ def convert_pyarrow_datatype_to_spark(arrow_type: pa.DataType) -> types_pb2.Data
     elif isinstance(arrow_type, pa.Decimal128Type):
         data_type = types_pb2.DataType(decimal=types_pb2.DataType.Decimal(
             precision=arrow_type.precision, scale=arrow_type.scale))
-    elif isinstance(arrow_type, pa.Decimal256Type):
-        data_type = types_pb2.DataType(decimal=types_pb2.DataType.Decimal(
-            precision=arrow_type.precision, scale=arrow_type.scale))
     else:
         raise NotImplementedError(f'Unexpected field type: {arrow_type}')
 
