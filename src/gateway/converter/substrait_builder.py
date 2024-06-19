@@ -191,10 +191,10 @@ def greater_function(function_info: ExtensionFunction,
                    algebra_pb2.FunctionArgument(value=expr2)]))
 
 
-def and_function(function_info: ExtensionFunction,
+def add_function(function_info: ExtensionFunction,
                  expr1: algebra_pb2.Expression,
                  expr2: algebra_pb2.Expression) -> algebra_pb2.Expression:
-    """Construct a Substrait and expression (binary)."""
+    """Construct a Substrait add expression."""
     return algebra_pb2.Expression(scalar_function=
     algebra_pb2.Expression.ScalarFunction(
         function_reference=function_info.anchor,
@@ -203,10 +203,10 @@ def and_function(function_info: ExtensionFunction,
                    algebra_pb2.FunctionArgument(value=expr2)]))
 
 
-def add_function(function_info: ExtensionFunction,
+def and_function(function_info: ExtensionFunction,
                  expr1: algebra_pb2.Expression,
                  expr2: algebra_pb2.Expression) -> algebra_pb2.Expression:
-    """Construct a Substrait add expression."""
+    """Construct a Substrait and expression (binary)."""
     return algebra_pb2.Expression(scalar_function=
     algebra_pb2.Expression.ScalarFunction(
         function_reference=function_info.anchor,

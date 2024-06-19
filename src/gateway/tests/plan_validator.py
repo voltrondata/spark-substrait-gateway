@@ -65,4 +65,3 @@ def utilizes_valid_plans(session, caplog=None):
                     '\n'.join(traceback.format_exception(exception)) +
                     '\n\n'.join(plans_as_text)+log_text, pytrace=False)
 
-

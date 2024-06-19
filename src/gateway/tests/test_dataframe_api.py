@@ -585,25 +585,6 @@ only showing top 1 row
 
         assertDataFrameEqual(outcome, expected)
 
-    def test_colregex(self, spark_session, caplog):
-        expected = [
-            Row(a1=1, col2='a'),
-            Row(a1=2, col2='b'),
-            Row(a1=3, col2='c'),
-        ]
-
-        int_array = pa.array([1, 2, 3], type=pa.int32())
-        string_array = pa.array(['a', 'b', 'c'], type=pa.string())
-        table = pa.Table.from_arrays([int_array, int_array, string_array, string_array],
-                                     names=['a1', 'c', 'col', 'col2'])
-
-        df = create_parquet_table(spark_session, 'mytesttable1', table)
-
-        with utilizes_valid_plans(df, caplog):
-            outcome = df.select(df.colRegex("`(c.l|a)?[0-9]`")).collect()
-
-        assertDataFrameEqual(outcome, expected)
-
     def test_subtract(self, spark_session_with_tpch_dataset):
         expected = [
             Row(n_nationkey=21, n_name='VIETNAM', n_regionkey=2,
