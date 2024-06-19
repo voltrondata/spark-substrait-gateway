@@ -357,6 +357,39 @@ class SparkSubstraitConverter:
 
         return if_then_else_operation(expr, arg1, arg0)
 
+    def convert_nvl_function(
+            self, in_: spark_exprs_pb2.Expression.UnresolvedFunction) -> algebra_pb2.Expression:
+        """Convert a Spark nvl function into a Substrait expression."""
+        isnull_func = self.lookup_function_by_name('isnull')
+        arg0 = self.convert_expression(in_.arguments[0])
+        arg1 = self.convert_expression(in_.arguments[1])
+        expr = algebra_pb2.Expression(
+            scalar_function=algebra_pb2.Expression.ScalarFunction(
+                function_reference=isnull_func.anchor,
+                arguments=[
+                    algebra_pb2.FunctionArgument(value=arg0),
+                ],
+                output_type=isnull_func.output_type))
+
+        return if_then_else_operation(expr, arg1, arg0)
+
+    def convert_nvl2_function(
+            self, in_: spark_exprs_pb2.Expression.UnresolvedFunction) -> algebra_pb2.Expression:
+        """Convert a Spark nvl2 function into a Substrait expression."""
+        isnotnull_func = self.lookup_function_by_name('isnotnull')
+        arg0 = self.convert_expression(in_.arguments[0])
+        arg1 = self.convert_expression(in_.arguments[1])
+        arg2 = self.convert_expression(in_.arguments[2])
+        expr = algebra_pb2.Expression(
+            scalar_function=algebra_pb2.Expression.ScalarFunction(
+                function_reference=isnotnull_func.anchor,
+                arguments=[
+                    algebra_pb2.FunctionArgument(value=arg0),
+                ],
+                output_type=isnotnull_func.output_type))
+
+        return if_then_else_operation(expr, arg1, arg2)
+
     def convert_ifnull_function(
             self, in_: spark_exprs_pb2.Expression.UnresolvedFunction) -> algebra_pb2.Expression:
         """Convert a Spark ifnull function into a Substrait expression."""
@@ -386,6 +419,10 @@ class SparkSubstraitConverter:
             return self.convert_rlike_function(unresolved_function)
         if unresolved_function.function_name == 'nanvl':
             return self.convert_nanvl_function(unresolved_function)
+        if unresolved_function.function_name == 'nvl':
+            return self.convert_nvl_function(unresolved_function)
+        if unresolved_function.function_name == 'nvl2':
+            return self.convert_nvl2_function(unresolved_function)
         if unresolved_function.function_name == 'ifnull':
             return self.convert_ifnull_function(unresolved_function)
         func = algebra_pb2.Expression.ScalarFunction()
