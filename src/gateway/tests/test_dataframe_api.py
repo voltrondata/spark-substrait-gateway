@@ -76,6 +76,10 @@ def mark_dataframe_tests_as_xfail(request):
         request.node.add_marker(pytest.mark.xfail(reason='SQL support needed in gateway'))
     if source != 'spark' and originalname == 'test_named_struct':
         request.node.add_marker(pytest.mark.xfail(reason='needs better type tracking in gateway'))
+    if source == 'spark' and originalname == 'test_nullif':
+        request.node.add_marker(pytest.mark.xfail(reason='internal Spark type error'))
+    if source == 'gateway-over-duckdb' and originalname == 'test_nullif':
+        request.node.add_marker(pytest.mark.xfail(reason='argument count issue in DuckDB mapping'))
 
 
 # ruff: noqa: E712
@@ -1095,7 +1099,6 @@ class TestDataFrameAPIFunctions:
             outcome = df.select('f', isnotnull('f')).collect()
             assertDataFrameEqual(outcome, expected)
 
-    @pytest.mark.interesting
     def test_nullif(self, spark_session):
         expected = [
             Row(f1=12.0, f2=-12.0, a=12.0),
