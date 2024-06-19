@@ -31,8 +31,6 @@ def mark_tests_as_xfail(request):
                 request.node.add_marker(pytest.mark.xfail(reason='Too few names returned'))
             elif path.stem in ['19']:
                 request.node.add_marker(pytest.mark.xfail(reason='nullability mismatch'))
-            elif path.stem in ['12']:
-                request.node.add_marker(pytest.mark.xfail(reason='unexpected field type decimal'))
         elif originalname in ['test_count', 'test_limit']:
             request.node.add_marker(pytest.mark.xfail(reason='Too few names returned'))
     if source == 'gateway-over-datafusion':
@@ -101,12 +99,12 @@ class TestSqlAPI:
         sql_test_case_paths,
         ids=sql_test_case_names,
     )
-    def test_tpch(self, spark_session_with_tpch_dataset, path):
+    def test_tpch(self, spark_session_with_tpch_dataset, path, caplog):
         """Test the TPC-H queries."""
         # Read the SQL to run.
         with open(path, "rb") as file:
             sql_bytes = file.read()
         sql = sql_bytes.decode('utf-8')
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
+        with utilizes_valid_plans(spark_session_with_tpch_dataset, caplog):
             spark_session_with_tpch_dataset.sql(sql).collect()
