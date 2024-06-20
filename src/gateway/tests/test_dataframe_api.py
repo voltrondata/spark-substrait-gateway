@@ -12,6 +12,8 @@ from pyspark.errors.exceptions.connect import SparkConnectGrpcException
 from pyspark.sql.functions import (
     bit_length,
     broadcast,
+    char_length,
+    character_length,
     coalesce,
     col,
     concat,
@@ -1099,6 +1101,36 @@ class TestDataFrameAPIFunctions:
 
         with utilizes_valid_plans(users_dataframe):
             outcome = users_dataframe.select('name', bit_length('name')).limit(5).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    @pytest.mark.interesting
+    def test_character_length(self, users_dataframe):
+        expected = [
+            Row(name='Brooke Jones', a=12),
+            Row(name='Collin Frank', a=12),
+            Row(name='Joshua Brown', a=12),
+            Row(name='Mrs. Sheila Jones', a=17),
+            Row(name='Rebecca Valentine', a=17),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select('name', character_length('name')).limit(5).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    @pytest.mark.interesting
+    def test_char_length(self, users_dataframe):
+        expected = [
+            Row(name='Brooke Jones', a=12),
+            Row(name='Collin Frank', a=12),
+            Row(name='Joshua Brown', a=12),
+            Row(name='Mrs. Sheila Jones', a=17),
+            Row(name='Rebecca Valentine', a=17),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select('name', char_length('name')).limit(5).collect()
 
         assertDataFrameEqual(outcome, expected)
 
