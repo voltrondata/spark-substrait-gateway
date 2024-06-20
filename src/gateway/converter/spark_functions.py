@@ -164,6 +164,10 @@ SPARK_SUBSTRAIT_MAPPING = {
         '/functions_string.yaml', 'string_agg:str', type_pb2.Type(
             string=type_pb2.Type.String(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'btrim': ExtensionFunction(
+        '/functions_string.yaml', 'trim:str', type_pb2.Type(
+            string=type_pb2.Type.String(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'least': ExtensionFunction(
         '/functions_comparison.yaml', 'least:i64', type_pb2.Type(
             i64=type_pb2.Type.I64(
@@ -209,11 +213,11 @@ SPARK_SUBSTRAIT_MAPPING = {
             i64=type_pb2.Type.I64(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'character_length': ExtensionFunction(
-        '/functions_string.yaml', 'character_length:str', type_pb2.Type(
+        '/functions_string.yaml', 'char_length:str', type_pb2.Type(
             i64=type_pb2.Type.I64(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'char_length': ExtensionFunction(
-        '/functions_string.yaml', 'character_length:str', type_pb2.Type(
+        '/functions_string.yaml', 'char_length:str', type_pb2.Type(
             i64=type_pb2.Type.I64(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'count': ExtensionFunction(
