@@ -10,6 +10,7 @@ from hamcrest import assert_that, equal_to
 from pyspark import Row
 from pyspark.errors.exceptions.connect import SparkConnectGrpcException
 from pyspark.sql.functions import (
+    bit_length,
     broadcast,
     coalesce,
     col,
@@ -1083,6 +1084,21 @@ class TestDataFrameAPIFunctions:
         with utilizes_valid_plans(users_dataframe):
             outcome = users_dataframe.select(
                 concat('user_id', 'name', 'paid_for_service')).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    @pytest.mark.interesting
+    def test_bit_length(self, users_dataframe):
+        expected = [
+            Row(name='Brooke Jones', a=96),
+            Row(name='Collin Frank', a=96),
+            Row(name='Joshua Brown', a=96),
+            Row(name='Mrs. Sheila Jones', a=136),
+            Row(name='Rebecca Valentine', a=136),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select('name', bit_length('name')).limit(5).collect()
 
         assertDataFrameEqual(outcome, expected)
 
