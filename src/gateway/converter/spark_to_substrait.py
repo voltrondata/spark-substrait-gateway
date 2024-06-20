@@ -463,7 +463,7 @@ class SparkSubstraitConverter:
                 result = self.convert_unresolved_function(expr.unresolved_function)
             case 'expression_string':
                 raise NotImplementedError(
-                    'expression_string expression type not supported')
+                    'SQL expressions through selectExpr is not supported')
             case 'unresolved_star':
                 raise NotImplementedError(
                     '* expressions are only supported within count aggregations')
