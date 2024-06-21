@@ -132,6 +132,10 @@ SPARK_SUBSTRAIT_MAPPING = {
         '/functions_string.yaml', 'regexp_matches:str_str', type_pb2.Type(
             bool=type_pb2.Type.Boolean(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'substr': ExtensionFunction(
+        '/functions_string.yaml', 'substring:str_int_int', type_pb2.Type(
+            string=type_pb2.Type.String(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'substring': ExtensionFunction(
         '/functions_string.yaml', 'substring:str_int_int', type_pb2.Type(
             string=type_pb2.Type.String(
@@ -178,6 +182,10 @@ SPARK_SUBSTRAIT_MAPPING = {
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'rtrim': ExtensionFunction(
         '/functions_string.yaml', 'rtrim:str', type_pb2.Type(
+            string=type_pb2.Type.String(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'trim': ExtensionFunction(
+        '/functions_string.yaml', 'trim:str', type_pb2.Type(
             string=type_pb2.Type.String(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'lcase': ExtensionFunction(

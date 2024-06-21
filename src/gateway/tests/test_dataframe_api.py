@@ -53,8 +53,12 @@ from pyspark.sql.functions import (
     rlike,
     rpad,
     rtrim,
+    startswith,
+    substr,
     substring,
+    trim,
     ucase,
+    upper,
 )
 from pyspark.testing import assertDataFrameEqual
 
@@ -112,6 +116,8 @@ def mark_dataframe_tests_as_xfail(request):
         request.node.add_marker(pytest.mark.xfail(reason='argument count issue in DuckDB mapping'))
     if source == 'gateway-over-datafusion' and originalname == 'test_contains':
         request.node.add_marker(pytest.mark.xfail(reason='contains returns position not binary'))
+    if source != 'spark' and originalname in ['test_locate', 'test_position']:
+        request.node.add_marker(pytest.mark.xfail(reason='no direct Substrait analog'))
 
 
 # ruff: noqa: E712
@@ -1384,7 +1390,6 @@ class TestDataFrameAPIFunctions:
 
         assertDataFrameEqual(outcome, expected)
 
-    @pytest.mark.interesting
     def test_locate(self, users_dataframe):
         expected = [
             Row(name='Brooke Jones', a=9),
@@ -1438,7 +1443,6 @@ class TestDataFrameAPIFunctions:
 
         assertDataFrameEqual(outcome, expected)
 
-    @pytest.mark.interesting
     def test_position(self, users_dataframe):
         expected = [
             Row(name='Brooke Jones', a=9),
@@ -1569,12 +1573,69 @@ class TestDataFrameAPIFunctions:
 
         assertDataFrameEqual(outcome, expected)
 
-# split
-# split_part
-# startswith
-# substr
-# substring
-# substring_index
-# overlay
-# trim
-# upper
+    def test_startswith(self, users_dataframe):
+        expected = [
+            Row(name='Brooke Jones', a=True),
+            Row(name='Collin Frank', a=False),
+            Row(name='Joshua Brown', a=False),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                'name', startswith('name', lit('Bro'))).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_substr(self, users_dataframe):
+        expected = [
+            Row(a='oo'),
+            Row(a='ll'),
+            Row(a='sh'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                substr('name', lit(3), lit(2))).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_substring(self, users_dataframe):
+        expected = [
+            Row(a='oo'),
+            Row(a='ll'),
+            Row(a='sh'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                substring('name', 3, 2)).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_trim(self, users_dataframe):
+        expected = [
+            Row(name='Brooke Jones'),
+            Row(name='Collin Frank'),
+            Row(name='Joshua Brown'),
+            Row(name='Mrs. Sheila Jones'),
+            Row(name='Rebecca Valentine'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                trim(lpad(rpad('name', 18, ' '), 36, ' '))).limit(5).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_upper(self, users_dataframe):
+        expected = [
+            Row(name='BROOKE JONES'),
+            Row(name='COLLIN FRANK'),
+            Row(name='JOSHUA BROWN'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                upper('name')).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
