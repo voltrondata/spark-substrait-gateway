@@ -118,6 +118,8 @@ def mark_dataframe_tests_as_xfail(request):
         request.node.add_marker(pytest.mark.xfail(reason='contains returns position not binary'))
     if source != 'spark' and originalname in ['test_locate', 'test_position']:
         request.node.add_marker(pytest.mark.xfail(reason='no direct Substrait analog'))
+    if source == 'gateway-over-duckdb' and originalname == 'test_octet_length':
+        request.node.add_marker(pytest.mark.xfail(reason='varchar octet_length not supported'))
 
 
 # ruff: noqa: E712
