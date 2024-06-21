@@ -416,7 +416,7 @@ class SparkSubstraitConverter:
             return self.convert_when_function(unresolved_function)
         if unresolved_function.function_name == 'in':
             return self.convert_in_function(unresolved_function)
-        if unresolved_function.function_name == 'rlike':
+        if unresolved_function.function_name in ['rlike', 'regexp', 'regexp_like']:
             return self.convert_rlike_function(unresolved_function)
         if unresolved_function.function_name == 'nanvl':
             return self.convert_nanvl_function(unresolved_function)

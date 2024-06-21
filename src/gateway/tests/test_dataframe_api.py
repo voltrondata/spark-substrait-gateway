@@ -10,25 +10,55 @@ from hamcrest import assert_that, equal_to
 from pyspark import Row
 from pyspark.errors.exceptions.connect import SparkConnectGrpcException
 from pyspark.sql.functions import (
+    bit_length,
     broadcast,
+    btrim,
+    char_length,
+    character_length,
     coalesce,
     col,
     concat,
+    concat_ws,
+    contains,
+    endswith,
     equal_null,
     expr,
     greatest,
     ifnull,
+    instr,
     isnan,
     isnotnull,
     isnull,
+    lcase,
     least,
+    left,
+    length,
     lit,
+    locate,
+    lower,
+    lpad,
+    ltrim,
     named_struct,
     nanvl,
     nullif,
     nvl,
     nvl2,
+    octet_length,
+    position,
+    regexp,
+    regexp_like,
+    repeat,
+    replace,
+    right,
+    rlike,
+    rpad,
+    rtrim,
+    startswith,
+    substr,
     substring,
+    trim,
+    ucase,
+    upper,
 )
 from pyspark.testing import assertDataFrameEqual
 
@@ -84,6 +114,12 @@ def mark_dataframe_tests_as_xfail(request):
         request.node.add_marker(pytest.mark.xfail(reason='internal Spark type error'))
     if source == 'gateway-over-duckdb' and originalname == 'test_nullif':
         request.node.add_marker(pytest.mark.xfail(reason='argument count issue in DuckDB mapping'))
+    if source == 'gateway-over-datafusion' and originalname == 'test_contains':
+        request.node.add_marker(pytest.mark.xfail(reason='contains returns position not binary'))
+    if source != 'spark' and originalname in ['test_locate', 'test_position']:
+        request.node.add_marker(pytest.mark.xfail(reason='no direct Substrait analog'))
+    if source == 'gateway-over-duckdb' and originalname == 'test_octet_length':
+        request.node.add_marker(pytest.mark.xfail(reason='varchar octet_length not supported'))
 
 
 # ruff: noqa: E712
@@ -1196,3 +1232,412 @@ class TestDataFrameAPIFunctions:
         with utilizes_valid_plans(df):
             outcome = df.select('f1', 'f2', 'f3', nvl2('f1', 'f2', 'f3')).collect()
             assertDataFrameEqual(outcome, expected)
+
+    def test_bit_length(self, users_dataframe):
+        expected = [
+            Row(name='Brooke Jones', a=96),
+            Row(name='Collin Frank', a=96),
+            Row(name='Joshua Brown', a=96),
+            Row(name='Mrs. Sheila Jones', a=136),
+            Row(name='Rebecca Valentine', a=136),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select('name', bit_length('name')).limit(5).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_btrim(self, users_dataframe):
+        expected = [
+            Row(name='rooke Jone'),
+            Row(name='Collin Frank'),
+            Row(name='Joshua Brown'),
+            Row(name='Mrs. Sheila Jone'),
+            Row(name='Rebecca Valentine'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(btrim('name', lit('Bs'))).limit(5).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_character_length(self, users_dataframe):
+        expected = [
+            Row(name='Brooke Jones', a=12),
+            Row(name='Collin Frank', a=12),
+            Row(name='Joshua Brown', a=12),
+            Row(name='Mrs. Sheila Jones', a=17),
+            Row(name='Rebecca Valentine', a=17),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select('name', character_length('name')).limit(5).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_char_length(self, users_dataframe):
+        expected = [
+            Row(name='Brooke Jones', a=12),
+            Row(name='Collin Frank', a=12),
+            Row(name='Joshua Brown', a=12),
+            Row(name='Mrs. Sheila Jones', a=17),
+            Row(name='Rebecca Valentine', a=17),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select('name', char_length('name')).limit(5).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_concat_ws(self, users_dataframe):
+        expected = [
+            Row(a='user669344115|Joshua Brown|true'),
+            Row(a='user849118289|Brooke Jones|false'),
+            Row(a='user954079192|Collin Frank|false'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                concat_ws('|', 'user_id', 'name', 'paid_for_service')).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_contains(self, users_dataframe):
+        expected = [
+            Row(name='Brooke Jones', a=True),
+            Row(name='Collin Frank', a=False),
+            Row(name='Joshua Brown', a=False),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                'name', contains('name', lit('rook'))).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_endswith(self, users_dataframe):
+        expected = [
+            Row(name='Brooke Jones', a=False),
+            Row(name='Collin Frank', a=True),
+            Row(name='Joshua Brown', a=False),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                'name', endswith('name', lit('Frank'))).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_instr(self, users_dataframe):
+        expected = [
+            Row(name='Brooke Jones', a=2),
+            Row(name='Collin Frank', a=0),
+            Row(name='Joshua Brown', a=0),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                'name', instr('name', 'rook')).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_lcase(self, users_dataframe):
+        expected = [
+            Row(name='brooke jones'),
+            Row(name='collin frank'),
+            Row(name='joshua brown'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(lcase('name')).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_length(self, users_dataframe):
+        expected = [
+            Row(name='Brooke Jones', a=12),
+            Row(name='Collin Frank', a=12),
+            Row(name='Joshua Brown', a=12),
+            Row(name='Mrs. Sheila Jones', a=17),
+            Row(name='Rebecca Valentine', a=17),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select('name', length('name')).limit(5).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_lower(self, users_dataframe):
+        expected = [
+            Row(name='brooke jones'),
+            Row(name='collin frank'),
+            Row(name='joshua brown'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(lower('name')).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_left(self, users_dataframe):
+        expected = [
+            Row(name='Bro'),
+            Row(name='Col'),
+            Row(name='Jos'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                left('name', lit(3))).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_locate(self, users_dataframe):
+        expected = [
+            Row(name='Brooke Jones', a=9),
+            Row(name='Collin Frank', a=0),
+            Row(name='Joshua Brown', a=10),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                'name', locate('o', 'name', 5)).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_lpad(self, users_dataframe):
+        expected = [
+            Row(a='---Brooke Jones'),
+            Row(a='---Collin Frank'),
+            Row(a='---Joshua Brown'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                lpad('name', 15, '-')).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_ltrim(self, users_dataframe):
+        expected = [
+            Row(name='Brooke Jones'),
+            Row(name='Collin Frank'),
+            Row(name='Joshua Brown'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                ltrim(lpad('name', 15, ' '))).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_octet_length(self, users_dataframe):
+        expected = [
+            Row(name='Brooke Jones', a=12),
+            Row(name='Collin Frank', a=12),
+            Row(name='Joshua Brown', a=12),
+            Row(name='Mrs. Sheila Jones', a=17),
+            Row(name='Rebecca Valentine', a=17),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select('name', octet_length('name')).limit(5).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_position(self, users_dataframe):
+        expected = [
+            Row(name='Brooke Jones', a=9),
+            Row(name='Collin Frank', a=0),
+            Row(name='Joshua Brown', a=10),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                'name', position(lit('o'), 'name', lit(5))).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_rlike(self, users_dataframe):
+        expected = [
+            Row(name='Brooke Jones', a=True),
+            Row(name='Collin Frank', a=False),
+            Row(name='Joshua Brown', a=False),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                'name', rlike('name', lit('ro*k'))).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_regexp(self, users_dataframe):
+        expected = [
+            Row(name='Brooke Jones', a=True),
+            Row(name='Collin Frank', a=False),
+            Row(name='Joshua Brown', a=False),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                'name', regexp('name', lit('ro*k'))).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_regexp_like(self, users_dataframe):
+        expected = [
+            Row(name='Brooke Jones', a=True),
+            Row(name='Collin Frank', a=False),
+            Row(name='Joshua Brown', a=False),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                'name', regexp_like('name', lit('ro*k'))).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_replace(self, users_dataframe):
+        expected = [
+            Row(a='Braake Janes'),
+            Row(a='Callin Frank'),
+            Row(a='Jashua Brawn'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                replace('name', lit('o'), lit('a'))).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_right(self, users_dataframe):
+        expected = [
+            Row(name='nes'),
+            Row(name='ank'),
+            Row(name='own'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                right('name', lit(3))).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_ucase(self, users_dataframe):
+        expected = [
+            Row(name='BROOKE JONES'),
+            Row(name='COLLIN FRANK'),
+            Row(name='JOSHUA BROWN'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                ucase('name')).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_rpad(self, users_dataframe):
+        expected = [
+            Row(a='Brooke Jones---'),
+            Row(a='Collin Frank---'),
+            Row(a='Joshua Brown---'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                rpad('name', 15, '-')).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_repeat(self, users_dataframe):
+        expected = [
+            Row(a='Brooke JonesBrooke Jones'),
+            Row(a='Collin FrankCollin Frank'),
+            Row(a='Joshua BrownJoshua Brown'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                repeat('name', 2)).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_rtrim(self, users_dataframe):
+        expected = [
+            Row(name='Brooke Jones'),
+            Row(name='Collin Frank'),
+            Row(name='Joshua Brown'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                rtrim(rpad('name', 15, ' '))).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_startswith(self, users_dataframe):
+        expected = [
+            Row(name='Brooke Jones', a=True),
+            Row(name='Collin Frank', a=False),
+            Row(name='Joshua Brown', a=False),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                'name', startswith('name', lit('Bro'))).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_substr(self, users_dataframe):
+        expected = [
+            Row(a='oo'),
+            Row(a='ll'),
+            Row(a='sh'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                substr('name', lit(3), lit(2))).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_substring(self, users_dataframe):
+        expected = [
+            Row(a='oo'),
+            Row(a='ll'),
+            Row(a='sh'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                substring('name', 3, 2)).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_trim(self, users_dataframe):
+        expected = [
+            Row(name='Brooke Jones'),
+            Row(name='Collin Frank'),
+            Row(name='Joshua Brown'),
+            Row(name='Mrs. Sheila Jones'),
+            Row(name='Rebecca Valentine'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                trim(lpad(rpad('name', 18, ' '), 36, ' '))).limit(5).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_upper(self, users_dataframe):
+        expected = [
+            Row(name='BROOKE JONES'),
+            Row(name='COLLIN FRANK'),
+            Row(name='JOSHUA BROWN'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                upper('name')).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)

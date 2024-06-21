@@ -132,9 +132,17 @@ SPARK_SUBSTRAIT_MAPPING = {
         '/functions_string.yaml', 'regexp_matches:str_str', type_pb2.Type(
             bool=type_pb2.Type.Boolean(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'substr': ExtensionFunction(
+        '/functions_string.yaml', 'substring:str_int_int', type_pb2.Type(
+            string=type_pb2.Type.String(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'substring': ExtensionFunction(
         '/functions_string.yaml', 'substring:str_int_int', type_pb2.Type(
             string=type_pb2.Type.String(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'instr': ExtensionFunction(
+        '/functions_string.yaml', 'strpos:str_str', type_pb2.Type(
+            i64=type_pb2.Type.I64(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'startswith': ExtensionFunction(
         '/functions_string.yaml', 'starts_with:str_str', type_pb2.Type(
@@ -164,6 +172,46 @@ SPARK_SUBSTRAIT_MAPPING = {
         '/functions_string.yaml', 'string_agg:str', type_pb2.Type(
             string=type_pb2.Type.String(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'btrim': ExtensionFunction(
+        '/functions_string.yaml', 'trim:str', type_pb2.Type(
+            string=type_pb2.Type.String(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'ltrim': ExtensionFunction(
+        '/functions_string.yaml', 'ltrim:str', type_pb2.Type(
+            string=type_pb2.Type.String(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'rtrim': ExtensionFunction(
+        '/functions_string.yaml', 'rtrim:str', type_pb2.Type(
+            string=type_pb2.Type.String(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'trim': ExtensionFunction(
+        '/functions_string.yaml', 'trim:str', type_pb2.Type(
+            string=type_pb2.Type.String(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'lcase': ExtensionFunction(
+        '/functions_string.yaml', 'lower:str', type_pb2.Type(
+            string=type_pb2.Type.String(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'lower': ExtensionFunction(
+        '/functions_string.yaml', 'lower:str', type_pb2.Type(
+            string=type_pb2.Type.String(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'ucase': ExtensionFunction(
+        '/functions_string.yaml', 'upper:str', type_pb2.Type(
+            string=type_pb2.Type.String(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'upper': ExtensionFunction(
+        '/functions_string.yaml', 'upper:str', type_pb2.Type(
+            string=type_pb2.Type.String(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'left': ExtensionFunction(
+        '/functions_string.yaml', 'left:int_str', type_pb2.Type(
+            string=type_pb2.Type.String(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'right': ExtensionFunction(
+        '/functions_string.yaml', 'right:int_str', type_pb2.Type(
+            string=type_pb2.Type.String(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'least': ExtensionFunction(
         '/functions_comparison.yaml', 'least:i64', type_pb2.Type(
             i64=type_pb2.Type.I64(
@@ -184,8 +232,16 @@ SPARK_SUBSTRAIT_MAPPING = {
         '/functions_string.yaml', 'concat:str_str', type_pb2.Type(
             string=type_pb2.Type.String(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'concat_ws': ExtensionFunction(
+        '/functions_string.yaml', 'concat_ws:str_str', type_pb2.Type(
+            string=type_pb2.Type.String(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'repeat': ExtensionFunction(
         '/functions_string.yaml', 'repeat:str_i64', type_pb2.Type(
+            string=type_pb2.Type.String(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'replace': ExtensionFunction(
+        '/functions_string.yaml', 'replace:str_str_str', type_pb2.Type(
             string=type_pb2.Type.String(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'lpad': ExtensionFunction(
@@ -200,9 +256,33 @@ SPARK_SUBSTRAIT_MAPPING = {
         '/functions_string.yaml', 'regexp_strpos:str_str_i64_i64', type_pb2.Type(
             i64=type_pb2.Type.I64(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'rlike': ExtensionFunction(
+        '/functions_string.yaml', 'regexp_like:str_str', type_pb2.Type(
+            bool=type_pb2.Type.Boolean(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'regexp': ExtensionFunction(
+        '/functions_string.yaml', 'regexp_like:str_str', type_pb2.Type(
+            bool=type_pb2.Type.Boolean(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'regexp_like': ExtensionFunction(
         '/functions_string.yaml', 'regexp_like:str_str', type_pb2.Type(
             bool=type_pb2.Type.Boolean(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'bit_length': ExtensionFunction(
+        '/functions_string.yaml', 'bit_length:str', type_pb2.Type(
+            i64=type_pb2.Type.I64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'character_length': ExtensionFunction(
+        '/functions_string.yaml', 'char_length:str', type_pb2.Type(
+            i64=type_pb2.Type.I64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'char_length': ExtensionFunction(
+        '/functions_string.yaml', 'char_length:str', type_pb2.Type(
+            i64=type_pb2.Type.I64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'octet_length': ExtensionFunction(
+        '/functions_string.yaml', 'octet_length:str', type_pb2.Type(
+            i64=type_pb2.Type.I64(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'count': ExtensionFunction(
         '/functions_aggregate_generic.yaml', 'count:any', type_pb2.Type(
