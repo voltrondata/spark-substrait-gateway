@@ -176,12 +176,24 @@ SPARK_SUBSTRAIT_MAPPING = {
         '/functions_string.yaml', 'ltrim:str', type_pb2.Type(
             string=type_pb2.Type.String(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'rtrim': ExtensionFunction(
+        '/functions_string.yaml', 'rtrim:str', type_pb2.Type(
+            string=type_pb2.Type.String(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'lcase': ExtensionFunction(
         '/functions_string.yaml', 'lower:str', type_pb2.Type(
             string=type_pb2.Type.String(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'lower': ExtensionFunction(
         '/functions_string.yaml', 'lower:str', type_pb2.Type(
+            string=type_pb2.Type.String(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'ucase': ExtensionFunction(
+        '/functions_string.yaml', 'upper:str', type_pb2.Type(
+            string=type_pb2.Type.String(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'upper': ExtensionFunction(
+        '/functions_string.yaml', 'upper:str', type_pb2.Type(
             string=type_pb2.Type.String(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'left': ExtensionFunction(

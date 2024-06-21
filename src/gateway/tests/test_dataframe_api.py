@@ -47,9 +47,14 @@ from pyspark.sql.functions import (
     position,
     regexp,
     regexp_like,
+    repeat,
     replace,
+    right,
     rlike,
+    rpad,
+    rtrim,
     substring,
+    ucase,
 )
 from pyspark.testing import assertDataFrameEqual
 
@@ -1276,7 +1281,6 @@ class TestDataFrameAPIFunctions:
 
         assertDataFrameEqual(outcome, expected)
 
-    @pytest.mark.interesting
     def test_concat_ws(self, users_dataframe):
         expected = [
             Row(a='user669344115|Joshua Brown|true'),
@@ -1290,7 +1294,6 @@ class TestDataFrameAPIFunctions:
 
         assertDataFrameEqual(outcome, expected)
 
-    @pytest.mark.interesting
     def test_contains(self, users_dataframe):
         expected = [
             Row(name='Brooke Jones', a=True),
@@ -1304,7 +1307,6 @@ class TestDataFrameAPIFunctions:
 
         assertDataFrameEqual(outcome, expected)
 
-    @pytest.mark.interesting
     def test_endswith(self, users_dataframe):
         expected = [
             Row(name='Brooke Jones', a=False),
@@ -1318,7 +1320,6 @@ class TestDataFrameAPIFunctions:
 
         assertDataFrameEqual(outcome, expected)
 
-    @pytest.mark.interesting
     def test_instr(self, users_dataframe):
         expected = [
             Row(name='Brooke Jones', a=2),
@@ -1332,7 +1333,6 @@ class TestDataFrameAPIFunctions:
 
         assertDataFrameEqual(outcome, expected)
 
-    @pytest.mark.interesting
     def test_lcase(self, users_dataframe):
         expected = [
             Row(name='brooke jones'),
@@ -1359,7 +1359,6 @@ class TestDataFrameAPIFunctions:
 
         assertDataFrameEqual(outcome, expected)
 
-    @pytest.mark.interesting
     def test_lower(self, users_dataframe):
         expected = [
             Row(name='brooke jones'),
@@ -1372,7 +1371,6 @@ class TestDataFrameAPIFunctions:
 
         assertDataFrameEqual(outcome, expected)
 
-    @pytest.mark.interesting
     def test_left(self, users_dataframe):
         expected = [
             Row(name='Bro'),
@@ -1400,7 +1398,6 @@ class TestDataFrameAPIFunctions:
 
         assertDataFrameEqual(outcome, expected)
 
-    @pytest.mark.interesting
     def test_lpad(self, users_dataframe):
         expected = [
             Row(a='---Brooke Jones'),
@@ -1414,7 +1411,6 @@ class TestDataFrameAPIFunctions:
 
         assertDataFrameEqual(outcome, expected)
 
-    @pytest.mark.interesting
     def test_ltrim(self, users_dataframe):
         expected = [
             Row(name='Brooke Jones'),
@@ -1455,3 +1451,130 @@ class TestDataFrameAPIFunctions:
                 'name', position(lit('o'), 'name', lit(5))).limit(3).collect()
 
         assertDataFrameEqual(outcome, expected)
+
+    def test_rlike(self, users_dataframe):
+        expected = [
+            Row(name='Brooke Jones', a=True),
+            Row(name='Collin Frank', a=False),
+            Row(name='Joshua Brown', a=False),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                'name', rlike('name', lit('ro*k'))).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_regexp(self, users_dataframe):
+        expected = [
+            Row(name='Brooke Jones', a=True),
+            Row(name='Collin Frank', a=False),
+            Row(name='Joshua Brown', a=False),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                'name', regexp('name', lit('ro*k'))).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_regexp_like(self, users_dataframe):
+        expected = [
+            Row(name='Brooke Jones', a=True),
+            Row(name='Collin Frank', a=False),
+            Row(name='Joshua Brown', a=False),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                'name', regexp_like('name', lit('ro*k'))).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_replace(self, users_dataframe):
+        expected = [
+            Row(a='Braake Janes'),
+            Row(a='Callin Frank'),
+            Row(a='Jashua Brawn'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                replace('name', lit('o'), lit('a'))).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_right(self, users_dataframe):
+        expected = [
+            Row(name='nes'),
+            Row(name='ank'),
+            Row(name='own'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                right('name', lit(3))).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_ucase(self, users_dataframe):
+        expected = [
+            Row(name='BROOKE JONES'),
+            Row(name='COLLIN FRANK'),
+            Row(name='JOSHUA BROWN'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                ucase('name')).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_rpad(self, users_dataframe):
+        expected = [
+            Row(a='Brooke Jones---'),
+            Row(a='Collin Frank---'),
+            Row(a='Joshua Brown---'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                rpad('name', 15, '-')).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_repeat(self, users_dataframe):
+        expected = [
+            Row(a='Brooke JonesBrooke Jones'),
+            Row(a='Collin FrankCollin Frank'),
+            Row(a='Joshua BrownJoshua Brown'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                repeat('name', 2)).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_rtrim(self, users_dataframe):
+        expected = [
+            Row(name='Brooke Jones'),
+            Row(name='Collin Frank'),
+            Row(name='Joshua Brown'),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            outcome = users_dataframe.select(
+                rtrim(rpad('name', 15, ' '))).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+# split
+# split_part
+# startswith
+# substr
+# substring
+# substring_index
+# overlay
+# trim
+# upper
