@@ -3,7 +3,7 @@
 import dataclasses
 
 from gateway.converter.conversion_options import ConversionOptions
-from substrait.gen.proto import type_pb2
+from substrait.gen.proto import type_pb2, algebra_pb2
 
 
 # pylint: disable=E1101
@@ -16,14 +16,17 @@ class ExtensionFunction:
     output_type: type_pb2.Type
     anchor: int
     max_args: int | None
+    options: list[algebra_pb2.FunctionOption] | None
 
     def __init__(self, uri: str, name: str, output_type: type_pb2.Type,
-                 max_args: int | None = None):
+                 max_args: int | None = None,
+                 options: list[algebra_pb2.FunctionOption] | None = None):
         """Create the ExtensionFunction structure."""
         self.uri = uri
         self.name = name
         self.output_type = output_type
         self.max_args = max_args
+        self.options = options
 
     def __lt__(self, obj) -> bool:
         """Compare two ExtensionFunction objects."""
@@ -120,6 +123,15 @@ SPARK_SUBSTRAIT_MAPPING = {
     'avg': ExtensionFunction(
         '/functions_arithmetic.yaml', 'avg:int', type_pb2.Type(
             i32=type_pb2.Type.I32(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'sqrt': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'sqrt:fp64', type_pb2.Type(
+            fp64=type_pb2.Type.FP64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED)),
+        options=[algebra_pb2.FunctionOption(name='on_domain_error', preference=['NAN'])]),
+    'abs': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'abs:fp64', type_pb2.Type(
+            fp64=type_pb2.Type.FP64(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'regexp_extract_all': ExtensionFunction(
         '/functions_string.yaml', 'regexp_match:str_binary_str', type_pb2.Type(

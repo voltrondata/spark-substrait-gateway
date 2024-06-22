@@ -58,7 +58,7 @@ from pyspark.sql.functions import (
     substring,
     trim,
     ucase,
-    upper,
+    upper, sqrt,
 )
 from pyspark.testing import assertDataFrameEqual
 
@@ -120,6 +120,9 @@ def mark_dataframe_tests_as_xfail(request):
         request.node.add_marker(pytest.mark.xfail(reason='no direct Substrait analog'))
     if source == 'gateway-over-duckdb' and originalname == 'test_octet_length':
         request.node.add_marker(pytest.mark.xfail(reason='varchar octet_length not supported'))
+
+    if source == 'gateway-over-datafusion' and originalname == 'test_sqrt':
+        request.node.add_marker(pytest.mark.xfail(reason='behavior option ignored'))
 
 
 # ruff: noqa: E712
@@ -1639,5 +1642,43 @@ class TestDataFrameAPIFunctions:
         with utilizes_valid_plans(users_dataframe):
             outcome = users_dataframe.select(
                 upper('name')).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+
+@pytest.fixture
+def numbers_dataframe(spark_session):
+    float1_array = pa.array([float('NaN'), 42.0, None], type=pa.float64())
+    float2_array = pa.array([3.14/2, 0, -0.5], type=pa.float64())
+    table = pa.Table.from_arrays([float1_array, float2_array], names=['f1', 'f2'])
+
+    return create_parquet_table(spark_session, 'numbers', table)
+
+
+@pytest.mark.interesting
+class TestDataFrameAPIMathFunctions:
+    """Tests math functions of the dataframe side of SparkConnect."""
+
+    def test_sqrt(self, numbers_dataframe):
+        expected = [
+            Row(a=1.2529964086141667),
+            Row(a=0.0),
+            Row(a=float('NaN')),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(sqrt('f2')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_abs(self, numbers_dataframe):
+        expected = [
+            Row(a=1.57),
+            Row(a=0.5),
+            Row(a=0),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(pyspark.sql.functions.abs('f2')).collect()
 
         assertDataFrameEqual(outcome, expected)

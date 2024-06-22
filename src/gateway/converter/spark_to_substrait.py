@@ -445,6 +445,8 @@ class SparkSubstraitConverter:
             original_argument = func.arguments[0]
             func.arguments[0].CopyFrom(algebra_pb2.FunctionArgument(
                 value=cast_operation(original_argument.value, string_type())))
+        if function_def.options:
+            func.options.extend(function_def.options)
         return algebra_pb2.Expression(scalar_function=func)
 
     def convert_alias_expression(
