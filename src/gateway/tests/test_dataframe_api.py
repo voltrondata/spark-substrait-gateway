@@ -53,6 +53,7 @@ from pyspark.sql.functions import (
     rlike,
     rpad,
     rtrim,
+    sqrt,
     startswith,
     substr,
     substring,
@@ -120,6 +121,13 @@ def mark_dataframe_tests_as_xfail(request):
         request.node.add_marker(pytest.mark.xfail(reason='no direct Substrait analog'))
     if source == 'gateway-over-duckdb' and originalname == 'test_octet_length':
         request.node.add_marker(pytest.mark.xfail(reason='varchar octet_length not supported'))
+
+    if source == 'gateway-over-duckdb' and originalname == 'test_sqrt':
+        request.node.add_marker(pytest.mark.xfail(reason='behavior option ignored'))
+    if source != 'spark' and originalname in ['test_rint', 'test_bround']:
+        request.node.add_marker(pytest.mark.xfail(reason='behavior option ignored'))
+    if source != 'spark' and originalname in ['test_negative', 'test_negate', 'test_positive']:
+        request.node.add_marker(pytest.mark.xfail(reason='custom implementation required'))
 
 
 # ruff: noqa: E712
@@ -1639,5 +1647,208 @@ class TestDataFrameAPIFunctions:
         with utilizes_valid_plans(users_dataframe):
             outcome = users_dataframe.select(
                 upper('name')).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+
+@pytest.fixture
+def numbers_dataframe(spark_session):
+    float1_array = pa.array([float('NaN'), 42.0, None, -1, -2, -3, -4], type=pa.float64())
+    float2_array = pa.array([3.14 / 2, 0, -0.5, -0.6, 4.4, 4.6, 81], type=pa.float64())
+    float3_array = pa.array([0, 90, 135, 180, 235, 360, -60], type=pa.float64())
+    table = pa.Table.from_arrays([float1_array, float2_array, float3_array],
+                                 names=['f1', 'f2', 'angles'])
+
+    return create_parquet_table(spark_session, 'numbers', table)
+
+
+class TestDataFrameAPIMathFunctions:
+    """Tests math functions of the dataframe side of SparkConnect."""
+
+    def test_sqrt(self, numbers_dataframe):
+        expected = [
+            Row(a=1.2529964086141667),
+            Row(a=0.0),
+            Row(a=float('NaN')),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(sqrt('f2')).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_abs(self, numbers_dataframe):
+        expected = [
+            Row(a=1.57),
+            Row(a=0.5),
+            Row(a=0),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.abs('f2')).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_ceil(self, numbers_dataframe):
+        expected = [
+            Row(a=2),
+            Row(a=0),
+            Row(a=0),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.ceil('f2')).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_ceiling(self, numbers_dataframe):
+        expected = [
+            Row(a=2),
+            Row(a=0),
+            Row(a=0),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.ceiling('f2')).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_floor(self, numbers_dataframe):
+        expected = [
+            Row(a=1),
+            Row(a=0),
+            Row(a=-1),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.floor('f2')).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_negate(self, numbers_dataframe):
+        expected = [
+            Row(a=float('NaN')),
+            Row(a=-42.0),
+            Row(a=None),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.negate('f1')).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_negative(self, numbers_dataframe):
+        expected = [
+            Row(a=float('NaN')),
+            Row(a=-42.0),
+            Row(a=None),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.negative('f1')).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_positive(self, numbers_dataframe):
+        expected = [
+            Row(a=float('NaN')),
+            Row(a=42.0),
+            Row(a=None),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.positive('f1')).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_rint(self, numbers_dataframe):
+        expected = [
+            Row(a=2.0),
+            Row(a=-0.0),
+            Row(a=0.0),
+            Row(a=-1.0),
+            Row(a=4.0),
+            Row(a=5.0),
+            Row(a=81.0),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.rint('f2')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_round(self, numbers_dataframe):
+        expected = [
+            Row(a=2.0),
+            Row(a=-1.0),
+            Row(a=0.0),
+            Row(a=-1.0),
+            Row(a=4.0),
+            Row(a=5.0),
+            Row(a=81.0),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.round('f2')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_bround(self, numbers_dataframe):
+        expected = [
+            Row(a=2.0),
+            Row(a=0.0),
+            Row(a=0.0),
+            Row(a=-1.0),
+            Row(a=4.0),
+            Row(a=5.0),
+            Row(a=81.0),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.bround('f2')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_toradians(self, numbers_dataframe):
+        expected = [
+            Row(a=-1.0471975511965976),
+            Row(a=0.0),
+            Row(a=1.5707963267948966),
+            Row(a=2.356194490192345),
+            Row(a=3.141592653589793),
+            Row(a=4.101523742186674),
+            Row(a=6.283185307179586),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.toRadians('angles')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_radians(self, numbers_dataframe):
+        expected = [
+            Row(a=-1.0471975511965976),
+            Row(a=0.0),
+            Row(a=1.5707963267948966),
+            Row(a=2.356194490192345),
+            Row(a=3.141592653589793),
+            Row(a=4.101523742186674),
+            Row(a=6.283185307179586),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.radians('angles')).collect()
 
         assertDataFrameEqual(outcome, expected)

@@ -445,6 +445,8 @@ class SparkSubstraitConverter:
             original_argument = func.arguments[0]
             func.arguments[0].CopyFrom(algebra_pb2.FunctionArgument(
                 value=cast_operation(original_argument.value, string_type())))
+        if function_def.options:
+            func.options.extend(function_def.options)
         return algebra_pb2.Expression(scalar_function=func)
 
     def convert_alias_expression(
@@ -604,7 +606,7 @@ class SparkSubstraitConverter:
 
     def convert_read_named_table_relation(
             self,
-            rel: spark_relations_pb2.Read.named_table
+            rel: spark_relations_pb2.Read.NamedTable
     ) -> algebra_pb2.Rel:
         """Convert a read named table relation to a Substrait relation."""
         table_name = rel.unparsed_identifier
