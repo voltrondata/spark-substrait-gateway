@@ -10,6 +10,7 @@ import pyarrow as pa
 import pyspark.sql.connect.proto.base_pb2 as pb2
 import pyspark.sql.connect.proto.base_pb2_grpc as pb2_grpc
 from google.protobuf.json_format import MessageToJson
+from grpc_channelz.v1 import channelz
 from pyspark.sql.connect.proto import types_pb2
 from substrait.gen.proto import plan_pb2
 
@@ -384,6 +385,7 @@ def serve(port: int, wait: bool = True):
     """Start the SparkConnect to Substrait gateway server."""
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     pb2_grpc.add_SparkConnectServiceServicer_to_server(SparkConnectService(), server)
+    channelz.add_channelz_servicer(server)
     server.add_insecure_port(f'[::]:{port}')
     server.start()
     if wait:

@@ -606,7 +606,7 @@ class SparkSubstraitConverter:
 
     def convert_read_named_table_relation(
             self,
-            rel: spark_relations_pb2.Read.named_table
+            rel: spark_relations_pb2.Read.NamedTable
     ) -> algebra_pb2.Rel:
         """Convert a read named table relation to a Substrait relation."""
         table_name = rel.unparsed_identifier

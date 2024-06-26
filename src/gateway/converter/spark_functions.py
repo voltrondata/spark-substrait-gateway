@@ -3,7 +3,7 @@
 import dataclasses
 
 from gateway.converter.conversion_options import ConversionOptions
-from substrait.gen.proto import type_pb2, algebra_pb2
+from substrait.gen.proto import algebra_pb2, type_pb2
 
 
 # pylint: disable=E1101
@@ -133,6 +133,39 @@ SPARK_SUBSTRAIT_MAPPING = {
         '/functions_arithmetic.yaml', 'abs:fp64', type_pb2.Type(
             fp64=type_pb2.Type.FP64(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'toradians': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'radians:fp64', type_pb2.Type(
+            fp64=type_pb2.Type.FP64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'radians': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'radians:fp64', type_pb2.Type(
+            fp64=type_pb2.Type.FP64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'ceil': ExtensionFunction(
+        '/functions_rounding.yaml', 'ceil:fp64', type_pb2.Type(
+            fp64=type_pb2.Type.FP64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'ceiling': ExtensionFunction(
+        '/functions_rounding.yaml', 'ceil:fp64', type_pb2.Type(
+            fp64=type_pb2.Type.FP64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'floor': ExtensionFunction(
+        '/functions_rounding.yaml', 'floor:fp64', type_pb2.Type(
+            fp64=type_pb2.Type.FP64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'rint': ExtensionFunction(
+        '/functions_rounding.yaml', 'round:fp64', type_pb2.Type(
+            i64=type_pb2.Type.I64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'round': ExtensionFunction(
+        '/functions_rounding.yaml', 'round:fp64', type_pb2.Type(
+            fp64=type_pb2.Type.FP64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'bround': ExtensionFunction(
+        '/functions_rounding.yaml', 'round:fp64', type_pb2.Type(
+            fp64=type_pb2.Type.FP64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED)),
+        options=[algebra_pb2.FunctionOption(name='rounding', preference=['TIE_TO_EVEN'])]),
     'regexp_extract_all': ExtensionFunction(
         '/functions_string.yaml', 'regexp_match:str_binary_str', type_pb2.Type(
             list=type_pb2.Type.List(type=type_pb2.Type(string=type_pb2.Type.String(
