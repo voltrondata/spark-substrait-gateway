@@ -1662,7 +1662,6 @@ def numbers_dataframe(spark_session):
     return create_parquet_table(spark_session, 'numbers', table)
 
 
-@pytest.mark.interesting
 class TestDataFrameAPIMathFunctions:
     """Tests math functions of the dataframe side of SparkConnect."""
 
