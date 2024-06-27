@@ -17,7 +17,7 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
-      uses: conda-incubator/setup-miniconda@v3.0.4
+      uses: conda-incubator/setup-miniconda@v3
       with:
         miniforge-version: "latest"
         activate-environment: base

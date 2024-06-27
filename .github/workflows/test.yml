@@ -14,7 +14,7 @@ jobs:
     name: Test
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest]
+        os: [macos-13, ubuntu-latest]
         source: ["general", "spark", "gateway-over-duckdb", "gateway-over-datafusion"]
         python: ["3.10"]
     runs-on: ${{ matrix.os }}
@@ -24,7 +24,7 @@ jobs:
         with:
           submodules: recursive
       - name: Install packages and test dependencies
-        uses: conda-incubator/setup-miniconda@v3.0.4
+        uses: conda-incubator/setup-miniconda@v3
         with:
           activate-environment: spark-substrait-gateway-env
           environment-file: environment.yml
