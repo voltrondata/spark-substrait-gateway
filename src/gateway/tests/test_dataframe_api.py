@@ -2309,14 +2309,14 @@ class TestDataFrameAPIMathFunctions:
 
         assertDataFrameEqual(outcome, expected)
 
-    @pytest.mark.interesting
     def test_try_avg(self, numbers_dataframe):
         expected = [
             Row(a=-0.058571428571428594),
         ]
 
         with utilizes_valid_plans(numbers_dataframe):
-            outcome = numbers_dataframe.select(
+            # TODO -- Also test with the incorrect behavior of select instead of agg.
+            outcome = numbers_dataframe.agg(
                 pyspark.sql.functions.try_avg('near_one')).collect()
 
         assertDataFrameEqual(outcome, expected)
@@ -2372,14 +2372,14 @@ class TestDataFrameAPIMathFunctions:
 
         assertDataFrameEqual(outcome, expected)
 
-    @pytest.mark.interesting
     def test_try_sum(self, numbers_dataframe):
         expected = [
             Row(a=-0.41000000000000014),
         ]
 
         with utilizes_valid_plans(numbers_dataframe):
-            outcome = numbers_dataframe.select(
+            # TODO -- Also test with the incorrect behavior of select instead of agg.
+            outcome = numbers_dataframe.agg(
                 pyspark.sql.functions.try_sum('near_one')).collect()
 
         assertDataFrameEqual(outcome, expected)
