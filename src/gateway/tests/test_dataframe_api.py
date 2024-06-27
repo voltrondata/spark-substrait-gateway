@@ -128,6 +128,16 @@ def mark_dataframe_tests_as_xfail(request):
         request.node.add_marker(pytest.mark.xfail(reason='behavior option ignored'))
     if source != 'spark' and originalname in ['test_negative', 'test_negate', 'test_positive']:
         request.node.add_marker(pytest.mark.xfail(reason='custom implementation required'))
+    if source == 'gateway-over-duckdb' and originalname in [
+        'test_acosh', 'test_asinh', 'test_atanh', 'test_cosh', 'test_sinh', 'test_tanh']:
+        request.node.add_marker(pytest.mark.xfail(reason='missing implementation'))
+    if source == 'gateway-over-datafusion' and originalname in ['test_sign', 'test_signum']:
+        request.node.add_marker(pytest.mark.xfail(reason='missing implementation'))
+    if source != 'spark' and originalname in ['test_cot', 'test_sec', 'test_ln', 'test_log',
+                                              'test_log10', 'test_log2', 'test_log1p']:
+        request.node.add_marker(pytest.mark.xfail(reason='missing in Substrait'))
+    if source == 'gateway-over-datafusion' and originalname == 'test_try_divide':
+        request.node.add_marker(pytest.mark.xfail(reason='returns infinity instead of null'))
 
 
 # ruff: noqa: E712
@@ -1656,8 +1666,12 @@ def numbers_dataframe(spark_session):
     float1_array = pa.array([float('NaN'), 42.0, None, -1, -2, -3, -4], type=pa.float64())
     float2_array = pa.array([3.14 / 2, 0, -0.5, -0.6, 4.4, 4.6, 81], type=pa.float64())
     float3_array = pa.array([0, 90, 135, 180, 235, 360, -60], type=pa.float64())
-    table = pa.Table.from_arrays([float1_array, float2_array, float3_array],
-                                 names=['f1', 'f2', 'angles'])
+    float4_array = pa.array([0, 1.57, 2.0, 3.14159, 5, 6.28318, -1], type=pa.float64())
+    float5_array = pa.array([-1, -0.66, -0.5, 0, 0.25, 0.5, 1], type=pa.float64())
+    float6_array = pa.array([1, 2.718281828, 8, 10, 16, 100, 100000], type=pa.float64())
+    table = pa.Table.from_arrays(
+        arrays=[float1_array, float2_array, float3_array, float4_array, float5_array, float6_array],
+        names=['f1', 'f2', 'angles', 'radians', 'near_one', 'powers'])
 
     return create_parquet_table(spark_session, 'numbers', table)
 
@@ -1850,5 +1864,522 @@ class TestDataFrameAPIMathFunctions:
         with utilizes_valid_plans(numbers_dataframe):
             outcome = numbers_dataframe.select(
                 pyspark.sql.functions.radians('angles')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_sign(self, numbers_dataframe):
+        expected = [
+            Row(a=1.0),
+            Row(a=0.0),
+            Row(a=-1.0),
+            Row(a=-1.0),
+            Row(a=1.0),
+            Row(a=1.0),
+            Row(a=1.0),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.sign('f2')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_signum(self, numbers_dataframe):
+        expected = [
+            Row(a=1.0),
+            Row(a=0.0),
+            Row(a=-1.0),
+            Row(a=-1.0),
+            Row(a=1.0),
+            Row(a=1.0),
+            Row(a=1.0),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.signum('f2')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_acos(self, numbers_dataframe):
+        expected = [
+            Row(a=0.0),
+            Row(a=1.0471975511965976),
+            Row(a=1.318116071652818),
+            Row(a=1.5707963267948966),
+            Row(a=2.0943951023931957),
+            Row(a=2.291615087664986),
+            Row(a=3.141592653589793),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.acos('near_one')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_acosh(self, numbers_dataframe):
+        expected = [
+            Row(a=0.0),
+            Row(a=1.0471975511965976),
+            Row(a=1.318116071652818),
+            Row(a=1.5707963267948966),
+            Row(a=2.0943951023931957),
+            Row(a=2.291615087664986),
+            Row(a=3.141592653589793),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.acosh('near_one')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_asin(self, numbers_dataframe):
+        expected = [
+            Row(a=-1.5707963267948966),
+            Row(a=-0.7208187608700897),
+            Row(a=-0.5235987755982989),
+            Row(a=0.0),
+            Row(a=0.25268025514207865),
+            Row(a=0.5235987755982989),
+            Row(a=1.5707963267948966),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.asin('near_one')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_asinh(self, numbers_dataframe):
+        expected = [
+            Row(a=-0.8813735870195428),
+            Row(a=-0.6195895837234842),
+            Row(a=-0.48121182505960336),
+            Row(a=0.0),
+            Row(a=0.24746646154726346),
+            Row(a=0.48121182505960347),
+            Row(a=0.8813735870195429),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.asinh('near_one')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_atan(self, numbers_dataframe):
+        expected = [
+            Row(a=-0.7853981633974483),
+            Row(a=-0.583373006993856),
+            Row(a=-0.4636476090008061),
+            Row(a=0.0),
+            Row(a=0.24497866312686414),
+            Row(a=0.4636476090008061),
+            Row(a=0.7853981633974483),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.atan('near_one')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_atanh(self, numbers_dataframe):
+        expected = [
+            Row(a=float('-inf')),
+            Row(a=-0.7928136318701909),
+            Row(a=-0.5493061443340548),
+            Row(a=0.0),
+            Row(a=0.25541281188299536),
+            Row(a=0.5493061443340548),
+            Row(a=float('inf')),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.atanh('near_one')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_atan2(self, numbers_dataframe):
+        expected = [
+            Row(a=-0.04934263225296999),
+            Row(a=-0.4266274931268761),
+            Row(a=-0.5779019369622457),
+            Row(a=-2.1112158270654806),
+            Row(a=1.5707963267948966),
+            Row(a=None),
+            Row(a=float('NaN')),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.atan2('f1', 'f2')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_cos(self, numbers_dataframe):
+        expected = [
+            Row(a=-0.4161468365471424),
+            Row(a=-0.9999999999964793),
+            Row(a=0.0007963267107332633),
+            Row(a=0.28366218546322625),
+            Row(a=0.5403023058681398),
+            Row(a=0.9999999999859169),
+            Row(a=1.0),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.cos('radians')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_cosh(self, numbers_dataframe):
+        expected = [
+            Row(a=1.0),
+            Row(a=1.543080634815244),
+            Row(a=11.591922629945447),
+            Row(a=2.5073466880660993),
+            Row(a=267.74534051728284),
+            Row(a=3.7621956910836314),
+            Row(a=74.20994852478785),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.cosh('radians')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_cot(self, numbers_dataframe):
+        expected = [
+            Row(a=-0.6420926159343306),
+            Row(a=-1.2884855944745672),
+            Row(a=-1.830487721712452),
+            Row(a=0.6420926159343306),
+            Row(a=1.830487721712452),
+            Row(a=3.91631736464594),
+            Row(a=float('inf')),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.cot('near_one')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_sec(self, numbers_dataframe):
+        expected = [
+            Row(a=-1.0000000000035207),
+            Row(a=-2.402997961722381),
+            Row(a=1.0),
+            Row(a=1.0000000000140832),
+            Row(a=1.8508157176809255),
+            Row(a=1255.765989664208),
+            Row(a=3.5253200858160887),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.sec('radians')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_sin(self, numbers_dataframe):
+        expected = [
+            Row(a=-0.8414709848078965),
+            Row(a=-0.9589242746631385),
+            Row(a=-5.307179586686775e-06),
+            Row(a=0.0),
+            Row(a=0.9092974268256817),
+            Row(a=0.9999996829318346),
+            Row(a=2.65358979335273e-06),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.sin('radians')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_sinh(self, numbers_dataframe):
+        expected = [
+            Row(a=-0.5210953054937474),
+            Row(a=-0.7089704999551663),
+            Row(a=-1.1752011936438014),
+            Row(a=0.0),
+            Row(a=0.2526123168081683),
+            Row(a=0.5210953054937474),
+            Row(a=1.1752011936438014),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.sinh('near_one')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_tan(self, numbers_dataframe):
+        expected = [
+            Row(a=-1.5574077246549023),
+            Row(a=-2.185039863261519),
+            Row(a=-2.6535897933620727e-06),
+            Row(a=-3.380515006246586),
+            Row(a=-5.3071795867615165e-06),
+            Row(a=0.0),
+            Row(a=1255.7655915007897),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.tan('radians')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_tanh(self, numbers_dataframe):
+        expected = [
+            Row(a=-0.46211715726000974),
+            Row(a=-0.5783634130445059),
+            Row(a=-0.7615941559557649),
+            Row(a=0.0),
+            Row(a=0.24491866240370913),
+            Row(a=0.46211715726000974),
+            Row(a=0.7615941559557649),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.tanh('near_one')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_exp(self, numbers_dataframe):
+        expected = [
+            Row(a=0.36787944117144233),
+            Row(a=0.5168513344916992),
+            Row(a=0.6065306597126334),
+            Row(a=1.0),
+            Row(a=1.2840254166877414),
+            Row(a=1.6487212707001282),
+            Row(a=2.7182818284590455),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.exp('near_one')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_ln(self, numbers_dataframe):
+        expected = [
+            Row(a=0.0),
+            Row(a=0.9999999998311266),
+            Row(a=2.0794415416798357),
+            Row(a=2.302585092994046),
+            Row(a=2.772588722239781),
+            Row(a=4.605170185988092),
+            Row(a=11.512925464970229),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.ln('powers')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_log(self, numbers_dataframe):
+        expected = [
+            Row(a=0.0),
+            Row(a=0.9999999998311266),
+            Row(a=2.0794415416798357),
+            Row(a=2.302585092994046),
+            Row(a=2.772588722239781),
+            Row(a=4.605170185988092),
+            Row(a=11.512925464970229),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.log('powers')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_log10(self, numbers_dataframe):
+        expected = [
+            Row(a=0.0),
+            Row(a=0.43429448182991104),
+            Row(a=0.9030899869919435),
+            Row(a=1.0),
+            Row(a=1.2041199826559248),
+            Row(a=2.0),
+            Row(a=5.0),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.log10('powers')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_log1p(self, numbers_dataframe):
+        expected = [
+            Row(a=0.6931471805599453),
+            Row(a=1.3132616873947665),
+            Row(a=2.1972245773362196),
+            Row(a=2.3978952727983707),
+            Row(a=2.833213344056216),
+            Row(a=4.61512051684126),
+            Row(a=11.51293546492023),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.log1p('powers')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_log2(self, numbers_dataframe):
+        expected = [
+            Row(a=0.0),
+            Row(a=1.4426950406453307),
+            Row(a=3.0),
+            Row(a=3.3219280948873626),
+            Row(a=4.0),
+            Row(a=6.643856189774725),
+            Row(a=16.609640474436812),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.log2('powers')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_pow(self, numbers_dataframe):
+        expected = [
+            Row(a=0.023809523809523808),
+            Row(a=0.08485070758702981),
+            Row(a=0.1543033499620919),
+            Row(a=1.0),
+            Row(a=2.5457298950218306),
+            Row(a=6.48074069840786),
+            Row(a=42.0),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.pow(lit(42), 'near_one')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_power(self, numbers_dataframe):
+        expected = [
+            Row(a=0.023809523809523808),
+            Row(a=0.08485070758702981),
+            Row(a=0.1543033499620919),
+            Row(a=1.0),
+            Row(a=2.5457298950218306),
+            Row(a=6.48074069840786),
+            Row(a=42.0),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.power(lit(42), 'near_one')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_try_add(self, numbers_dataframe):
+        expected = [
+            Row(a=-1.0),
+            Row(a=-59.0),
+            Row(a=134.5),
+            Row(a=180.0),
+            Row(a=235.25),
+            Row(a=360.5),
+            Row(a=89.34),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.try_add('angles', 'near_one')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    @pytest.mark.interesting
+    def test_try_avg(self, numbers_dataframe):
+        expected = [
+            Row(a=-0.058571428571428594),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.try_avg('near_one')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_try_divide(self, numbers_dataframe):
+        expected = [
+            Row(a=-0.0),
+            Row(a=-136.36363636363635),
+            Row(a=-270.0),
+            Row(a=-60.0),
+            Row(a=720.0),
+            Row(a=940.0),
+            Row(a=None),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.try_divide('angles', 'near_one')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_try_multiply(self, numbers_dataframe):
+        expected = [
+            Row(a=-0.0),
+            Row(a=-59.400000000000006),
+            Row(a=-60.0),
+            Row(a=-67.5),
+            Row(a=0.0),
+            Row(a=180.0),
+            Row(a=58.75),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.try_multiply('angles', 'near_one')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_try_subtract(self, numbers_dataframe):
+        expected = [
+            Row(a=-61.0),
+            Row(a=1.0),
+            Row(a=135.5),
+            Row(a=180.0),
+            Row(a=234.75),
+            Row(a=359.5),
+            Row(a=90.66),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.try_subtract('angles', 'near_one')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    @pytest.mark.interesting
+    def test_try_sum(self, numbers_dataframe):
+        expected = [
+            Row(a=-0.41000000000000014),
+        ]
+
+        with utilizes_valid_plans(numbers_dataframe):
+            outcome = numbers_dataframe.select(
+                pyspark.sql.functions.try_sum('near_one')).collect()
 
         assertDataFrameEqual(outcome, expected)

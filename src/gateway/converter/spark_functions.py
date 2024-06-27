@@ -84,18 +84,38 @@ SPARK_SUBSTRAIT_MAPPING = {
         '/functions_arithmetic.yaml', 'add:i64_i64', type_pb2.Type(
             i64=type_pb2.Type.I64(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'try_add': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'add:i64_i64', type_pb2.Type(
+            i64=type_pb2.Type.I64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED)),
+        options=[algebra_pb2.FunctionOption(name='on_domain_error', preference=['NULL'])]),
     '-': ExtensionFunction(
         '/functions_arithmetic.yaml', 'subtract:i64_i64', type_pb2.Type(
             i64=type_pb2.Type.I64(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'try_subtract': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'subtract:i64_i64', type_pb2.Type(
+            i64=type_pb2.Type.I64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED)),
+        options=[algebra_pb2.FunctionOption(name='on_domain_error', preference=['NULL'])]),
     '*': ExtensionFunction(
         '/functions_arithmetic.yaml', 'multiply:i64_i64', type_pb2.Type(
             i64=type_pb2.Type.I64(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'try_multiply': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'multiply:i64_i64', type_pb2.Type(
+            i64=type_pb2.Type.I64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED)),
+        options=[algebra_pb2.FunctionOption(name='on_domain_error', preference=['NULL'])]),
     '/': ExtensionFunction(
         '/functions_arithmetic.yaml', 'divide:i64_i64', type_pb2.Type(
             i64=type_pb2.Type.I64(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'try_divide': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'divide:i64_i64', type_pb2.Type(
+            i64=type_pb2.Type.I64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED)),
+        options=[algebra_pb2.FunctionOption(name='on_domain_error', preference=['NULL'])]),
     '&': ExtensionFunction(
         '/functions_arithmetic.yaml', 'bitwise_and:i64_i64', type_pb2.Type(
             i64=type_pb2.Type.I64(
@@ -119,11 +139,17 @@ SPARK_SUBSTRAIT_MAPPING = {
     'try_sum': ExtensionFunction(
         '/functions_arithmetic.yaml', 'sum:int', type_pb2.Type(
             i32=type_pb2.Type.I32(
-                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED)),
+        options=[algebra_pb2.FunctionOption(name='overflow', preference=['SILENT'])]),
     'avg': ExtensionFunction(
         '/functions_arithmetic.yaml', 'avg:int', type_pb2.Type(
             i32=type_pb2.Type.I32(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'try_avg': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'avg:int', type_pb2.Type(
+            i32=type_pb2.Type.I32(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED)),
+        options=[algebra_pb2.FunctionOption(name='overflow', preference=['SILENT'])]),
     'sqrt': ExtensionFunction(
         '/functions_arithmetic.yaml', 'sqrt:fp64', type_pb2.Type(
             fp64=type_pb2.Type.FP64(
@@ -139,6 +165,78 @@ SPARK_SUBSTRAIT_MAPPING = {
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'radians': ExtensionFunction(
         '/functions_arithmetic.yaml', 'radians:fp64', type_pb2.Type(
+            fp64=type_pb2.Type.FP64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'sign': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'sign:fp64', type_pb2.Type(
+            fp64=type_pb2.Type.FP64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'signum': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'sign:fp64', type_pb2.Type(
+            fp64=type_pb2.Type.FP64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'acos': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'acos:fp64', type_pb2.Type(
+            fp64=type_pb2.Type.FP64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'acosh': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'acosh:fp64', type_pb2.Type(
+            fp64=type_pb2.Type.FP64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'asin': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'asin:fp64', type_pb2.Type(
+            fp64=type_pb2.Type.FP64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'asinh': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'asinh:fp64', type_pb2.Type(
+            fp64=type_pb2.Type.FP64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'atan': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'atan:fp64', type_pb2.Type(
+            fp64=type_pb2.Type.FP64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'atanh': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'atanh:fp64', type_pb2.Type(
+            fp64=type_pb2.Type.FP64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'atan2': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'atan2:fp64_fp64', type_pb2.Type(
+            fp64=type_pb2.Type.FP64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'cos': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'cos:fp64', type_pb2.Type(
+            fp64=type_pb2.Type.FP64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'cosh': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'cosh:fp64', type_pb2.Type(
+            fp64=type_pb2.Type.FP64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'sin': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'sin:fp64', type_pb2.Type(
+            fp64=type_pb2.Type.FP64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'sinh': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'sinh:fp64', type_pb2.Type(
+            fp64=type_pb2.Type.FP64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'tan': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'tan:fp64', type_pb2.Type(
+            fp64=type_pb2.Type.FP64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'tanh': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'tanh:fp64', type_pb2.Type(
+            fp64=type_pb2.Type.FP64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'exp': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'exp:fp64', type_pb2.Type(
+            fp64=type_pb2.Type.FP64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'pow': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'power:fp64_fp64', type_pb2.Type(
+            fp64=type_pb2.Type.FP64(
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+    'power': ExtensionFunction(
+        '/functions_arithmetic.yaml', 'power:fp64_fp64', type_pb2.Type(
             fp64=type_pb2.Type.FP64(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
     'ceil': ExtensionFunction(
