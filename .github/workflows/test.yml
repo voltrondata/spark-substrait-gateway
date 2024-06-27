@@ -24,7 +24,7 @@ jobs:
         with:
           submodules: recursive
       - name: Install packages and test dependencies
-        uses: conda-incubator/setup-miniconda@v3
+        uses: conda-incubator/setup-miniconda@v3.0.4
         with:
           activate-environment: spark-substrait-gateway-env
           environment-file: environment.yml
