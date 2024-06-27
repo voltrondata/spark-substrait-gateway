@@ -16,6 +16,10 @@ class Backend:
         """Initialize the backend."""
         self._connection = None
 
+    def close(self):
+        """Close the backend connection."""
+        raise NotImplementedError()
+
     def create_connection(self) -> None:
         """Create a connection to the backend."""
         raise NotImplementedError()

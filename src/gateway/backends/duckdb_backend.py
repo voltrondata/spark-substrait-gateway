@@ -22,14 +22,22 @@ class DuckDBBackend(Backend):
         self.create_connection()
         self._use_duckdb_python_api = options.use_duckdb_python_api
 
+    def close(self):
+        """Close the connection to DuckDB."""
+        if self._connection is not None:
+            self._connection.close()
+
     def create_connection(self):
         """Create a connection to the backend."""
         if self._connection is not None:
             return self._connection
 
-        self._connection = duckdb.connect(config={'max_memory': '100GB',
-                                                  "allow_unsigned_extensions": "true",
-                                                  'temp_directory': str(Path('.').resolve())})
+        # TODO -- Clean up the sparkgateway.db on exit.
+        self._connection = duckdb.connect(
+            'sparkgateway.db',
+            config={'max_memory': '100GB',
+                    "allow_unsigned_extensions": "true",
+                    'temp_directory': str(Path('.').resolve())})
         self._connection.install_extension('substrait')
         self._connection.load_extension('substrait')
 

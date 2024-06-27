@@ -80,18 +80,18 @@ def mark_dataframe_tests_as_xfail(request):
     if source == 'gateway-over-datafusion':
         pytest.importorskip("datafusion.substrait")
         if originalname in ['test_column_getfield', 'test_column_getitem']:
-            pytest.skip(reason='structs not handled')
+            request.node.add_marker(pytest.mark.xfail(reason='structs not handled'))
     elif originalname == 'test_column_getitem':
-        pytest.skip(reason='maps and lists not handled')
+        request.node.add_marker(pytest.mark.xfail(reason='maps and lists not handled'))
     elif source == 'spark' and originalname == 'test_subquery_alias':
         pytest.xfail('Spark supports subquery_alias but everyone else does not')
 
     if source != 'spark' and originalname.startswith('test_unionbyname'):
-        pytest.skip(reason='unionByName not supported in Substrait')
+        request.node.add_marker(pytest.mark.xfail(reason='unionByName not supported in Substrait'))
     if source != 'spark' and originalname.startswith('test_exceptall'):
-        pytest.skip(reason='exceptAll not supported in Substrait')
+        request.node.add_marker(pytest.mark.xfail(reason='exceptAll not supported in Substrait'))
     if source == 'gateway-over-duckdb' and originalname in ['test_union', 'test_unionall']:
-        pytest.skip(reason='DuckDB treats all unions as distinct')
+        request.node.add_marker(pytest.mark.xfail(reason='DuckDB treats all unions as distinct'))
     if source == 'gateway-over-datafusion' and originalname == 'test_subtract':
         request.node.add_marker(pytest.mark.xfail(reason='subtract not supported'))
     if source == 'gateway-over-datafusion' and originalname == 'test_intersect':
@@ -106,15 +106,15 @@ def mark_dataframe_tests_as_xfail(request):
         request.node.add_marker(pytest.mark.xfail(reason='None not preserved'))
     if source == 'gateway-over-datafusion' and originalname in [
         'test_isnan', 'test_nanvl', 'test_least', 'test_greatest']:
-        pytest.skip(reason='missing Substrait mapping')
+        request.node.add_marker(pytest.mark.xfail(reason='missing Substrait mapping'))
     if source != 'spark' and originalname == 'test_expr':
         request.node.add_marker(pytest.mark.xfail(reason='SQL support needed in gateway'))
     if source != 'spark' and originalname == 'test_named_struct':
-        pytest.skip(reason='needs better type tracking in gateway')
+        request.node.add_marker(pytest.mark.xfail(reason='needs better type tracking in gateway'))
     if source == 'spark' and originalname == 'test_nullif':
         request.node.add_marker(pytest.mark.xfail(reason='internal Spark type error'))
     if source == 'gateway-over-duckdb' and originalname == 'test_nullif':
-        pytest.skip(reason='argument count issue in DuckDB mapping')
+        request.node.add_marker(pytest.mark.xfail(reason='argument count issue in DuckDB mapping'))
     if source == 'gateway-over-datafusion' and originalname == 'test_contains':
         request.node.add_marker(pytest.mark.xfail(reason='contains returns position not binary'))
     if source != 'spark' and originalname in ['test_locate', 'test_position']:

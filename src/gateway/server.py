@@ -188,6 +188,14 @@ class ExecutionDetails:
         """Marks an execution as failed."""
         self.failed = True
 
+    def remove_backends(self):
+        if self.backend:
+            self.backend.close()
+            self.backend = None
+            self.sql_backend.close()
+            self.sql_backend = None
+            self.converter = None
+
 
 class ExecutionFactory:
     """Provides an ExecutionDetails per session id."""
@@ -202,6 +210,11 @@ class ExecutionFactory:
         if execution.failed:
             raise EnvironmentError("Current session had a previous failure.")
         return execution
+
+    def release(self, session_id: str) -> None:
+        if session_id in self._session_info:
+            self._session_info[session_id].remove_backends()
+            # TODO -- Schedule the execution to be removed after some time.
 
 
 # pylint: disable=E1101,fixme
@@ -441,6 +454,7 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
         execution = self._execution.get(request.session_id)
         execution.statistics.release_requests += 1
         _LOGGER.info('ReleaseExecute')
+        self._execution.release(request.session_id)
         return pb2.ReleaseExecuteResponse()
 
 
