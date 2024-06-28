@@ -31,6 +31,7 @@ jobs:
           environment-file: environment.yml
           python-version: ${{ matrix.python }}
           auto-activate-base: false
+          miniconda-version: "latest"
       - name: Build
         shell: bash -el {0}
         run: |
