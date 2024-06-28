@@ -17,6 +17,7 @@ jobs:
         os: [macos-latest, ubuntu-latest]
         source: ["general", "spark", "gateway-over-duckdb", "gateway-over-datafusion"]
         python: ["3.10"]
+        architecture: ["x64"]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
@@ -30,6 +31,7 @@ jobs:
           environment-file: environment.yml
           python-version: ${{ matrix.python }}
           auto-activate-base: false
+          miniforge-version: "latest"
       - name: Build
         shell: bash -el {0}
         run: |
