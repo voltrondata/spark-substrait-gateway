@@ -220,6 +220,7 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
         _LOGGER.debug('  as Substrait: %s', substrait)
         self._statistics.add_plan(substrait)
         results = self._backend.execute(substrait)
+        # MEGAHACK -- If there is an exception, replace the backend.
         _LOGGER.debug('  results are: %s', results)
 
         if not self._options.implement_show_string and request.plan.WhichOneof(

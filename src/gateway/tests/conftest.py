@@ -60,7 +60,23 @@ def _create_gateway_session(backend: str) -> SparkSession:
     spark_gateway.stop()
 
 
-@pytest.fixture(scope='function', autouse=True)
+def _get_session_generator(source: str):
+    """Provides spark sessions connecting to various backends."""
+    match source:
+        case 'spark':
+            session_generator = _create_local_spark_session()
+        case 'gateway-over-arrow':
+            session_generator = _create_gateway_session('arrow')
+        case 'gateway-over-datafusion':
+            session_generator = _create_gateway_session('datafusion')
+        case 'gateway-over-duckdb':
+            session_generator = _create_gateway_session('duckdb')
+        case _:
+            raise NotImplementedError(f'No such session implemented: {source}')
+    return session_generator
+
+
+@pytest.fixture(scope='session', autouse=True)
 def manage_database() -> None:
     """Creates the mystream database for use throughout all the tests."""
     create_mystream_database()
@@ -68,7 +84,7 @@ def manage_database() -> None:
     delete_mystream_database()
 
 
-@pytest.fixture(scope='function', autouse=True)
+@pytest.fixture(scope='session', autouse=True)
 def gateway_server():
     """Starts up a spark to substrait gateway service."""
     server = serve(50052, wait=False)
@@ -76,13 +92,13 @@ def gateway_server():
     server.stop(None)
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope='session')
 def users_location(manage_database) -> str:
     """Provides the location of the users database."""
     return str(Path('users.parquet').resolve())
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope='session')
 def schema_users(manage_database):
     """Provides the schema of the users database."""
     return get_mystream_schema('users')
@@ -101,34 +117,22 @@ def source(request) -> str:
 
 @pytest.fixture(scope='function')
 def spark_session(source):
-    """Provides spark sessions connecting to various backends."""
-    match source:
-        case 'spark':
-            session_generator = _create_local_spark_session()
-        case 'gateway-over-arrow':
-            session_generator = _create_gateway_session('arrow')
-        case 'gateway-over-datafusion':
-            session_generator = _create_gateway_session('datafusion')
-        case 'gateway-over-duckdb':
-            session_generator = _create_gateway_session('duckdb')
-        case _:
-            raise NotImplementedError(f'No such session implemented: {source}')
-    yield from session_generator
+    """Provides spark sessions connecting to the current backend source."""
+    yield from _get_session_generator(source)
 
 
-# pylint: disable=redefined-outer-name
-@pytest.fixture(scope='function')
-def spark_session_with_users_dataset(spark_session, schema_users, users_location):
+@pytest.fixture(scope='session')
+def spark_session_for_setup(source):
+    """Provides spark sessions connecting to the current backend source."""
+    yield from _get_session_generator(source)
+
+
+@pytest.fixture(scope='session')
+def users_dataframe(spark_session_for_setup, schema_users, users_location):
     """Provides the spark session with the users database already loaded."""
-    df = spark_session.read.parquet(users_location)
+    df = spark_session_for_setup.read.parquet(users_location)
     df.createOrReplaceTempView('users')
-    return spark_session
-
-
-@pytest.fixture(scope='function')
-def users_dataframe(spark_session_with_users_dataset):
-    """Provides a ready to go users dataframe."""
-    return spark_session_with_users_dataset.table('users')
+    return spark_session_for_setup.table('users')
 
 
 def find_tpch() -> Path:

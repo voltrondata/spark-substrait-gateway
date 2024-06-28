@@ -1661,8 +1661,8 @@ class TestDataFrameAPIFunctions:
         assertDataFrameEqual(outcome, expected)
 
 
-@pytest.fixture
-def numbers_dataframe(spark_session):
+@pytest.fixture(scope='session')
+def numbers_dataframe(spark_session_for_setup):
     float1_array = pa.array([float('NaN'), 42.0, None, -1, -2, -3, -4], type=pa.float64())
     float2_array = pa.array([3.14 / 2, 0, -0.5, -0.6, 4.4, 4.6, 81], type=pa.float64())
     float3_array = pa.array([0, 90, 135, 180, 235, 360, -60], type=pa.float64())
@@ -1673,7 +1673,7 @@ def numbers_dataframe(spark_session):
         arrays=[float1_array, float2_array, float3_array, float4_array, float5_array, float6_array],
         names=['f1', 'f2', 'angles', 'radians', 'near_one', 'powers'])
 
-    return create_parquet_table(spark_session, 'numbers', table)
+    return create_parquet_table(spark_session_for_setup, 'numbers', table)
 
 
 class TestDataFrameAPIMathFunctions:
