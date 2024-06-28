@@ -71,14 +71,14 @@ def mark_tests_as_xfail(request):
 class TestSqlAPI:
     """Tests of the SQL side of SparkConnect."""
 
-    def test_count(self, spark_session_with_tpch_dataset):
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            outcome = spark_session_with_tpch_dataset.sql(
+    def test_count(self, register_tpch_dataset, spark_session):
+        with utilizes_valid_plans(spark_session):
+            outcome = spark_session.sql(
                 'SELECT COUNT(*) FROM customer').collect()
 
         assert_that(outcome[0][0], equal_to(149999))
 
-    def test_limit(self, spark_session_with_tpch_dataset):
+    def test_limit(self, register_tpch_dataset, spark_session):
         expected = [
             Row(c_custkey=2, c_phone='23-768-687-3665', c_mktsegment='AUTOMOBILE'),
             Row(c_custkey=3, c_phone='11-719-748-3364', c_mktsegment='AUTOMOBILE'),
@@ -87,8 +87,8 @@ class TestSqlAPI:
             Row(c_custkey=6, c_phone='30-114-968-4951', c_mktsegment='AUTOMOBILE'),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            outcome = spark_session_with_tpch_dataset.sql(
+        with utilizes_valid_plans(spark_session):
+            outcome = spark_session.sql(
                 'SELECT c_custkey, c_phone, c_mktsegment FROM customer LIMIT 5').collect()
 
         assertDataFrameEqual(outcome, expected)
@@ -99,12 +99,12 @@ class TestSqlAPI:
         sql_test_case_paths,
         ids=sql_test_case_names,
     )
-    def test_tpch(self, spark_session_with_tpch_dataset, path, caplog):
+    def test_tpch(self, register_tpch_dataset, spark_session, path, caplog):
         """Test the TPC-H queries."""
         # Read the SQL to run.
         with open(path, "rb") as file:
             sql_bytes = file.read()
         sql = sql_bytes.decode('utf-8')
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset, caplog):
-            spark_session_with_tpch_dataset.sql(sql).collect()
+        with utilizes_valid_plans(spark_session, caplog):
+            spark_session.sql(sql).collect()

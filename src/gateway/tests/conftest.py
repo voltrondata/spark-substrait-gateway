@@ -98,12 +98,6 @@ def users_location(manage_database) -> str:
     return str(Path('users.parquet').resolve())
 
 
-@pytest.fixture(scope='session')
-def schema_users(manage_database):
-    """Provides the schema of the users database."""
-    return get_mystream_schema('users')
-
-
 @pytest.fixture(scope='session',
                 params=['spark',
                         'gateway-over-arrow',
@@ -128,7 +122,7 @@ def spark_session_for_setup(source):
 
 
 @pytest.fixture(scope='session')
-def users_dataframe(spark_session_for_setup, schema_users, users_location):
+def users_dataframe(spark_session_for_setup, users_location):
     """Provides the spark session with the users database already loaded."""
     df = spark_session_for_setup.read.parquet(users_location)
     df.createOrReplaceTempView('users')
@@ -153,15 +147,14 @@ def _register_table(spark_session: SparkSession, name: str) -> None:
     df.createOrReplaceTempView(name)
 
 
-@pytest.fixture(scope='function')
-def spark_session_with_tpch_dataset(spark_session: SparkSession) -> SparkSession:
+@pytest.fixture(scope='session')
+def register_tpch_dataset(spark_session_for_setup: SparkSession) -> None:
     """Add the TPC-H dataset to the current spark session."""
-    _register_table(spark_session, 'customer')
-    _register_table(spark_session, 'lineitem')
-    _register_table(spark_session, 'nation')
-    _register_table(spark_session, 'orders')
-    _register_table(spark_session, 'part')
-    _register_table(spark_session, 'partsupp')
-    _register_table(spark_session, 'region')
-    _register_table(spark_session, 'supplier')
-    return spark_session
+    _register_table(spark_session_for_setup, 'customer')
+    _register_table(spark_session_for_setup, 'lineitem')
+    _register_table(spark_session_for_setup, 'nation')
+    _register_table(spark_session_for_setup, 'orders')
+    _register_table(spark_session_for_setup, 'part')
+    _register_table(spark_session_for_setup, 'partsupp')
+    _register_table(spark_session_for_setup, 'region')
+    _register_table(spark_session_for_setup, 'supplier')
