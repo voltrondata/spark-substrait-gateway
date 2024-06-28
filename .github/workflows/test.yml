@@ -27,7 +27,6 @@ jobs:
       - name: Install packages and test dependencies
         uses: conda-incubator/setup-miniconda@v3
         with:
-          architecture: ${{ matrix.architecture }}
           activate-environment: spark-substrait-gateway-env
           environment-file: environment.yml
           python-version: ${{ matrix.python }}
