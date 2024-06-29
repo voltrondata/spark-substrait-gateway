@@ -7,7 +7,6 @@ import pytest
 from gateway.demo.mystream_database import (
     create_mystream_database,
     delete_mystream_database,
-    get_mystream_schema,
 )
 from gateway.server import serve
 from pyspark.sql.session import SparkSession

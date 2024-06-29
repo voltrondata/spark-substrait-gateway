@@ -176,7 +176,7 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
         self._converter = None
         self._statistics = Statistics()
 
-    def _InitializeExecution(self):
+    def _InitializeExecution(self) -> None:
         """Initialize the execution of the Plan by setting the backend."""
         if not self._backend:
             self._backend = find_backend(self._options.backend)
@@ -184,13 +184,14 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
             self._converter = SparkSubstraitConverter(self._options)
             self._converter.set_backends(self._backend, self._sql_backend)
 
-    def _ReinitializeExecution(self):
+    def _ReinitializeExecution(self) -> None:
         """Reinitialize the execution of the Plan by resetting the backend."""
         self._statistics.database_resets += 1
         if not self._backend:
             return self._InitializeExecution()
         self._backend.reset_connection()
         self._sql_backend.reset_connection()
+        return None
 
     def ExecutePlan(
             self, request: pb2.ExecutePlanRequest, context: grpc.RpcContext) -> Generator[
