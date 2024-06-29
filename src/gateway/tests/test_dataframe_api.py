@@ -1661,7 +1661,7 @@ class TestDataFrameAPIFunctions:
         assertDataFrameEqual(outcome, expected)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='class')
 def numbers_dataframe(spark_session_for_setup):
     float1_array = pa.array([float('NaN'), 42.0, None, -1, -2, -3, -4], type=pa.float64())
     float2_array = pa.array([3.14 / 2, 0, -0.5, -0.6, 4.4, 4.6, 81], type=pa.float64())

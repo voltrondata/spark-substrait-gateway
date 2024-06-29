@@ -84,7 +84,7 @@ def manage_database() -> None:
     delete_mystream_database()
 
 
-@pytest.fixture(scope='session', autouse=True)
+@pytest.fixture(scope='class', autouse=True)
 def gateway_server():
     """Starts up a spark to substrait gateway service."""
     server = serve(50052, wait=False)
@@ -115,13 +115,13 @@ def spark_session(source):
     yield from _get_session_generator(source)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='class')
 def spark_session_for_setup(source):
     """Provides spark sessions connecting to the current backend source."""
     yield from _get_session_generator(source)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='class')
 def users_dataframe(spark_session_for_setup, users_location):
     """Provides the spark session with the users database already loaded."""
     df = spark_session_for_setup.read.parquet(users_location)
@@ -147,7 +147,7 @@ def _register_table(spark_session: SparkSession, name: str) -> None:
     df.createOrReplaceTempView(name)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='class')
 def register_tpch_dataset(spark_session_for_setup: SparkSession) -> None:
     """Add the TPC-H dataset to the current spark session."""
     _register_table(spark_session_for_setup, 'customer')
