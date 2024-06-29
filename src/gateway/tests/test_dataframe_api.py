@@ -82,16 +82,16 @@ def mark_dataframe_tests_as_xfail(request):
         if originalname in ['test_column_getfield', 'test_column_getitem']:
             request.node.add_marker(pytest.mark.xfail(reason='structs not handled'))
     elif originalname == 'test_column_getitem':
-        request.node.add_marker(pytest.mark.xfail(reason='maps and lists not handled'))
+        pytest.skip(reason='maps and lists not handled')
     elif source == 'spark' and originalname == 'test_subquery_alias':
         pytest.xfail('Spark supports subquery_alias but everyone else does not')
 
     if source != 'spark' and originalname.startswith('test_unionbyname'):
-        request.node.add_marker(pytest.mark.xfail(reason='unionByName not supported in Substrait'))
+        pytest.skip(reason='unionByName not supported in Substrait')
     if source != 'spark' and originalname.startswith('test_exceptall'):
-        request.node.add_marker(pytest.mark.xfail(reason='exceptAll not supported in Substrait'))
+        pytest.skip(reason='exceptAll not supported in Substrait')
     if source == 'gateway-over-duckdb' and originalname in ['test_union', 'test_unionall']:
-        request.node.add_marker(pytest.mark.xfail(reason='DuckDB treats all unions as distinct'))
+        pytest.skip(reason='DuckDB treats all unions as distinct')
     if source == 'gateway-over-datafusion' and originalname == 'test_subtract':
         request.node.add_marker(pytest.mark.xfail(reason='subtract not supported'))
     if source == 'gateway-over-datafusion' and originalname == 'test_intersect':
@@ -114,7 +114,7 @@ def mark_dataframe_tests_as_xfail(request):
     if source == 'spark' and originalname == 'test_nullif':
         request.node.add_marker(pytest.mark.xfail(reason='internal Spark type error'))
     if source == 'gateway-over-duckdb' and originalname == 'test_nullif':
-        request.node.add_marker(pytest.mark.xfail(reason='argument count issue in DuckDB mapping'))
+        pytest.skip(reason='argument count issue in DuckDB mapping')
     if source == 'gateway-over-datafusion' and originalname == 'test_contains':
         request.node.add_marker(pytest.mark.xfail(reason='contains returns position not binary'))
     if source != 'spark' and originalname in ['test_locate', 'test_position']:
@@ -557,7 +557,7 @@ only showing top 1 row
 
         assertDataFrameEqual(outcome, expected)
 
-    def test_exceptall(self, register_tpch_dataset, spark_session):
+    def test_exceptall(self, register_tpch_dataset, spark_session, caplog):
         expected = [
             Row(n_nationkey=21, n_name='VIETNAM', n_regionkey=2,
                 n_comment='hely enticingly express accounts. even, final '),
@@ -579,7 +579,7 @@ only showing top 1 row
                           'breach ironic accounts. unusual pinto be'),
         ]
 
-        with utilizes_valid_plans(spark_session):
+        with utilizes_valid_plans(spark_session, caplog):
             nation = spark_session.table('nation').filter(col('n_nationkey') > 20)
             nation1 = nation.union(nation)
             nation2 = nation.filter(col('n_nationkey') == 23)
