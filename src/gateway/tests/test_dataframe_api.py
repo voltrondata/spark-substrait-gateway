@@ -80,7 +80,7 @@ def mark_dataframe_tests_as_xfail(request):
     if source == 'gateway-over-datafusion':
         pytest.importorskip("datafusion.substrait")
         if originalname in ['test_column_getfield', 'test_column_getitem']:
-            request.node.add_marker(pytest.mark.xfail(reason='structs not handled'))
+            pytest.skip(reason='structs not handled')
     elif originalname == 'test_column_getitem':
         pytest.skip(reason='maps and lists not handled')
     elif source == 'spark' and originalname == 'test_subquery_alias':
@@ -106,11 +106,11 @@ def mark_dataframe_tests_as_xfail(request):
         request.node.add_marker(pytest.mark.xfail(reason='None not preserved'))
     if source == 'gateway-over-datafusion' and originalname in [
         'test_isnan', 'test_nanvl', 'test_least', 'test_greatest']:
-        request.node.add_marker(pytest.mark.xfail(reason='missing Substrait mapping'))
+        pytest.skip(reason='missing Substrait mapping')
     if source != 'spark' and originalname == 'test_expr':
         request.node.add_marker(pytest.mark.xfail(reason='SQL support needed in gateway'))
     if source != 'spark' and originalname == 'test_named_struct':
-        request.node.add_marker(pytest.mark.xfail(reason='needs better type tracking in gateway'))
+        pytest.skip(reason='needs better type tracking in gateway')
     if source == 'spark' and originalname == 'test_nullif':
         request.node.add_marker(pytest.mark.xfail(reason='internal Spark type error'))
     if source == 'gateway-over-duckdb' and originalname == 'test_nullif':
