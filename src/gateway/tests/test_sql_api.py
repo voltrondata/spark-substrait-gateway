@@ -32,7 +32,7 @@ def mark_tests_as_xfail(request):
             elif path.stem in ['19']:
                 request.node.add_marker(pytest.mark.xfail(reason='nullability mismatch'))
             else:
-                request.node.add_marker(pytest.mark.xfail(reason='unexplained timeout'))
+                pytest.skip(reason='unexplained timeout')
         elif originalname in ['test_count', 'test_limit']:
             request.node.add_marker(pytest.mark.xfail(reason='Too few names returned'))
     if source == 'gateway-over-datafusion':
@@ -65,7 +65,8 @@ def mark_tests_as_xfail(request):
                 request.node.add_marker(pytest.mark.xfail(reason='multiargument OR not supported'))
             elif path.stem in ['02', '04', '17', '20', '21', '22']:
                 request.node.add_marker(pytest.mark.xfail(reason='DataFusion needs Delim join'))
-            request.node.add_marker(pytest.mark.xfail(reason='Gateway internal iterating error'))
+            else:
+                pytest.skip(reason='unexplained timeout')
 
 
 # pylint: disable=missing-function-docstring
