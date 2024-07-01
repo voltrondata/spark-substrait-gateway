@@ -50,5 +50,4 @@ jobs:
           then
             UPDATED_CLASS="not ${UPDATED_CLASS#-}"
           fi
-          echo "::set-output name=updated_class:${UPDATED_CLASS}"
-          pytest -m "${{ matrix.source }} and ${{ steps.run_tests.outputs.updated_class }}"
+          pytest -m "${{ matrix.source }} and ${{ UPDATED_CLASS }}"
