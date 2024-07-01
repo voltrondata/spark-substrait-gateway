@@ -16,7 +16,7 @@ jobs:
       matrix:
         os: [macos-latest, ubuntu-latest]
         source: ["general", "spark", "gateway-over-duckdb", "gateway-over-datafusion"]
-        class: ["sql", "~sql"]
+        class: ["sql", "-sql"]
         python: ["3.10"]
         architecture: ["x64"]
         exclude:
@@ -43,4 +43,9 @@ jobs:
       - name: Run tests
         shell: bash -el {0}
         run: |
-          pytest -m ${{ "matrix.source and matrix.class" }}
+          UPDATED_CLASS=matrix.class
+          if [[ $UPDATED_CLASS == -* ]] ;
+          then
+            UPDATED_CLASS="not ${UPDATED_CLASS#-}"
+          fi
+          pytest -m ${{ "matrix.source and UPDATED_CLASS" }}
