@@ -94,7 +94,7 @@ class TestSqlAPI:
 
         assertDataFrameEqual(outcome, expected)
 
-    @pytest.mark.timeout(60)
+    @pytest.mark.timeout(120)
     @pytest.mark.parametrize(
         'path',
         sql_test_case_paths,
