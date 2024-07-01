@@ -48,4 +48,4 @@ jobs:
           then
             UPDATED_CLASS="not ${UPDATED_CLASS#-}"
           fi
-          pytest -m ${{ format('{0} and {1}', matrix.source, UPDATED_CLASS) }}
+          pytest -m ${{ format('{0} and {1}', matrix.source, $UPDATED_CLASS) }}
