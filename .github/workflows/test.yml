@@ -45,7 +45,7 @@ jobs:
         shell: bash -el {0}
         id: run_tests
         run: |
-          UPDATED_CLASS=matrix.class
+          UPDATED_CLASS=${{ matrix.class }}
           if [[ $UPDATED_CLASS == -* ]] ;
           then
             UPDATED_CLASS="not ${UPDATED_CLASS#-}"
