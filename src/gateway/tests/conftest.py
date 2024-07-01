@@ -41,7 +41,6 @@ def _create_local_spark_session() -> SparkSession:
     print("===== END SPARK CONFIG =====")
 
     yield spark
-    spark.stop()
 
 
 def _create_gateway_session(backend: str) -> SparkSession:
@@ -121,11 +120,16 @@ def spark_session_for_setup(source):
 
 
 @pytest.fixture(scope='class')
-def users_dataframe(spark_session_for_setup, users_location):
-    """Provides the spark session with the users database already loaded."""
+def register_users_dataset(spark_session_for_setup, users_location):
+    """Registers the user dataset into the spark session."""
     df = spark_session_for_setup.read.parquet(users_location)
     df.createOrReplaceTempView('users')
-    return spark_session_for_setup.table('users')
+
+
+@pytest.fixture(scope='function')
+def users_dataframe(spark_session, register_users_dataset):
+    """Provides the spark session with the users dataframe already loaded."""
+    return spark_session.table('users')
 
 
 def find_tpch() -> Path:
