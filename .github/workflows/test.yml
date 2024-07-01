@@ -50,5 +50,4 @@ jobs:
           then
             UPDATED_CLASS="not ${UPDATED_CLASS#-}"
           fi
-          echo "UPDATED_CLASS=$UPDATED_CLASS"
           pytest -m "${{ matrix.source }} and $UPDATED_CLASS"
