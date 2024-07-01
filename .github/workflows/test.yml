@@ -13,6 +13,7 @@ jobs:
   test:
     name: Test
     strategy:
+      max-parallel: 3
       matrix:
         os: [macos-latest, ubuntu-latest]
         source: ["general", "spark", "gateway-over-duckdb", "gateway-over-datafusion"]
@@ -48,4 +49,4 @@ jobs:
           then
             UPDATED_CLASS="not ${UPDATED_CLASS#-}"
           fi
-          pytest -m ${{ format('\"{0} and {1}\"', matrix.source, env.UPDATED_CLASS) }}
+          pytest -m ${{ format('"{0} and {1}"', matrix.source, env.UPDATED_CLASS) }}
