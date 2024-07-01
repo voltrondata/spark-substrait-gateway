@@ -16,8 +16,12 @@ jobs:
       matrix:
         os: [macos-latest, ubuntu-latest]
         source: ["general", "spark", "gateway-over-duckdb", "gateway-over-datafusion"]
+        class: ["sql", "not sql"]
         python: ["3.10"]
         architecture: ["x64"]
+        exclude:
+          - source: general
+            class: sql
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
@@ -39,4 +43,4 @@ jobs:
       - name: Run tests
         shell: bash -el {0}
         run: |
-          pytest -m ${{ matrix.source }}
+          pytest -m ${{ "matrix.source and matrix.class" }}

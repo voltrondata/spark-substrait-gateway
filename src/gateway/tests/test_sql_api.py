@@ -68,6 +68,7 @@ def mark_tests_as_xfail(request):
 
 # pylint: disable=missing-function-docstring
 # ruff: noqa: E712
+@pytest.mark.sql
 class TestSqlAPI:
     """Tests of the SQL side of SparkConnect."""
 
