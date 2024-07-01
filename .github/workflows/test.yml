@@ -16,7 +16,7 @@ jobs:
       matrix:
         os: [macos-latest, ubuntu-latest]
         source: ["general", "spark", "gateway-over-duckdb", "gateway-over-datafusion"]
-        class: ["sql", "not sql"]
+        class: ["sql", "~sql"]
         python: ["3.10"]
         architecture: ["x64"]
         exclude:
