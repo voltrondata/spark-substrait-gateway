@@ -43,11 +43,12 @@ jobs:
           pip install -e .
       - name: Run tests
         shell: bash -el {0}
+        id: run_tests
         run: |
           UPDATED_CLASS=matrix.class
           if [[ $UPDATED_CLASS == -* ]] ;
           then
             UPDATED_CLASS="not ${UPDATED_CLASS#-}"
           fi
-          export UPDATED_CLASS
-          pytest -m "${{ matrix.source }} and ${UPDATED_CLASS}"
+          echo "::set-output name=updated_class:${UPDATED_CLASS}"
+          pytest -m "${{ matrix.source }} and ${{ steps.run_tests.outputs.updated_class }}"
