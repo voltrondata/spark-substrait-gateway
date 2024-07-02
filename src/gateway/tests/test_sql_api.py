@@ -20,8 +20,7 @@ def mark_tests_as_xfail(request):
     """Marks a subset of tests as expected to be fail."""
     source = request.getfixturevalue('source')
     originalname = request.keywords.node.originalname
-    if source == 'gateway-over-duckdb':
-        if originalname == 'test_tpch':
+    if source == 'gateway-over-duckdb' and originalname == 'test_tpch':
             path = request.getfixturevalue('path')
             if path.stem in ['02', '04', '16', '17', '20', '21', '22']:
                 pytest.skip(reason='DuckDB needs Delim join')
