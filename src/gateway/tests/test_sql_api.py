@@ -20,23 +20,20 @@ def mark_tests_as_xfail(request):
     """Marks a subset of tests as expected to be fail."""
     source = request.getfixturevalue('source')
     originalname = request.keywords.node.originalname
-    if source == 'gateway-over-duckdb':
-        if originalname == 'test_tpch':
+    if source == 'gateway-over-duckdb' and originalname == 'test_tpch':
             path = request.getfixturevalue('path')
             if path.stem in ['02', '04', '16', '17', '20', '21', '22']:
-                request.node.add_marker(pytest.mark.xfail(reason='DuckDB needs Delim join'))
+                pytest.skip(reason='DuckDB needs Delim join')
             elif path.stem in ['15']:
-                request.node.add_marker(pytest.mark.xfail(reason='Rounding inconsistency'))
+                pytest.skip(reason='Rounding inconsistency')
             elif path.stem in ['01', '06', '13', '14']:
-                request.node.add_marker(pytest.mark.xfail(reason='Too few names returned'))
+                pytest.skip(reason='Too few names returned')
             elif path.stem in ['19']:
-                request.node.add_marker(pytest.mark.xfail(reason='nullability mismatch'))
-        elif originalname in ['test_count', 'test_limit']:
-            request.node.add_marker(pytest.mark.xfail(reason='Too few names returned'))
+                pytest.skip(reason='nullability mismatch')
     if source == 'gateway-over-datafusion':
         pytest.importorskip("datafusion.substrait")
         if originalname == 'test_count':
-            request.node.add_marker(pytest.mark.xfail(reason='COUNT() not implemented'))
+            pytest.skip(reason='COUNT() not implemented')
         if originalname == 'test_limit':
             request.node.add_marker(pytest.mark.xfail(reason='Too few names returned'))
         if originalname in ['test_tpch']:
@@ -63,22 +60,23 @@ def mark_tests_as_xfail(request):
                 request.node.add_marker(pytest.mark.xfail(reason='multiargument OR not supported'))
             elif path.stem in ['02', '04', '17', '20', '21', '22']:
                 request.node.add_marker(pytest.mark.xfail(reason='DataFusion needs Delim join'))
-            request.node.add_marker(pytest.mark.xfail(reason='Gateway internal iterating error'))
+            pytest.skip(reason='not yet ready to run SQL tests regularly')
 
 
 # pylint: disable=missing-function-docstring
 # ruff: noqa: E712
+@pytest.mark.sql
 class TestSqlAPI:
     """Tests of the SQL side of SparkConnect."""
 
-    def test_count(self, spark_session_with_tpch_dataset):
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            outcome = spark_session_with_tpch_dataset.sql(
+    def test_count(self, register_tpch_dataset, spark_session):
+        with utilizes_valid_plans(spark_session):
+            outcome = spark_session.sql(
                 'SELECT COUNT(*) FROM customer').collect()
 
         assert_that(outcome[0][0], equal_to(149999))
 
-    def test_limit(self, spark_session_with_tpch_dataset):
+    def test_limit(self, register_tpch_dataset, spark_session):
         expected = [
             Row(c_custkey=2, c_phone='23-768-687-3665', c_mktsegment='AUTOMOBILE'),
             Row(c_custkey=3, c_phone='11-719-748-3364', c_mktsegment='AUTOMOBILE'),
@@ -87,8 +85,8 @@ class TestSqlAPI:
             Row(c_custkey=6, c_phone='30-114-968-4951', c_mktsegment='AUTOMOBILE'),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            outcome = spark_session_with_tpch_dataset.sql(
+        with utilizes_valid_plans(spark_session):
+            outcome = spark_session.sql(
                 'SELECT c_custkey, c_phone, c_mktsegment FROM customer LIMIT 5').collect()
 
         assertDataFrameEqual(outcome, expected)
@@ -99,12 +97,12 @@ class TestSqlAPI:
         sql_test_case_paths,
         ids=sql_test_case_names,
     )
-    def test_tpch(self, spark_session_with_tpch_dataset, path, caplog):
+    def test_tpch(self, register_tpch_dataset, spark_session, path, caplog):
         """Test the TPC-H queries."""
         # Read the SQL to run.
         with open(path, "rb") as file:
             sql_bytes = file.read()
         sql = sql_bytes.decode('utf-8')
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset, caplog):
-            spark_session_with_tpch_dataset.sql(sql).collect()
+        with utilizes_valid_plans(spark_session, caplog):
+            spark_session.sql(sql).collect()

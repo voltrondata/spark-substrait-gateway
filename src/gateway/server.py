@@ -133,6 +133,7 @@ class Statistics:
         self.interrupt_requests: int = 0
         self.reattach_requests: int = 0
         self.release_requests: int = 0
+        self.database_resets: int = 0
 
         self.requests: list[str] = []
         self.plans: list[str] = []
@@ -155,6 +156,7 @@ class Statistics:
         self.interrupt_requests = 0
         self.reattach_requests = 0
         self.release_requests = 0
+        self.database_resets = 0
 
         self.requests = []
         self.plans = []
@@ -174,13 +176,22 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
         self._converter = None
         self._statistics = Statistics()
 
-    def _InitializeExecution(self):
+    def _InitializeExecution(self) -> None:
         """Initialize the execution of the Plan by setting the backend."""
         if not self._backend:
             self._backend = find_backend(self._options.backend)
             self._sql_backend = find_backend(BackendOptions(BackendEngine.DUCKDB, False))
             self._converter = SparkSubstraitConverter(self._options)
             self._converter.set_backends(self._backend, self._sql_backend)
+
+    def _ReinitializeExecution(self) -> None:
+        """Reinitialize the execution of the Plan by resetting the backend."""
+        self._statistics.database_resets += 1
+        if not self._backend:
+            return self._InitializeExecution()
+        self._backend.reset_connection()
+        self._sql_backend.reset_connection()
+        return None
 
     def ExecutePlan(
             self, request: pb2.ExecutePlanRequest, context: grpc.RpcContext) -> Generator[
@@ -203,8 +214,12 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
                                 session_id=request.session_id,
                                 result_complete=pb2.ExecutePlanResponse.ResultComplete())
                             return
-                        substrait = self._sql_backend.convert_sql(
-                            request.plan.command.sql_command.sql)
+                        try:
+                            substrait = self._sql_backend.convert_sql(
+                                request.plan.command.sql_command.sql)
+                        except Exception as err:
+                            self._ReinitializeExecution()
+                            raise err
                     case 'create_dataframe_view':
                         create_dataframe_view(request.plan, self._backend)
                         create_dataframe_view(request.plan, self._sql_backend)
@@ -219,7 +234,11 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
                 raise ValueError(f'Unknown plan type: {request.plan}')
         _LOGGER.debug('  as Substrait: %s', substrait)
         self._statistics.add_plan(substrait)
-        results = self._backend.execute(substrait)
+        try:
+            results = self._backend.execute(substrait)
+        except Exception as err:
+            self._ReinitializeExecution()
+            raise err
         _LOGGER.debug('  results are: %s', results)
 
         if not self._options.implement_show_string and request.plan.WhichOneof(
@@ -263,7 +282,11 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
         if request.schema:
             substrait = self._converter.convert_plan(request.schema.plan)
             self._statistics.add_plan(substrait)
-            results = self._backend.execute(substrait)
+            try:
+                results = self._backend.execute(substrait)
+            except Exception as err:
+                self._ReinitializeExecution()
+                raise err
             _LOGGER.debug('  results are: %s', results)
             return pb2.AnalyzePlanResponse(
                 session_id=request.session_id,

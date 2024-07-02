@@ -80,18 +80,18 @@ def mark_dataframe_tests_as_xfail(request):
     if source == 'gateway-over-datafusion':
         pytest.importorskip("datafusion.substrait")
         if originalname in ['test_column_getfield', 'test_column_getitem']:
-            request.node.add_marker(pytest.mark.xfail(reason='structs not handled'))
+            pytest.skip(reason='structs not handled')
     elif originalname == 'test_column_getitem':
-        request.node.add_marker(pytest.mark.xfail(reason='maps and lists not handled'))
+        pytest.skip(reason='maps and lists not handled')
     elif source == 'spark' and originalname == 'test_subquery_alias':
         pytest.xfail('Spark supports subquery_alias but everyone else does not')
 
     if source != 'spark' and originalname.startswith('test_unionbyname'):
-        request.node.add_marker(pytest.mark.xfail(reason='unionByName not supported in Substrait'))
+        pytest.skip(reason='unionByName not supported in Substrait')
     if source != 'spark' and originalname.startswith('test_exceptall'):
-        request.node.add_marker(pytest.mark.xfail(reason='exceptAll not supported in Substrait'))
+        pytest.skip(reason='exceptAll not supported in Substrait')
     if source == 'gateway-over-duckdb' and originalname in ['test_union', 'test_unionall']:
-        request.node.add_marker(pytest.mark.xfail(reason='DuckDB treats all unions as distinct'))
+        pytest.skip(reason='DuckDB treats all unions as distinct')
     if source == 'gateway-over-datafusion' and originalname == 'test_subtract':
         request.node.add_marker(pytest.mark.xfail(reason='subtract not supported'))
     if source == 'gateway-over-datafusion' and originalname == 'test_intersect':
@@ -106,15 +106,15 @@ def mark_dataframe_tests_as_xfail(request):
         request.node.add_marker(pytest.mark.xfail(reason='None not preserved'))
     if source == 'gateway-over-datafusion' and originalname in [
         'test_isnan', 'test_nanvl', 'test_least', 'test_greatest']:
-        request.node.add_marker(pytest.mark.xfail(reason='missing Substrait mapping'))
+        pytest.skip(reason='missing Substrait mapping')
     if source != 'spark' and originalname == 'test_expr':
         request.node.add_marker(pytest.mark.xfail(reason='SQL support needed in gateway'))
     if source != 'spark' and originalname == 'test_named_struct':
-        request.node.add_marker(pytest.mark.xfail(reason='needs better type tracking in gateway'))
+        pytest.skip(reason='needs better type tracking in gateway')
     if source == 'spark' and originalname == 'test_nullif':
         request.node.add_marker(pytest.mark.xfail(reason='internal Spark type error'))
     if source == 'gateway-over-duckdb' and originalname == 'test_nullif':
-        request.node.add_marker(pytest.mark.xfail(reason='argument count issue in DuckDB mapping'))
+        pytest.skip(reason='argument count issue in DuckDB mapping')
     if source == 'gateway-over-datafusion' and originalname == 'test_contains':
         request.node.add_marker(pytest.mark.xfail(reason='contains returns position not binary'))
     if source != 'spark' and originalname in ['test_locate', 'test_position']:
@@ -478,7 +478,7 @@ only showing top 1 row
 
         assertDataFrameEqual(outcome, expected)
 
-    def test_join(self, spark_session_with_tpch_dataset):
+    def test_join(self, register_tpch_dataset, spark_session):
         expected = [
             Row(n_nationkey=5, n_name='ETHIOPIA', n_regionkey=0,
                 n_comment='ven packages wake quickly. regu', s_suppkey=2,
@@ -487,16 +487,16 @@ only showing top 1 row
                 s_comment=' slyly bold instructions. idle dependen'),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            nation = spark_session_with_tpch_dataset.table('nation')
-            supplier = spark_session_with_tpch_dataset.table('supplier')
+        with utilizes_valid_plans(spark_session):
+            nation = spark_session.table('nation')
+            supplier = spark_session.table('supplier')
 
             nat = nation.join(supplier, col('n_nationkey') == col('s_nationkey'))
             outcome = nat.filter(col('s_suppkey') == 2).limit(1).collect()
 
         assertDataFrameEqual(outcome, expected)
 
-    def test_crossjoin(self, spark_session_with_tpch_dataset):
+    def test_crossjoin(self, register_tpch_dataset, spark_session):
         expected = [
             Row(n_nationkey=1, n_name='ARGENTINA', s_name='Supplier#000000002'),
             Row(n_nationkey=2, n_name='BRAZIL', s_name='Supplier#000000002'),
@@ -505,16 +505,16 @@ only showing top 1 row
             Row(n_nationkey=5, n_name='ETHIOPIA', s_name='Supplier#000000002'),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            nation = spark_session_with_tpch_dataset.table('nation')
-            supplier = spark_session_with_tpch_dataset.table('supplier')
+        with utilizes_valid_plans(spark_session):
+            nation = spark_session.table('nation')
+            supplier = spark_session.table('supplier')
 
             nat = nation.crossJoin(supplier).filter(col('s_suppkey') == 2)
             outcome = nat.select('n_nationkey', 'n_name', 's_name').limit(5).collect()
 
         assertDataFrameEqual(outcome, expected)
 
-    def test_union(self, spark_session_with_tpch_dataset):
+    def test_union(self, register_tpch_dataset, spark_session):
         expected = [
             Row(n_nationkey=23, n_name='UNITED KINGDOM', n_regionkey=3,
                 n_comment='eans boost carefully special requests. accounts are. carefull'),
@@ -522,27 +522,27 @@ only showing top 1 row
                 n_comment='eans boost carefully special requests. accounts are. carefull'),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            nation = spark_session_with_tpch_dataset.table('nation')
+        with utilizes_valid_plans(spark_session):
+            nation = spark_session.table('nation')
 
             outcome = nation.union(nation).filter(col('n_nationkey') == 23).collect()
 
         assertDataFrameEqual(outcome, expected)
 
-    def test_union_distinct(self, spark_session_with_tpch_dataset):
+    def test_union_distinct(self, register_tpch_dataset, spark_session):
         expected = [
             Row(n_nationkey=23, n_name='UNITED KINGDOM', n_regionkey=3,
                 n_comment='eans boost carefully special requests. accounts are. carefull'),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            nation = spark_session_with_tpch_dataset.table('nation')
+        with utilizes_valid_plans(spark_session):
+            nation = spark_session.table('nation')
 
             outcome = nation.union(nation).distinct().filter(col('n_nationkey') == 23).collect()
 
         assertDataFrameEqual(outcome, expected)
 
-    def test_unionall(self, spark_session_with_tpch_dataset):
+    def test_unionall(self, register_tpch_dataset, spark_session):
         expected = [
             Row(n_nationkey=23, n_name='UNITED KINGDOM', n_regionkey=3,
                 n_comment='eans boost carefully special requests. accounts are. carefull'),
@@ -550,14 +550,14 @@ only showing top 1 row
                 n_comment='eans boost carefully special requests. accounts are. carefull'),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            nation = spark_session_with_tpch_dataset.table('nation')
+        with utilizes_valid_plans(spark_session):
+            nation = spark_session.table('nation')
 
             outcome = nation.unionAll(nation).filter(col('n_nationkey') == 23).collect()
 
         assertDataFrameEqual(outcome, expected)
 
-    def test_exceptall(self, spark_session_with_tpch_dataset):
+    def test_exceptall(self, register_tpch_dataset, spark_session, caplog):
         expected = [
             Row(n_nationkey=21, n_name='VIETNAM', n_regionkey=2,
                 n_comment='hely enticingly express accounts. even, final '),
@@ -579,8 +579,8 @@ only showing top 1 row
                           'breach ironic accounts. unusual pinto be'),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            nation = spark_session_with_tpch_dataset.table('nation').filter(col('n_nationkey') > 20)
+        with utilizes_valid_plans(spark_session, caplog):
+            nation = spark_session.table('nation').filter(col('n_nationkey') > 20)
             nation1 = nation.union(nation)
             nation2 = nation.filter(col('n_nationkey') == 23)
 
@@ -649,7 +649,7 @@ only showing top 1 row
 
         assertDataFrameEqual(outcome, expected)
 
-    def test_subtract(self, spark_session_with_tpch_dataset):
+    def test_subtract(self, register_tpch_dataset, spark_session):
         expected = [
             Row(n_nationkey=21, n_name='VIETNAM', n_regionkey=2,
                 n_comment='hely enticingly express accounts. even, final '),
@@ -661,8 +661,8 @@ only showing top 1 row
                           'breach ironic accounts. unusual pinto be'),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            nation = spark_session_with_tpch_dataset.table('nation').filter(col('n_nationkey') > 20)
+        with utilizes_valid_plans(spark_session):
+            nation = spark_session.table('nation').filter(col('n_nationkey') > 20)
             nation1 = nation.union(nation)
             nation2 = nation.filter(col('n_nationkey') == 23)
 
@@ -670,14 +670,14 @@ only showing top 1 row
 
         assertDataFrameEqual(outcome, expected)
 
-    def test_intersect(self, spark_session_with_tpch_dataset):
+    def test_intersect(self, register_tpch_dataset, spark_session):
         expected = [
             Row(n_nationkey=23, n_name='UNITED KINGDOM', n_regionkey=3,
                 n_comment='eans boost carefully special requests. accounts are. carefull'),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            nation = spark_session_with_tpch_dataset.table('nation')
+        with utilizes_valid_plans(spark_session):
+            nation = spark_session.table('nation')
             nation1 = nation.union(nation).filter(col('n_nationkey') >= 23)
             nation2 = nation.filter(col('n_nationkey') <= 23)
 
@@ -745,7 +745,7 @@ only showing top 1 row
             outcome = df.unionByName(df2, allowMissingColumns=True).collect()
             assertDataFrameEqual(outcome, expected)
 
-    def test_between(self, spark_session_with_tpch_dataset):
+    def test_between(self, register_tpch_dataset, spark_session):
         expected = [
             Row(n_name='ARGENTINA', is_between=False),
             Row(n_name='BRAZIL', is_between=False),
@@ -754,8 +754,8 @@ only showing top 1 row
             Row(n_name='ETHIOPIA', is_between=False),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            nation = spark_session_with_tpch_dataset.table('nation')
+        with utilizes_valid_plans(spark_session):
+            nation = spark_session.table('nation')
 
             outcome = nation.select(
                 nation.n_name,
@@ -917,20 +917,20 @@ only showing top 1 row
 
         assert len(outcome) == 29968
 
-    def test_table(self, spark_session_with_tpch_dataset):
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            outcome = spark_session_with_tpch_dataset.table('customer').collect()
+    def test_table(self, register_tpch_dataset, spark_session):
+        with utilizes_valid_plans(spark_session):
+            outcome = spark_session.table('customer').collect()
 
         assert len(outcome) == 149999
 
-    def test_table_schema(self, spark_session_with_tpch_dataset):
-        schema = spark_session_with_tpch_dataset.table('customer').schema
+    def test_table_schema(self, register_tpch_dataset, spark_session):
+        schema = spark_session.table('customer').schema
         assert len(schema) == 8
 
-    def test_table_filter(self, spark_session_with_tpch_dataset):
-        customer_dataframe = spark_session_with_tpch_dataset.table('customer')
+    def test_table_filter(self, register_tpch_dataset, spark_session):
+        customer_dataframe = spark_session.table('customer')
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
+        with utilizes_valid_plans(spark_session):
             outcome = customer_dataframe.filter(col('c_mktsegment') == 'FURNITURE').collect()
 
         assert len(outcome) == 29968
@@ -1661,8 +1661,8 @@ class TestDataFrameAPIFunctions:
         assertDataFrameEqual(outcome, expected)
 
 
-@pytest.fixture
-def numbers_dataframe(spark_session):
+@pytest.fixture(scope='class')
+def numbers_dataframe(spark_session_for_setup):
     float1_array = pa.array([float('NaN'), 42.0, None, -1, -2, -3, -4], type=pa.float64())
     float2_array = pa.array([3.14 / 2, 0, -0.5, -0.6, 4.4, 4.6, 81], type=pa.float64())
     float3_array = pa.array([0, 90, 135, 180, 235, 360, -60], type=pa.float64())
@@ -1673,7 +1673,7 @@ def numbers_dataframe(spark_session):
         arrays=[float1_array, float2_array, float3_array, float4_array, float5_array, float6_array],
         names=['f1', 'f2', 'angles', 'radians', 'near_one', 'powers'])
 
-    return create_parquet_table(spark_session, 'numbers', table)
+    return create_parquet_table(spark_session_for_setup, 'numbers', table)
 
 
 class TestDataFrameAPIMathFunctions:

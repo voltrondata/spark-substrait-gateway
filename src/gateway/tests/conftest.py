@@ -7,7 +7,6 @@ import pytest
 from gateway.demo.mystream_database import (
     create_mystream_database,
     delete_mystream_database,
-    get_mystream_schema,
 )
 from gateway.server import serve
 from pyspark.sql.session import SparkSession
@@ -42,7 +41,6 @@ def _create_local_spark_session() -> SparkSession:
     print("===== END SPARK CONFIG =====")
 
     yield spark
-    spark.stop()
 
 
 def _create_gateway_session(backend: str) -> SparkSession:
@@ -60,7 +58,23 @@ def _create_gateway_session(backend: str) -> SparkSession:
     spark_gateway.stop()
 
 
-@pytest.fixture(scope='function', autouse=True)
+def _get_session_generator(source: str):
+    """Provides spark sessions connecting to various backends."""
+    match source:
+        case 'spark':
+            session_generator = _create_local_spark_session()
+        case 'gateway-over-arrow':
+            session_generator = _create_gateway_session('arrow')
+        case 'gateway-over-datafusion':
+            session_generator = _create_gateway_session('datafusion')
+        case 'gateway-over-duckdb':
+            session_generator = _create_gateway_session('duckdb')
+        case _:
+            raise NotImplementedError(f'No such session implemented: {source}')
+    return session_generator
+
+
+@pytest.fixture(scope='session', autouse=True)
 def manage_database() -> None:
     """Creates the mystream database for use throughout all the tests."""
     create_mystream_database()
@@ -68,7 +82,7 @@ def manage_database() -> None:
     delete_mystream_database()
 
 
-@pytest.fixture(scope='function', autouse=True)
+@pytest.fixture(scope='class', autouse=True)
 def gateway_server():
     """Starts up a spark to substrait gateway service."""
     server = serve(50052, wait=False)
@@ -76,16 +90,10 @@ def gateway_server():
     server.stop(None)
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope='session')
 def users_location(manage_database) -> str:
     """Provides the location of the users database."""
     return str(Path('users.parquet').resolve())
-
-
-@pytest.fixture(scope='function')
-def schema_users(manage_database):
-    """Provides the schema of the users database."""
-    return get_mystream_schema('users')
 
 
 @pytest.fixture(scope='session',
@@ -101,34 +109,27 @@ def source(request) -> str:
 
 @pytest.fixture(scope='function')
 def spark_session(source):
-    """Provides spark sessions connecting to various backends."""
-    match source:
-        case 'spark':
-            session_generator = _create_local_spark_session()
-        case 'gateway-over-arrow':
-            session_generator = _create_gateway_session('arrow')
-        case 'gateway-over-datafusion':
-            session_generator = _create_gateway_session('datafusion')
-        case 'gateway-over-duckdb':
-            session_generator = _create_gateway_session('duckdb')
-        case _:
-            raise NotImplementedError(f'No such session implemented: {source}')
-    yield from session_generator
+    """Provides spark sessions connecting to the current backend source."""
+    yield from _get_session_generator(source)
 
 
-# pylint: disable=redefined-outer-name
-@pytest.fixture(scope='function')
-def spark_session_with_users_dataset(spark_session, schema_users, users_location):
-    """Provides the spark session with the users database already loaded."""
-    df = spark_session.read.parquet(users_location)
+@pytest.fixture(scope='class')
+def spark_session_for_setup(source):
+    """Provides spark sessions connecting to the current backend source."""
+    yield from _get_session_generator(source)
+
+
+@pytest.fixture(scope='class')
+def register_users_dataset(spark_session_for_setup, users_location):
+    """Registers the user dataset into the spark session."""
+    df = spark_session_for_setup.read.parquet(users_location)
     df.createOrReplaceTempView('users')
-    return spark_session
 
 
 @pytest.fixture(scope='function')
-def users_dataframe(spark_session_with_users_dataset):
-    """Provides a ready to go users dataframe."""
-    return spark_session_with_users_dataset.table('users')
+def users_dataframe(spark_session, register_users_dataset):
+    """Provides the spark session with the users dataframe already loaded."""
+    return spark_session.table('users')
 
 
 def find_tpch() -> Path:
@@ -149,15 +150,14 @@ def _register_table(spark_session: SparkSession, name: str) -> None:
     df.createOrReplaceTempView(name)
 
 
-@pytest.fixture(scope='function')
-def spark_session_with_tpch_dataset(spark_session: SparkSession) -> SparkSession:
+@pytest.fixture(scope='class')
+def register_tpch_dataset(spark_session_for_setup: SparkSession) -> None:
     """Add the TPC-H dataset to the current spark session."""
-    _register_table(spark_session, 'customer')
-    _register_table(spark_session, 'lineitem')
-    _register_table(spark_session, 'nation')
-    _register_table(spark_session, 'orders')
-    _register_table(spark_session, 'part')
-    _register_table(spark_session, 'partsupp')
-    _register_table(spark_session, 'region')
-    _register_table(spark_session, 'supplier')
-    return spark_session
+    _register_table(spark_session_for_setup, 'customer')
+    _register_table(spark_session_for_setup, 'lineitem')
+    _register_table(spark_session_for_setup, 'nation')
+    _register_table(spark_session_for_setup, 'orders')
+    _register_table(spark_session_for_setup, 'part')
+    _register_table(spark_session_for_setup, 'partsupp')
+    _register_table(spark_session_for_setup, 'region')
+    _register_table(spark_session_for_setup, 'supplier')
