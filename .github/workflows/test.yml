@@ -13,11 +13,16 @@ jobs:
   test:
     name: Test
     strategy:
+      max-parallel: 3
       matrix:
         os: [macos-latest, ubuntu-latest]
         source: ["general", "spark", "gateway-over-duckdb", "gateway-over-datafusion"]
+        class: ["sql", "-sql"]
         python: ["3.10"]
         architecture: ["x64"]
+        exclude:
+          - source: general
+            class: sql
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
@@ -38,5 +43,11 @@ jobs:
           pip install -e .
       - name: Run tests
         shell: bash -el {0}
+        id: run_tests
         run: |
-          pytest -m ${{ matrix.source }}
+          UPDATED_CLASS=${{ matrix.class }}
+          if [[ $UPDATED_CLASS == -* ]] ;
+          then
+            UPDATED_CLASS="not ${UPDATED_CLASS#-}"
+          fi
+          pytest -m "${{ matrix.source }} and $UPDATED_CLASS"

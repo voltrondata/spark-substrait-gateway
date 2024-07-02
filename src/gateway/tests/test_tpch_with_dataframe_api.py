@@ -41,7 +41,7 @@ class TestTpchWithDataFrameAPI:
     """Runs the TPC-H standard test suite against the dataframe side of SparkConnect."""
 
     # pylint: disable=singleton-comparison
-    def test_query_01(self, spark_session_with_tpch_dataset):
+    def test_query_01(self, register_tpch_dataset, spark_session):
         expected = [
             Row(l_returnflag='A', l_linestatus='F', sum_qty=37734107.00,
                 sum_base_price=56586554400.73, sum_disc_price=53758257134.87,
@@ -49,8 +49,8 @@ class TestTpchWithDataFrameAPI:
                 avg_price=38273.13, avg_disc=0.05, count_order=1478493),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            lineitem = spark_session_with_tpch_dataset.table('lineitem')
+        with utilizes_valid_plans(spark_session):
+            lineitem = spark_session.table('lineitem')
             outcome = lineitem.filter(col('l_shipdate') <= '1998-09-02').groupBy(
                 'l_returnflag', 'l_linestatus').agg(
                 try_sum('l_quantity').alias('sum_qty'),
@@ -68,7 +68,7 @@ class TestTpchWithDataFrameAPI:
 
         assert_dataframes_equal(sorted_outcome, expected)
 
-    def test_query_02(self, spark_session_with_tpch_dataset):
+    def test_query_02(self, register_tpch_dataset, spark_session):
         expected = [
             Row(s_acctbal=9938.53, s_name='Supplier#000005359', n_name='UNITED KINGDOM',
                 p_partkey=185358, p_mfgr='Manufacturer#4', s_address='QKuHYh,vZGiwu2FWEJoLDx04',
@@ -80,12 +80,12 @@ class TestTpchWithDataFrameAPI:
                 s_comment='efully express instructions. regular requests against the slyly fin'),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            part = spark_session_with_tpch_dataset.table('part')
-            supplier = spark_session_with_tpch_dataset.table('supplier')
-            partsupp = spark_session_with_tpch_dataset.table('partsupp')
-            nation = spark_session_with_tpch_dataset.table('nation')
-            region = spark_session_with_tpch_dataset.table('region')
+        with utilizes_valid_plans(spark_session):
+            part = spark_session.table('part')
+            supplier = spark_session.table('supplier')
+            partsupp = spark_session.table('partsupp')
+            nation = spark_session.table('nation')
+            region = spark_session.table('region')
 
             europe = region.filter(col('r_name') == 'EUROPE').join(
                 nation, col('r_regionkey') == col('n_regionkey')).join(
@@ -109,7 +109,7 @@ class TestTpchWithDataFrameAPI:
 
         assert_dataframes_equal(sorted_outcome, expected)
 
-    def test_query_03(self, spark_session_with_tpch_dataset):
+    def test_query_03(self, register_tpch_dataset, spark_session):
         expected = [
             Row(l_orderkey=2456423, revenue=406181.01, o_orderdate=datetime.date(1995, 3, 5),
                 o_shippriority=0),
@@ -123,10 +123,10 @@ class TestTpchWithDataFrameAPI:
                 o_shippriority=0),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            customer = spark_session_with_tpch_dataset.table('customer')
-            lineitem = spark_session_with_tpch_dataset.table('lineitem')
-            orders = spark_session_with_tpch_dataset.table('orders')
+        with utilizes_valid_plans(spark_session):
+            customer = spark_session.table('customer')
+            lineitem = spark_session.table('lineitem')
+            orders = spark_session.table('orders')
 
             fcust = customer.filter(col('c_mktsegment') == 'BUILDING')
             forders = orders.filter(col('o_orderdate') < '1995-03-15')
@@ -146,7 +146,7 @@ class TestTpchWithDataFrameAPI:
 
         assert_dataframes_equal(sorted_outcome, expected)
 
-    def test_query_04(self, spark_session_with_tpch_dataset):
+    def test_query_04(self, register_tpch_dataset, spark_session):
         expected = [
             Row(o_orderpriority='1-URGENT', order_count=10594),
             Row(o_orderpriority='2-HIGH', order_count=10476),
@@ -155,9 +155,9 @@ class TestTpchWithDataFrameAPI:
             Row(o_orderpriority='5-LOW', order_count=10487),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            orders = spark_session_with_tpch_dataset.table('orders')
-            lineitem = spark_session_with_tpch_dataset.table('lineitem')
+        with utilizes_valid_plans(spark_session):
+            orders = spark_session.table('orders')
+            lineitem = spark_session.table('lineitem')
 
             forders = orders.filter(
                 (col('o_orderdate') >= '1993-07-01') & (col('o_orderdate') < '1993-10-01'))
@@ -173,7 +173,7 @@ class TestTpchWithDataFrameAPI:
 
         assert_dataframes_equal(sorted_outcome, expected)
 
-    def test_query_05(self, spark_session_with_tpch_dataset):
+    def test_query_05(self, register_tpch_dataset, spark_session):
         expected = [
             Row(n_name='INDONESIA', revenue=55502041.17),
             Row(n_name='VIETNAM', revenue=55295087.00),
@@ -182,13 +182,13 @@ class TestTpchWithDataFrameAPI:
             Row(n_name='JAPAN', revenue=45410175.70),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            customer = spark_session_with_tpch_dataset.table('customer')
-            orders = spark_session_with_tpch_dataset.table('orders')
-            lineitem = spark_session_with_tpch_dataset.table('lineitem')
-            nation = spark_session_with_tpch_dataset.table('nation')
-            region = spark_session_with_tpch_dataset.table('region')
-            supplier = spark_session_with_tpch_dataset.table('supplier')
+        with utilizes_valid_plans(spark_session):
+            customer = spark_session.table('customer')
+            orders = spark_session.table('orders')
+            lineitem = spark_session.table('lineitem')
+            nation = spark_session.table('nation')
+            region = spark_session.table('region')
+            supplier = spark_session.table('supplier')
 
             forders = orders.filter(col('o_orderdate') >= '1994-01-01').filter(
                 col('o_orderdate') < '1995-01-01')
@@ -209,13 +209,13 @@ class TestTpchWithDataFrameAPI:
 
         assert_dataframes_equal(sorted_outcome, expected)
 
-    def test_query_06(self, spark_session_with_tpch_dataset):
+    def test_query_06(self, register_tpch_dataset, spark_session):
         expected = [
             Row(revenue=123141078.23),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            lineitem = spark_session_with_tpch_dataset.table('lineitem')
+        with utilizes_valid_plans(spark_session):
+            lineitem = spark_session.table('lineitem')
 
             outcome = lineitem.filter((col('l_shipdate') >= '1994-01-01') &
                                       (col('l_shipdate') < '1995-01-01') &
@@ -226,7 +226,7 @@ class TestTpchWithDataFrameAPI:
 
         assert_dataframes_equal(outcome, expected)
 
-    def test_query_07(self, spark_session_with_tpch_dataset):
+    def test_query_07(self, register_tpch_dataset, spark_session):
         expected = [
             Row(supp_nation='FRANCE', cust_nation='GERMANY', l_year='1995', revenue=54639732.73),
             Row(supp_nation='FRANCE', cust_nation='GERMANY', l_year='1996', revenue=54633083.31),
@@ -234,12 +234,12 @@ class TestTpchWithDataFrameAPI:
             Row(supp_nation='GERMANY', cust_nation='FRANCE', l_year='1996', revenue=52520549.02),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            customer = spark_session_with_tpch_dataset.table('customer')
-            orders = spark_session_with_tpch_dataset.table('orders')
-            lineitem = spark_session_with_tpch_dataset.table('lineitem')
-            supplier = spark_session_with_tpch_dataset.table('supplier')
-            nation = spark_session_with_tpch_dataset.table('nation')
+        with utilizes_valid_plans(spark_session):
+            customer = spark_session.table('customer')
+            orders = spark_session.table('orders')
+            lineitem = spark_session.table('lineitem')
+            supplier = spark_session.table('supplier')
+            nation = spark_session.table('nation')
 
             fnation = nation.filter((nation.n_name == 'FRANCE') | (nation.n_name == 'GERMANY'))
             fline = lineitem.filter(
@@ -265,20 +265,20 @@ class TestTpchWithDataFrameAPI:
 
         assert_dataframes_equal(sorted_outcome, expected)
 
-    def test_query_08(self, spark_session_with_tpch_dataset):
+    def test_query_08(self, register_tpch_dataset, spark_session):
         expected = [
             Row(o_year='1995', mkt_share=0.03),
             Row(o_year='1996', mkt_share=0.04),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            customer = spark_session_with_tpch_dataset.table('customer')
-            orders = spark_session_with_tpch_dataset.table('orders')
-            lineitem = spark_session_with_tpch_dataset.table('lineitem')
-            nation = spark_session_with_tpch_dataset.table('nation')
-            part = spark_session_with_tpch_dataset.table('part')
-            region = spark_session_with_tpch_dataset.table('region')
-            supplier = spark_session_with_tpch_dataset.table('supplier')
+        with utilizes_valid_plans(spark_session):
+            customer = spark_session.table('customer')
+            orders = spark_session.table('orders')
+            lineitem = spark_session.table('lineitem')
+            nation = spark_session.table('nation')
+            part = spark_session.table('part')
+            region = spark_session.table('region')
+            supplier = spark_session.table('supplier')
 
             fregion = region.filter(col('r_name') == 'AMERICA')
             forder = orders.filter((col('o_orderdate') >= '1995-01-01') & (
@@ -310,7 +310,7 @@ class TestTpchWithDataFrameAPI:
 
         assert_dataframes_equal(sorted_outcome, expected)
 
-    def test_query_09(self, spark_session_with_tpch_dataset):
+    def test_query_09(self, register_tpch_dataset, spark_session):
         # TODO -- Verify the correctness of these results against another version of the dataset.
         expected = [
             Row(n_name='ARGENTINA', o_year='1998', sum_profit=28341663.78),
@@ -320,13 +320,13 @@ class TestTpchWithDataFrameAPI:
             Row(n_name='ARGENTINA', o_year='1994', sum_profit=48268856.35),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            orders = spark_session_with_tpch_dataset.table('orders')
-            lineitem = spark_session_with_tpch_dataset.table('lineitem')
-            nation = spark_session_with_tpch_dataset.table('nation')
-            part = spark_session_with_tpch_dataset.table('part')
-            partsupp = spark_session_with_tpch_dataset.table('partsupp')
-            supplier = spark_session_with_tpch_dataset.table('supplier')
+        with utilizes_valid_plans(spark_session):
+            orders = spark_session.table('orders')
+            lineitem = spark_session.table('lineitem')
+            nation = spark_session.table('nation')
+            part = spark_session.table('part')
+            partsupp = spark_session.table('partsupp')
+            supplier = spark_session.table('supplier')
 
             linePart = part.filter(col('p_name').contains('green')).join(
                 lineitem, col('p_partkey') == lineitem.l_partkey)
@@ -345,7 +345,7 @@ class TestTpchWithDataFrameAPI:
 
         assert_dataframes_equal(sorted_outcome, expected)
 
-    def test_query_10(self, spark_session_with_tpch_dataset):
+    def test_query_10(self, register_tpch_dataset, spark_session):
         expected = [
             Row(c_custkey=57040, c_name='Customer#000057040', revenue=734235.25,
                 c_acctbal=632.87, n_name='JAPAN', c_address='Eioyzjf4pp',
@@ -358,11 +358,11 @@ class TestTpchWithDataFrameAPI:
                           'pinto beans. ironic, idle re'),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            customer = spark_session_with_tpch_dataset.table('customer')
-            lineitem = spark_session_with_tpch_dataset.table('lineitem')
-            nation = spark_session_with_tpch_dataset.table('nation')
-            orders = spark_session_with_tpch_dataset.table('orders')
+        with utilizes_valid_plans(spark_session):
+            customer = spark_session.table('customer')
+            lineitem = spark_session.table('lineitem')
+            nation = spark_session.table('nation')
+            orders = spark_session.table('orders')
 
             flineitem = lineitem.filter(col('l_returnflag') == 'R')
 
@@ -384,7 +384,7 @@ class TestTpchWithDataFrameAPI:
 
         assert_dataframes_equal(sorted_outcome, expected)
 
-    def test_query_11(self, spark_session_with_tpch_dataset):
+    def test_query_11(self, register_tpch_dataset, spark_session):
         expected = [
             Row(ps_partkey=129760, part_value=17538456.86),
             Row(ps_partkey=166726, part_value=16503353.92),
@@ -393,10 +393,10 @@ class TestTpchWithDataFrameAPI:
             Row(ps_partkey=34452, part_value=15983844.72),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            nation = spark_session_with_tpch_dataset.table('nation')
-            partsupp = spark_session_with_tpch_dataset.table('partsupp')
-            supplier = spark_session_with_tpch_dataset.table('supplier')
+        with utilizes_valid_plans(spark_session):
+            nation = spark_session.table('nation')
+            partsupp = spark_session.table('partsupp')
+            supplier = spark_session.table('supplier')
 
             tmp = nation.filter(col('n_name') == 'GERMANY').join(
                 supplier, col('n_nationkey') == supplier.s_nationkey).select(
@@ -413,15 +413,15 @@ class TestTpchWithDataFrameAPI:
 
         assert_dataframes_equal(sorted_outcome, expected)
 
-    def test_query_12(self, spark_session_with_tpch_dataset):
+    def test_query_12(self, register_tpch_dataset, spark_session):
         expected = [
             Row(l_shipmode='MAIL', high_line_count=6202, low_line_count=9324),
             Row(l_shipmode='SHIP', high_line_count=6200, low_line_count=9262),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            lineitem = spark_session_with_tpch_dataset.table('lineitem')
-            orders = spark_session_with_tpch_dataset.table('orders')
+        with utilizes_valid_plans(spark_session):
+            lineitem = spark_session.table('lineitem')
+            orders = spark_session.table('orders')
 
             outcome = lineitem.filter(
                 (col('l_shipmode') == 'MAIL') | (col('l_shipmode') == 'SHIP')).filter(
@@ -445,7 +445,7 @@ class TestTpchWithDataFrameAPI:
 
         assert_dataframes_equal(sorted_outcome, expected)
 
-    def test_query_13(self, spark_session_with_tpch_dataset):
+    def test_query_13(self, register_tpch_dataset, spark_session):
         # TODO -- Verify the corretness of these results against another version of the dataset.
         expected = [
             Row(c_count=9, custdist=6641),
@@ -453,9 +453,9 @@ class TestTpchWithDataFrameAPI:
             Row(c_count=11, custdist=6014),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            customer = spark_session_with_tpch_dataset.table('customer')
-            orders = spark_session_with_tpch_dataset.table('orders')
+        with utilizes_valid_plans(spark_session):
+            customer = spark_session.table('customer')
+            orders = spark_session.table('orders')
 
             outcome = customer.join(
                 orders, (col('c_custkey') == orders.o_custkey) & (
@@ -467,14 +467,14 @@ class TestTpchWithDataFrameAPI:
 
         assert_dataframes_equal(sorted_outcome, expected)
 
-    def test_query_14(self, spark_session_with_tpch_dataset):
+    def test_query_14(self, register_tpch_dataset, spark_session):
         expected = [
             Row(promo_revenue=16.38),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            lineitem = spark_session_with_tpch_dataset.table('lineitem')
-            part = spark_session_with_tpch_dataset.table('part')
+        with utilizes_valid_plans(spark_session):
+            lineitem = spark_session.table('lineitem')
+            part = spark_session.table('part')
 
             outcome = part.join(lineitem, (col('l_partkey') == col('p_partkey')) &
                                 (col('l_shipdate') >= '1995-09-01') &
@@ -485,15 +485,15 @@ class TestTpchWithDataFrameAPI:
 
         assert_dataframes_equal(outcome, expected)
 
-    def test_query_15(self, spark_session_with_tpch_dataset):
+    def test_query_15(self, register_tpch_dataset, spark_session):
         expected = [
             Row(s_suppkey=8449, s_name='Supplier#000008449', s_address='Wp34zim9qYFbVctdW',
                 s_phone='20-469-856-8873', total=1772627.21),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            lineitem = spark_session_with_tpch_dataset.table('lineitem')
-            supplier = spark_session_with_tpch_dataset.table('supplier')
+        with utilizes_valid_plans(spark_session):
+            lineitem = spark_session.table('lineitem')
+            supplier = spark_session.table('supplier')
 
             revenue = lineitem.filter((col('l_shipdate') >= '1996-01-01') &
                                       (col('l_shipdate') < '1996-04-01')).select(
@@ -510,17 +510,17 @@ class TestTpchWithDataFrameAPI:
 
         assert_dataframes_equal(sorted_outcome, expected)
 
-    def test_query_16(self, spark_session_with_tpch_dataset):
+    def test_query_16(self, register_tpch_dataset, spark_session):
         expected = [
             Row(p_brand='Brand#41', p_type='MEDIUM BRUSHED TIN', p_size=3, supplier_cnt=28),
             Row(p_brand='Brand#54', p_type='STANDARD BRUSHED COPPER', p_size=14, supplier_cnt=27),
             Row(p_brand='Brand#11', p_type='STANDARD BRUSHED TIN', p_size=23, supplier_cnt=24),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            part = spark_session_with_tpch_dataset.table('part')
-            partsupp = spark_session_with_tpch_dataset.table('partsupp')
-            supplier = spark_session_with_tpch_dataset.table('supplier')
+        with utilizes_valid_plans(spark_session):
+            part = spark_session.table('part')
+            partsupp = spark_session.table('partsupp')
+            supplier = spark_session.table('supplier')
 
             fparts = part.filter((col('p_brand') != 'Brand#45') &
                                  (~col('p_type').startswith('MEDIUM POLISHED')) &
@@ -539,14 +539,14 @@ class TestTpchWithDataFrameAPI:
 
         assert_dataframes_equal(sorted_outcome, expected)
 
-    def test_query_17(self, spark_session_with_tpch_dataset):
+    def test_query_17(self, register_tpch_dataset, spark_session):
         expected = [
             Row(avg_yearly=348406.02),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            lineitem = spark_session_with_tpch_dataset.table('lineitem')
-            part = spark_session_with_tpch_dataset.table('part')
+        with utilizes_valid_plans(spark_session):
+            lineitem = spark_session.table('lineitem')
+            part = spark_session.table('part')
 
             fpart = part.filter(
                 (col('p_brand') == 'Brand#23') & (col('p_container') == 'MED BOX')).select(
@@ -561,7 +561,7 @@ class TestTpchWithDataFrameAPI:
 
         assert_dataframes_equal(outcome, expected)
 
-    def test_query_18(self, spark_session_with_tpch_dataset):
+    def test_query_18(self, register_tpch_dataset, spark_session):
         expected = [
             Row(c_name='Customer#000128120', c_custkey=128120, o_orderkey=4722021,
                 o_orderdate=datetime.date(1994, 4, 7),
@@ -571,10 +571,10 @@ class TestTpchWithDataFrameAPI:
                 o_totalprice=530604.44, sum_l_quantity=317.00),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            customer = spark_session_with_tpch_dataset.table('customer')
-            lineitem = spark_session_with_tpch_dataset.table('lineitem')
-            orders = spark_session_with_tpch_dataset.table('orders')
+        with utilizes_valid_plans(spark_session):
+            customer = spark_session.table('customer')
+            lineitem = spark_session.table('lineitem')
+            orders = spark_session.table('orders')
 
             outcome = lineitem.groupBy('l_orderkey').agg(
                 try_sum('l_quantity').alias('sum_quantity')).filter(
@@ -592,14 +592,14 @@ class TestTpchWithDataFrameAPI:
 
         assert_dataframes_equal(sorted_outcome, expected)
 
-    def test_query_19(self, spark_session_with_tpch_dataset):
+    def test_query_19(self, register_tpch_dataset, spark_session):
         expected = [
             Row(revenue=3083843.06),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            lineitem = spark_session_with_tpch_dataset.table('lineitem')
-            part = spark_session_with_tpch_dataset.table('part')
+        with utilizes_valid_plans(spark_session):
+            lineitem = spark_session.table('lineitem')
+            part = spark_session.table('part')
 
             outcome = part.join(lineitem, col('l_partkey') == col('p_partkey')).filter(
                 col('l_shipmode').isin(['AIR', 'AIR REG']) & (
@@ -621,19 +621,19 @@ class TestTpchWithDataFrameAPI:
 
         assert_dataframes_equal(outcome, expected)
 
-    def test_query_20(self, spark_session_with_tpch_dataset):
+    def test_query_20(self, register_tpch_dataset, spark_session):
         expected = [
             Row(s_name='Supplier#000000020', s_address='iybAE,RmTymrZVYaFZva2SH,j'),
             Row(s_name='Supplier#000000091', s_address='YV45D7TkfdQanOOZ7q9QxkyGUapU1oOWU6q3'),
             Row(s_name='Supplier#000000205', s_address='rF uV8d0JNEk'),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            lineitem = spark_session_with_tpch_dataset.table('lineitem')
-            nation = spark_session_with_tpch_dataset.table('nation')
-            part = spark_session_with_tpch_dataset.table('part')
-            partsupp = spark_session_with_tpch_dataset.table('partsupp')
-            supplier = spark_session_with_tpch_dataset.table('supplier')
+        with utilizes_valid_plans(spark_session):
+            lineitem = spark_session.table('lineitem')
+            nation = spark_session.table('nation')
+            part = spark_session.table('part')
+            partsupp = spark_session.table('partsupp')
+            supplier = spark_session.table('supplier')
 
             flineitem = lineitem.filter(
                 (col('l_shipdate') >= '1994-01-01') & (col('l_shipdate') < '1995-01-01')).groupBy(
@@ -655,7 +655,7 @@ class TestTpchWithDataFrameAPI:
 
         assert_dataframes_equal(sorted_outcome, expected)
 
-    def test_query_21(self, spark_session_with_tpch_dataset):
+    def test_query_21(self, register_tpch_dataset, spark_session):
         # TODO -- Verify the corretness of these results against another version of the dataset.
         expected = [
             Row(s_name='Supplier#000002095', numwait=26),
@@ -665,11 +665,11 @@ class TestTpchWithDataFrameAPI:
             Row(s_name='Supplier#000000486', numwait=25),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            lineitem = spark_session_with_tpch_dataset.table('lineitem')
-            nation = spark_session_with_tpch_dataset.table('nation')
-            orders = spark_session_with_tpch_dataset.table('orders')
-            supplier = spark_session_with_tpch_dataset.table('supplier')
+        with utilizes_valid_plans(spark_session):
+            lineitem = spark_session.table('lineitem')
+            nation = spark_session.table('nation')
+            orders = spark_session.table('orders')
+            supplier = spark_session.table('supplier')
 
             fsupplier = supplier.select('s_suppkey', 's_nationkey', 's_name')
 
@@ -707,7 +707,7 @@ class TestTpchWithDataFrameAPI:
 
         assert_dataframes_equal(sorted_outcome, expected)
 
-    def test_query_22(self, spark_session_with_tpch_dataset):
+    def test_query_22(self, register_tpch_dataset, spark_session):
         expected = [
             Row(cntrycode='13', numcust=888, totacctbal=6737713.99),
             Row(cntrycode='17', numcust=861, totacctbal=6460573.72),
@@ -718,9 +718,9 @@ class TestTpchWithDataFrameAPI:
             Row(cntrycode='31', numcust=922, totacctbal=6806670.18),
         ]
 
-        with utilizes_valid_plans(spark_session_with_tpch_dataset):
-            customer = spark_session_with_tpch_dataset.table('customer')
-            orders = spark_session_with_tpch_dataset.table('orders')
+        with utilizes_valid_plans(spark_session):
+            customer = spark_session.table('customer')
+            orders = spark_session.table('orders')
 
             fcustomer = customer.select(
                 'c_acctbal', 'c_custkey', (col('c_phone').substr(1, 2)).alias('cntrycode')).filter(

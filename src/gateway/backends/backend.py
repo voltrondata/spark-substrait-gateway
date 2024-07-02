@@ -20,6 +20,10 @@ class Backend:
         """Create a connection to the backend."""
         raise NotImplementedError()
 
+    def reset_connection(self):
+        """Reset the connection to the backend."""
+        pass
+
     def get_connection(self) -> Any:
         """Return the connection to the backend (creating one if necessary)."""
         if self._connection is None:

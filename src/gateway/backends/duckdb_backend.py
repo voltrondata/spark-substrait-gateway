@@ -17,6 +17,7 @@ class DuckDBBackend(Backend):
     def __init__(self, options):
         """Initialize the DuckDB backend."""
         self._connection = None
+        self._tables = {}
         super().__init__(options)
         self.create_connection()
         self._use_duckdb_python_api = options.use_duckdb_python_api
@@ -33,6 +34,14 @@ class DuckDBBackend(Backend):
         self._connection.load_extension('substrait')
 
         return self._connection
+
+    def reset_connection(self):
+        """Reset the connection to the backend."""
+        self._connection.close()
+        self._connection = None
+        self.create_connection()
+        for table in self._tables.values():
+            self.register_table(*table)
 
     # ruff: noqa: BLE001
     def execute(self, plan: plan_pb2.Plan) -> pa.lib.Table:
@@ -58,6 +67,7 @@ class DuckDBBackend(Backend):
         if not files:
             raise ValueError(f"No parquet files found at {location}")
 
+        self._tables[table_name] = (table_name, location, file_format)
         if self._use_duckdb_python_api:
             self._connection.register(table_name, self._connection.read_parquet(files))
         else:

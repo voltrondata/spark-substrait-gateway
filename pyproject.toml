@@ -24,6 +24,7 @@ markers = [
   "gateway-over-duckdb: mark a test as running against the gateway using DuckDB",
   "gateway-over-datafusion: mark a test as running against the gateway using DataFusion",
   "general: mark a test as not specific to a backend",
+  "sql: marks a test as having SQL as its source",
 ]
 
 [build-system]
