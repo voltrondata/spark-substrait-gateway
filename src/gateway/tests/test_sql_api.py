@@ -24,49 +24,41 @@ def mark_tests_as_xfail(request):
         if originalname == 'test_tpch':
             path = request.getfixturevalue('path')
             if path.stem in ['02', '04', '16', '17', '20', '21', '22']:
-                request.node.add_marker(pytest.mark.xfail(reason='DuckDB needs Delim join'))
+                pytest.skip(reason='DuckDB needs Delim join')
             elif path.stem in ['15']:
-                request.node.add_marker(pytest.mark.xfail(reason='Rounding inconsistency'))
+                pytest.skip(reason='Rounding inconsistency')
             elif path.stem in ['01', '06', '13', '14']:
-                request.node.add_marker(pytest.mark.xfail(reason='Too few names returned'))
+                pytest.skip(reason='Too few names returned')
             elif path.stem in ['19']:
-                request.node.add_marker(pytest.mark.xfail(reason='nullability mismatch'))
-            else:
-                pytest.skip(reason='unexplained timeout')
-        elif originalname in ['test_count', 'test_limit']:
-            request.node.add_marker(pytest.mark.xfail(reason='Too few names returned'))
+                pytest.skip(reason='nullability mismatch')
     if source == 'gateway-over-datafusion':
         pytest.importorskip("datafusion.substrait")
         if originalname == 'test_count':
             pytest.skip(reason='COUNT() not implemented')
-        if originalname == 'test_limit':
-            request.node.add_marker(pytest.mark.xfail(reason='Too few names returned'))
         if originalname in ['test_tpch']:
             path = request.getfixturevalue('path')
             if path.stem in ['01']:
-                request.node.add_marker(pytest.mark.xfail(reason='COUNT() not implemented'))
+                pytest.skip(reason='COUNT() not implemented')
             elif path.stem in ['07']:
-                request.node.add_marker(pytest.mark.xfail(reason='Projection uniqueness error'))
+                pytest.skip(reason='Projection uniqueness error')
             elif path.stem in ['08']:
-                request.node.add_marker(pytest.mark.xfail(reason='aggregation error'))
+                pytest.skip(reason='aggregation error')
             elif path.stem in ['09']:
-                request.node.add_marker(pytest.mark.xfail(reason='instr not implemented'))
+                pytest.skip(reason='instr not implemented')
             elif path.stem in ['11']:
-                request.node.add_marker(pytest.mark.xfail(reason='first not implemented'))
+                pytest.skip(reason='first not implemented')
             elif path.stem in ['13']:
-                request.node.add_marker(pytest.mark.xfail(reason='not rlike not implemented'))
+                pytest.skip(reason='not rlike not implemented')
             elif path.stem in ['15']:
-                request.node.add_marker(pytest.mark.xfail(reason='empty table error'))
+                pytest.skip(reason='empty table error')
             elif path.stem in ['16']:
-                request.node.add_marker(pytest.mark.xfail(reason='mark join not implemented'))
+                pytest.skip(reason='mark join not implemented')
             elif path.stem in ['18']:
-                request.node.add_marker(pytest.mark.xfail(reason='out of bounds error'))
+                pytest.skip(reason='out of bounds error')
             elif path.stem in ['19']:
-                request.node.add_marker(pytest.mark.xfail(reason='multiargument OR not supported'))
+                pytest.skip(reason='multiargument OR not supported')
             elif path.stem in ['02', '04', '17', '20', '21', '22']:
-                request.node.add_marker(pytest.mark.xfail(reason='DataFusion needs Delim join'))
-            else:
-                pytest.skip(reason='unexplained timeout')
+                pytest.skip(reason='DataFusion needs Delim join')
 
 
 # pylint: disable=missing-function-docstring
