@@ -37,27 +37,28 @@ def mark_tests_as_xfail(request):
         if originalname in ['test_tpch']:
             path = request.getfixturevalue('path')
             if path.stem in ['01']:
-                pytest.skip(reason='COUNT() not implemented')
+                request.node.add_marker(pytest.mark.xfail(reason='COUNT() not implemented'))
             elif path.stem in ['07']:
-                pytest.skip(reason='Projection uniqueness error')
+                request.node.add_marker(pytest.mark.xfail(reason='Projection uniqueness error'))
             elif path.stem in ['08']:
-                pytest.skip(reason='aggregation error')
+                request.node.add_marker(pytest.mark.xfail(reason='aggregation error'))
             elif path.stem in ['09']:
-                pytest.skip(reason='instr not implemented')
+                request.node.add_marker(pytest.mark.xfail(reason='instr not implemented'))
             elif path.stem in ['11']:
-                pytest.skip(reason='first not implemented')
+                request.node.add_marker(pytest.mark.xfail(reason='first not implemented'))
             elif path.stem in ['13']:
-                pytest.skip(reason='not rlike not implemented')
+                request.node.add_marker(pytest.mark.xfail(reason='not rlike not implemented'))
             elif path.stem in ['15']:
-                pytest.skip(reason='empty table error')
+                request.node.add_marker(pytest.mark.xfail(reason='empty table error'))
             elif path.stem in ['16']:
-                pytest.skip(reason='mark join not implemented')
+                request.node.add_marker(pytest.mark.xfail(reason='mark join not implemented'))
             elif path.stem in ['18']:
-                pytest.skip(reason='out of bounds error')
+                request.node.add_marker(pytest.mark.xfail(reason='out of bounds error'))
             elif path.stem in ['19']:
-                pytest.skip(reason='multiargument OR not supported')
+                request.node.add_marker(pytest.mark.xfail(reason='multiargument OR not supported'))
             elif path.stem in ['02', '04', '17', '20', '21', '22']:
-                pytest.skip(reason='DataFusion needs Delim join')
+                request.node.add_marker(pytest.mark.xfail(reason='DataFusion needs Delim join'))
+            pytest.skip(reason='not yet ready to run SQL tests regularly')
 
 
 # pylint: disable=missing-function-docstring
