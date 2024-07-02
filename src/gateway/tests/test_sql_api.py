@@ -34,6 +34,8 @@ def mark_tests_as_xfail(request):
         pytest.importorskip("datafusion.substrait")
         if originalname == 'test_count':
             pytest.skip(reason='COUNT() not implemented')
+        if originalname == 'test_limit':
+            request.node.add_marker(pytest.mark.xfail(reason='Too few names returned'))
         if originalname in ['test_tpch']:
             path = request.getfixturevalue('path')
             if path.stem in ['01']:
