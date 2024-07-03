@@ -444,7 +444,7 @@ only showing top 1 row
 
         df = create_parquet_table(spark_session, 'mytesttable', table)
 
-        with utilizes_valid_plans(df):
+        with utilizes_valid_plans(df, caplog):
             outcome = df.select(df.r.getField("b"), df.r.a).collect()
 
         assertDataFrameEqual(outcome, expected)
@@ -478,7 +478,7 @@ only showing top 1 row
 
         assertDataFrameEqual(outcome, expected)
 
-    def test_join(self, register_tpch_dataset, spark_session):
+    def test_join(self, register_tpch_dataset, spark_session, caplog):
         expected = [
             Row(n_nationkey=5, n_name='ETHIOPIA', n_regionkey=0,
                 n_comment='ven packages wake quickly. regu', s_suppkey=2,
@@ -487,7 +487,7 @@ only showing top 1 row
                 s_comment=' slyly bold instructions. idle dependen'),
         ]
 
-        with utilizes_valid_plans(spark_session):
+        with utilizes_valid_plans(spark_session, caplog):
             nation = spark_session.table('nation')
             supplier = spark_session.table('supplier')
 

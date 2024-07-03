@@ -363,6 +363,13 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
                         index = int(key[len('spark-substrait-gateway.plan.'):])
                         if 0 <= index - 1 < len(execution.statistics.plans):
                             response.pairs.add(key=key, value=execution.statistics.plans[index - 1])
+                    elif key == 'spark-substrait-gateway.request_count':
+                        response.pairs.add(key=key, value=str(len(execution.statistics.requests)))
+                    elif key.startswith('spark-substrait-gateway.request.'):
+                        index = int(key[len('spark-substrait-gateway.request.'):])
+                        if 0 <= index - 1 < len(execution.statistics.plans):
+                            response.pairs.add(
+                                key=key, value=execution.statistics.requests[index - 1])
                     elif key == 'spark.sql.session.timeZone':
                         response.pairs.add(key=key, value='UTC')
                     elif key in ['spark.sql.pyspark.inferNestedDictAsStruct.enabled',
