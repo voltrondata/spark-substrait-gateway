@@ -81,8 +81,8 @@ def mark_dataframe_tests_as_xfail(request):
         pytest.importorskip("datafusion.substrait")
         if originalname in ['test_column_getfield', 'test_column_getitem']:
             request.node.add_marker(pytest.mark.xfail(reason='structs not handled'))
-    elif originalname == 'test_column_getitem':
-        request.node.add_marker(pytest.mark.xfail(reason='maps and lists not handled'))
+    elif source == 'gateway-over-duckdb' and originalname == 'test_column_getitem':
+        pytest.skip(reason='maps and lists not handled')
     elif source == 'spark' and originalname == 'test_subquery_alias':
         pytest.xfail('Spark supports subquery_alias but everyone else does not')
 
@@ -144,8 +144,8 @@ def mark_dataframe_tests_as_xfail(request):
 class TestDataFrameAPI:
     """Tests of the dataframe side of SparkConnect."""
 
-    def test_collect(self, users_dataframe):
-        with utilizes_valid_plans(users_dataframe):
+    def test_collect(self, users_dataframe, caplog):
+        with utilizes_valid_plans(users_dataframe, caplog):
             outcome = users_dataframe.collect()
 
         assert len(outcome) == 100
@@ -459,7 +459,7 @@ only showing top 1 row
                              type=pa.map_(pa.string(), pa.string(), False))
         table = pa.Table.from_arrays([list_array, map_array], names=['l', 'd'])
 
-        df = create_parquet_table(spark_session, 'mytesttable', table)
+        df = create_parquet_table(spark_session, 'mystructtable', table)
 
         with utilizes_valid_plans(df):
             outcome = df.select(df.l.getItem(0), df.d.getItem("key")).collect()
@@ -802,7 +802,7 @@ only showing top 1 row
         int_array = pa.array([221, 0, 42, None], type=pa.int64())
         table = pa.Table.from_arrays([int_array], names=['i'])
 
-        df = create_parquet_table(spark_session, 'mytesttable', table)
+        df = create_parquet_table(spark_session, 'mytesttable3', table)
 
         with utilizes_valid_plans(df):
             outcome = df.select(df.i.bitwiseAND(42),

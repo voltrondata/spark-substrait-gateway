@@ -174,8 +174,6 @@ class ExecutionDetails:
         self.converter: SparkSubstraitConverter | None = None
         self.statistics = Statistics()
 
-        self.failed = False
-
     def initialize(self, options: ConversionOptions):
         """Initialize the execution of the Plan by setting the backend."""
         if not self.backend:
@@ -184,9 +182,11 @@ class ExecutionDetails:
             self.converter = SparkSubstraitConverter(options)
             self.converter.set_backends(self.backend, self.sql_backend)
 
-    def mark_failed(self):
-        """Marks an execution as failed."""
-        self.failed = True
+    def reset(self) -> None:
+        """Reinitialize the current execution by resetting the backends."""
+        self.statistics.database_resets += 1
+        self.backend.reset_connection()
+        self.sql_backend.reset_connection()
 
     def remove_backends(self):
         if self.backend:
@@ -206,10 +206,10 @@ class ExecutionFactory:
     def get(self, session_id: str) -> ExecutionDetails:
         if session_id not in self._session_info:
             self._session_info[session_id] = ExecutionDetails()
-        execution = self._session_info.get(session_id)
-        if execution.failed:
-            raise EnvironmentError("Current session had a previous failure.")
-        return execution
+            print('Created new execution for session:', session_id)
+        else:
+            print('Used existing execution for session:', session_id)
+        return self._session_info.get(session_id)
 
     def release(self, session_id: str) -> None:
         if session_id in self._session_info:
@@ -228,15 +228,6 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
         self._options = duck_db()
 
         self._execution = ExecutionFactory()
-
-    def _ReinitializeExecution(self) -> None:
-        """Reinitialize the execution of the Plan by resetting the backend."""
-        self._statistics.database_resets += 1
-        if not self._backend:
-            return self._InitializeExecution()
-        self._backend.reset_connection()
-        self._sql_backend.reset_connection()
-        return None
 
     def ExecutePlan(
             self, request: pb2.ExecutePlanRequest, context: grpc.RpcContext) -> Generator[
@@ -264,7 +255,7 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
                             substrait = execution.sql_backend.convert_sql(
                                 request.plan.command.sql_command.sql)
                         except Exception as err:
-                            self._ReinitializeExecution()
+                            execution.reset()
                             raise err
                     case 'create_dataframe_view':
                         create_dataframe_view(request.plan, execution.backend)
@@ -283,8 +274,7 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
         try:
             results = execution.backend.execute(substrait)
         except Exception as err:
-            execution.mark_failed()
-            self._ReinitializeExecution()
+            execution.reset()
             raise err
         _LOGGER.debug('  results are: %s', results)
 
@@ -333,8 +323,7 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
             try:
                 results = execution.backend.execute(substrait)
             except Exception as err:
-                execution.mark_failed()
-                self._ReinitializeExecution()
+                execution.reset()
                 raise err
             _LOGGER.debug('  results are: %s', results)
             return pb2.AnalyzePlanResponse(

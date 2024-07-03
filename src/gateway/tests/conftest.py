@@ -107,23 +107,6 @@ def source(request) -> str:
     return request.param
 
 
-@pytest.fixture(scope='class')
-def spark_session_for_setup(source):
-    """Provides spark sessions connecting to various backends."""
-    match source:
-        case 'spark':
-            session_generator = _create_local_spark_session()
-        case 'gateway-over-arrow':
-            session_generator = _create_gateway_session('arrow')
-        case 'gateway-over-datafusion':
-            session_generator = _create_gateway_session('datafusion')
-        case 'gateway-over-duckdb':
-            session_generator = _create_gateway_session('duckdb')
-        case _:
-            raise NotImplementedError(f'No such session implemented: {source}')
-    yield from session_generator
-
-
 @pytest.fixture(scope='function')
 def spark_session(source):
     """Provides spark sessions connecting to the current backend source."""
@@ -165,19 +148,6 @@ def _register_table(spark_session: SparkSession, name: str) -> None:
     location = find_tpch() / name
     df = spark_session.read.parquet(str(location))
     df.createOrReplaceTempView(name)
-
-
-@pytest.fixture(scope='class')
-def register_tpch_dataset(spark_session_for_setup: SparkSession) -> None:
-    """Add the TPC-H dataset to the current spark session."""
-    _register_table(spark_session_for_setup, 'customer')
-    _register_table(spark_session_for_setup, 'lineitem')
-    _register_table(spark_session_for_setup, 'nation')
-    _register_table(spark_session_for_setup, 'orders')
-    _register_table(spark_session_for_setup, 'part')
-    _register_table(spark_session_for_setup, 'partsupp')
-    _register_table(spark_session_for_setup, 'region')
-    _register_table(spark_session_for_setup, 'supplier')
 
 
 @pytest.fixture(scope='class')
