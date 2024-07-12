@@ -21,7 +21,7 @@ dependencies:
     - cargo
     - pyarrow >= 16.1.0
     - duckdb >= 1.0.0
-    - datafusion >= 38.0.1
+    - datafusion >= 39.0.0
     - grpcio-channelz
     - pyspark
     - pandas >= 1.0.5

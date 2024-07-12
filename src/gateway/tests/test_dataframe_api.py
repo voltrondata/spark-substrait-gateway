@@ -78,7 +78,6 @@ def mark_dataframe_tests_as_xfail(request):
     source = request.getfixturevalue('source')
     originalname = request.keywords.node.originalname
     if source == 'gateway-over-datafusion':
-        pytest.importorskip("datafusion.substrait")
         if originalname in ['test_column_getfield', 'test_column_getitem']:
             pytest.skip(reason='structs not handled')
     elif originalname == 'test_column_getitem':

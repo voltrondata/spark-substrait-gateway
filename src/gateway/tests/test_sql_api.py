@@ -31,7 +31,6 @@ def mark_tests_as_xfail(request):
             elif path.stem in ['19']:
                 pytest.skip(reason='nullability mismatch')
     if source == 'gateway-over-datafusion':
-        pytest.importorskip("datafusion.substrait")
         if originalname == 'test_count':
             pytest.skip(reason='COUNT() not implemented')
         if originalname == 'test_limit':
