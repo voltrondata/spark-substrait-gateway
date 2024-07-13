@@ -8,8 +8,8 @@ import pyarrow.parquet as pq
 from adbc_driver_manager import dbapi
 from substrait.gen.proto import plan_pb2
 
-from gateway.backends.backend import Backend
-from gateway.backends.backend_options import BackendEngine, BackendOptions
+from backends.backend import Backend
+from backends.backend_options import BackendEngine, BackendOptions
 
 
 def _import(handle):
@@ -43,8 +43,7 @@ class AdbcBackend(Backend):
         driver, entry_point = _get_backend_driver(self._options)
         self._connection = dbapi.connect(driver=driver, entrypoint=entry_point)
 
-    # pylint: disable=import-outside-toplevel
-    def execute(self, plan: plan_pb2.Plan) -> pa.lib.Table:
+    def _execute_plan(self, plan: plan_pb2.Plan) -> pa.lib.Table:
         """Execute the given Substrait plan against an ADBC backend."""
         with self._connection.cursor() as cur:
             cur.execute("LOAD substrait;")

@@ -12,7 +12,7 @@ from substrait.gen.proto import algebra_pb2, plan_pb2
 def get_plan_id_from_common(common: algebra_pb2.RelCommon) -> int:
     """Get the plan ID from the common section."""
     ref_rel = algebra_pb2.ReferenceRel()
-    common.advanced_extension.optimization.Unpack(ref_rel)
+    common.advanced_extension.optimization[0].Unpack(ref_rel)
     return ref_rel.subtree_ordinal
 
 

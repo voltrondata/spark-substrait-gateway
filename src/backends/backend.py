@@ -1,12 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 """The base class for all Substrait backends."""
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 import pyarrow as pa
 from substrait.gen.proto import plan_pb2
 
-from gateway.backends.backend_options import BackendOptions
+from backends.backend_options import BackendOptions
 
 
 class Backend:
@@ -30,10 +31,19 @@ class Backend:
             self.create_connection()
         return self._connection
 
-    # pylint: disable=import-outside-toplevel
-    def execute(self, plan: plan_pb2.Plan) -> pa.lib.Table:
-        """Execute the given Substrait plan against Datafusion."""
+    @contextmanager
+    def adjust_plan(self, plan: plan_pb2.Plan) -> Iterator[plan_pb2.Plan]:
+        """Modify the given Substrait plan for use with the given backend."""
+        yield plan
+
+    def _execute_plan(self, plan: plan_pb2.Plan) -> pa.lib.Table:
+        """Execute the given Substrait plan against the backend."""
         raise NotImplementedError()
+
+    def execute(self, plan: plan_pb2.Plan) -> pa.lib.Table:
+        """Adapt and execute the given Substrait plan against the backend."""
+        with self.adjust_plan(plan) as modified_plan:
+            return self._execute_plan(modified_plan)
 
     def register_table(self, name: str, path: Path, file_format: str = 'parquet') -> None:
         """Register the given table with the backend."""
@@ -66,7 +76,7 @@ class Backend:
     @staticmethod
     def find_tpch() -> Path:
         """Find the location of the TPCH dataset."""
-        current_location = Path('.').resolve()
+        current_location = Path('').resolve()
         while current_location != Path('/'):
             location = current_location / 'third_party' / 'tpch' / 'parquet'
             if location.exists():

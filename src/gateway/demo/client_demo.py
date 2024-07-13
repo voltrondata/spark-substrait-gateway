@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """A PySpark client that can send sample queries to the gateway."""
 
-from gateway.backends.backend import Backend
+from backends.backend import Backend
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.functions import col
 

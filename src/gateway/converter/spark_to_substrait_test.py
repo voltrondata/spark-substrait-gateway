@@ -3,7 +3,7 @@
 from pathlib import Path
 
 import pytest
-from gateway.backends.backend_selector import find_backend
+from backends.backend_selector import find_backend
 from gateway.converter.conversion_options import duck_db
 from gateway.converter.spark_to_substrait import SparkSubstraitConverter
 from gateway.demo.mystream_database import create_mystream_database, delete_mystream_database
