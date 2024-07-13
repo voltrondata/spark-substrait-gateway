@@ -31,7 +31,7 @@ class DuckDBBackend(Backend):
 
         self._connection = duckdb.connect(config={'max_memory': '100GB',
                                                   "allow_unsigned_extensions": "true",
-                                                  'temp_directory': str(Path('').resolve())})
+                                                  'temp_directory': str(Path('.').resolve())})
         self._connection.install_extension('substrait')
         self._connection.load_extension('substrait')
 
