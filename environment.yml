@@ -4,7 +4,6 @@ channels:
 dependencies:
   - pip
   - pre-commit
-  - protobuf >= 5.27.2, < 6.0.0
   - grpcio >= 1.48.1
   - grpcio-status
   - grpcio-tools
@@ -28,4 +27,5 @@ dependencies:
     - pyhamcrest
     - substrait-validator
     - pytest-timeout
+    - protobuf >= 5.27.2, < 6.0.0
 
