@@ -4,6 +4,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
+import pyarrow as pa
 from gateway.converter.rename_functions import RenameFunctionsForDatafusion
 from gateway.converter.replace_local_files import ReplaceLocalFilesWithNamedTable
 from substrait.gen.proto import plan_pb2
@@ -28,7 +29,7 @@ class DatafusionBackend(Backend):
         self._connection = datafusion.SessionContext()
 
     @contextmanager
-    def adjust_plan(self, plan: plan_pb2.Plan) -> plan_pb2.Plan:
+    def adjust_plan(self, plan: plan_pb2.Plan) -> Iterator[plan_pb2.Plan]:
         """Modify the given Substrait plan for use with Datafusion."""
         file_groups = ReplaceLocalFilesWithNamedTable().visit_plan(plan)
         registered_tables = set()
@@ -46,7 +47,7 @@ class DatafusionBackend(Backend):
             for table_name in registered_tables:
                 self._connection.deregister_table(table_name)
 
-    def _execute_plan(self, plan: plan_pb2.Plan) -> Iterator[plan_pb2.Plan]:
+    def _execute_plan(self, plan: plan_pb2.Plan) -> pa.lib.Table:
         """Execute the given Substrait plan against Datafusion."""
         import datafusion.substrait
 
