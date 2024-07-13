@@ -1,10 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """Provides access to Datafusion."""
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator
 
-import pyarrow as pa
 from gateway.converter.rename_functions import RenameFunctionsForDatafusion
 from gateway.converter.replace_local_files import ReplaceLocalFilesWithNamedTable
 from substrait.gen.proto import plan_pb2

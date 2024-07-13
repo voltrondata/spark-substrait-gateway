@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Provides access to DuckDB."""
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator
 
 import duckdb
 import pyarrow as pa

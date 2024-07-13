@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """The base class for all Substrait backends."""
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 import pyarrow as pa
 from substrait.gen.proto import plan_pb2
