@@ -78,7 +78,6 @@ def mark_dataframe_tests_as_xfail(request):
     source = request.getfixturevalue('source')
     originalname = request.keywords.node.originalname
     if source == 'gateway-over-datafusion':
-        pytest.importorskip("datafusion.substrait")
         if originalname in ['test_column_getfield', 'test_column_getitem']:
             pytest.skip(reason='structs not handled')
     elif originalname == 'test_column_getitem':
@@ -102,6 +101,8 @@ def mark_dataframe_tests_as_xfail(request):
         request.node.add_marker(pytest.mark.xfail(reason='duplicate name problem with joins'))
     if source == 'gateway-over-duckdb' and originalname == 'test_coalesce':
         request.node.add_marker(pytest.mark.xfail(reason='missing Substrait mapping'))
+    if source == 'gateway-over-datafusion' and originalname == 'test_coalesce':
+        request.node.add_marker(pytest.mark.xfail(reason='datafusion cast error'))
     if source == 'spark' and originalname == 'test_isnan':
         request.node.add_marker(pytest.mark.xfail(reason='None not preserved'))
     if source == 'gateway-over-datafusion' and originalname in [
