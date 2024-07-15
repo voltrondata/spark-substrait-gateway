@@ -3,9 +3,9 @@
 from typing import Any
 
 from gateway.converter.output_field_tracking_visitor import get_plan_id
-from gateway.converter.substrait_plan_visitor import SubstraitPlanVisitor
 from gateway.converter.symbol_table import SymbolTable
 from substrait.gen.proto import algebra_pb2
+from substrait_visitors.substrait_plan_visitor import SubstraitPlanVisitor
 
 
 # pylint: disable=no-member,fixme

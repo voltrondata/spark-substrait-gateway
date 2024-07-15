@@ -2,8 +2,8 @@
 """A library to search Substrait plan for local files."""
 from typing import Any
 
-from gateway.converter.substrait_plan_visitor import SubstraitPlanVisitor
 from substrait.gen.proto import algebra_pb2, plan_pb2
+from substrait_visitors.substrait_plan_visitor import SubstraitPlanVisitor
 
 
 # pylint: disable=no-member

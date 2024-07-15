@@ -6,7 +6,6 @@ from substrait.gen.proto import algebra_pb2, plan_pb2, type_pb2
 from substrait.gen.proto.extensions import extensions_pb2
 
 
-# pylint: disable=E1101,fixme,too-many-public-methods
 class SubstraitPlanVisitor:
     """Base class that visits all the parts of a Substrait plan."""
 
