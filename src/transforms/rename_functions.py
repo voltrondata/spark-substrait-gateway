@@ -77,7 +77,7 @@ class RenameFunctionsForDuckDB(SubstraitPlanVisitor):
 
 # pylint: disable=no-member,fixme
 class RenameFunctionsForArrow(SubstraitPlanVisitor):
-    """Renames Substrait functions to match what Datafusion expects."""
+    """Renames Substrait functions to match what Acero expects."""
 
     def __init__(self, use_uri_workaround=False):
         """Initialize the RenameFunctionsForArrow class."""

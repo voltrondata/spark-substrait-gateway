@@ -5,9 +5,9 @@ from contextlib import contextmanager
 from pathlib import Path
 
 import pyarrow as pa
-from gateway.converter.rename_functions import RenameFunctionsForDatafusion
-from gateway.converter.replace_local_files import ReplaceLocalFilesWithNamedTable
 from substrait.gen.proto import plan_pb2
+from transforms.rename_functions import RenameFunctionsForDatafusion
+from transforms.replace_local_files import ReplaceLocalFilesWithNamedTable
 
 from backends.backend import Backend
 

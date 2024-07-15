@@ -6,8 +6,8 @@ from typing import ClassVar
 
 import pyarrow as pa
 import pyarrow.substrait
-from gateway.converter.rename_functions import RenameFunctionsForArrow
 from substrait.gen.proto import plan_pb2
+from transforms.rename_functions import RenameFunctionsForArrow
 
 from backends.backend import Backend
 

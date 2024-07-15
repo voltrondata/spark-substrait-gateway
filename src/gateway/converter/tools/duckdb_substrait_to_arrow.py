@@ -2,11 +2,11 @@
 """Converts the provided plans from the DuckDB Substrait dialect to Acero's."""
 import sys
 
-from gateway.converter.label_relations import LabelRelations, UnlabelRelations
-from gateway.converter.output_field_tracking_visitor import OutputFieldTrackingVisitor
-from gateway.converter.simplify_casts import SimplifyCasts
 from google.protobuf import json_format
 from substrait.gen.proto import plan_pb2
+from transforms.label_relations import LabelRelations, UnlabelRelations
+from transforms.output_field_tracking_visitor import OutputFieldTrackingVisitor
+from transforms.simplify_casts import SimplifyCasts
 
 
 # pylint: disable=E1101
