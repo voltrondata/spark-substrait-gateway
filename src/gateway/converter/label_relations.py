@@ -73,7 +73,7 @@ class LabelRelations(SubstraitPlanVisitor):
         """Visits a relation node."""
         # TODO -- Use something more disciplined than ReferenceRel here.
         label = algebra_pb2.ReferenceRel(subtree_ordinal=self._seen_relations)
-        get_common_section(rel).advanced_extension.optimization.Pack(label)
+        get_common_section(rel).advanced_extension.optimization.add().Pack(label)
         self._seen_relations += 1
         super().visit_relation(rel)
 

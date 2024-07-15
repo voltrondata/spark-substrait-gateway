@@ -1,14 +1,15 @@
 # SPDX-License-Identifier: Apache-2.0
 """Provides access to Acero."""
+from contextlib import contextmanager
 from pathlib import Path
 from typing import ClassVar
 
 import pyarrow as pa
 import pyarrow.substrait
+from gateway.converter.rename_functions import RenameFunctionsForArrow
 from substrait.gen.proto import plan_pb2
 
-from gateway.backends.backend import Backend
-from gateway.converter.rename_functions import RenameFunctionsForArrow
+from backends.backend import Backend
 
 
 class ArrowBackend(Backend):
@@ -17,21 +18,24 @@ class ArrowBackend(Backend):
     _registered_tables: ClassVar[dict[str, Path]] = {}
 
     def __init__(self, options):
-        """Initialize the Datafusion backend."""
+        """Initialize the Acero backend."""
         super().__init__(options)
         self._use_uri_workaround = options.use_arrow_uri_workaround
 
-    # pylint: disable=import-outside-toplevel
-    def execute(self, plan: plan_pb2.Plan) -> pa.lib.Table:
-        """Execute the given Substrait plan against Acero."""
+    @contextmanager
+    def adjust_plan(self, plan: plan_pb2.Plan):
+        """Modify the given Substrait plan for use with Acero."""
         RenameFunctionsForArrow(use_uri_workaround=self._use_uri_workaround).visit_plan(plan)
+        yield plan
 
+    def _execute_plan(self, plan: plan_pb2.Plan) -> pa.lib.Table:
+        """Execute the given Substrait plan against Acero."""
         plan_data = plan.SerializeToString()
         reader = pa.substrait.run_query(plan_data, table_provider=self._provide_tables)
         return reader.read_all()
 
     def register_table(self, name: str, path: Path, file_format: str = 'parquet') -> None:
-        """Register the given table with the backend."""
+        """Register the given table with Acero."""
         self._registered_tables[name] = path
 
     def drop_table(self, name: str) -> None:

@@ -1,12 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 """Provides access to DuckDB."""
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 import duckdb
 import pyarrow as pa
 from substrait.gen.proto import plan_pb2
 
-from gateway.backends.backend import Backend
+from backends.backend import Backend
 from src.gateway.converter.rename_functions import RenameFunctionsForDuckDB
 
 
@@ -43,11 +45,16 @@ class DuckDBBackend(Backend):
         for table in self._tables.values():
             self.register_table(*table)
 
-    # ruff: noqa: BLE001
-    def execute(self, plan: plan_pb2.Plan) -> pa.lib.Table:
-        """Execute the given Substrait plan against DuckDB."""
+    @contextmanager
+    def adjust_plan(self, plan: plan_pb2.Plan) -> Iterator[plan_pb2.Plan]:
+        """Modify the given Substrait plan for use with DuckDB."""
         RenameFunctionsForDuckDB().visit_plan(plan)
 
+        yield plan
+
+    # ruff: noqa: BLE001
+    def _execute_plan(self, plan: plan_pb2.Plan) -> pa.lib.Table:
+        """Execute the given Substrait plan against DuckDB."""
         plan_data = plan.SerializeToString()
 
         try:
@@ -79,7 +86,7 @@ class DuckDBBackend(Backend):
         """Asks the backend to describe the given files."""
         files = paths
         if len(paths) == 1:
-            files = self.expand_location(paths[0])
+            files = Backend.expand_location(paths[0])
         # TODO -- Handle resolution of a combined schema.
         df = self._connection.read_parquet(files)
         schema = df.to_arrow_table().schema

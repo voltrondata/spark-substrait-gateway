@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 """Given a backend enum, returns an instance of the correct Backend descendant."""
-from gateway.backends import backend
-from gateway.backends.adbc_backend import AdbcBackend
-from gateway.backends.arrow_backend import ArrowBackend
-from gateway.backends.backend_options import BackendEngine, BackendOptions
-from gateway.backends.datafusion_backend import DatafusionBackend
-from gateway.backends.duckdb_backend import DuckDBBackend
+from backends import backend
+from backends.adbc_backend import AdbcBackend
+from backends.arrow_backend import ArrowBackend
+from backends.backend_options import BackendEngine, BackendOptions
+from backends.datafusion_backend import DatafusionBackend
+from backends.duckdb_backend import DuckDBBackend
 
 
 def find_backend(options: BackendOptions) -> backend.Backend:
