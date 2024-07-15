@@ -13,7 +13,7 @@ jobs:
   test:
     name: Test
     strategy:
-      max-parallel: 3
+      max-parallel: 5
       matrix:
         os: [macos-latest, ubuntu-latest]
         source: ["general", "spark", "gateway-over-duckdb", "gateway-over-datafusion"]
