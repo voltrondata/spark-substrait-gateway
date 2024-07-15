@@ -5,6 +5,7 @@ from typing import Any
 from gateway.converter.symbol_table import SymbolTable
 from substrait.gen.proto import algebra_pb2
 from substrait_visitors.substrait_plan_visitor import SubstraitPlanVisitor
+from transforms.output_field_tracking_visitor import get_plan_id
 
 from transforms.output_field_tracking_visitor import get_plan_id
 
