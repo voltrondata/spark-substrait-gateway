@@ -98,7 +98,7 @@ def mark_dataframe_tests_as_xfail(request):
     if source == 'gateway-over-datafusion' and originalname == 'test_offset':
         request.node.add_marker(pytest.mark.xfail(reason='offset not supported'))
     if source == 'gateway-over-datafusion' and originalname == 'test_broadcast':
-        request.node.add_marker(pytest.mark.xfail(reason='duplicate name problem with joins'))
+        pytest.skip(reason='duplicate name problem with joins')
     if source == 'gateway-over-duckdb' and originalname == 'test_coalesce':
         request.node.add_marker(pytest.mark.xfail(reason='missing Substrait mapping'))
     if source == 'gateway-over-datafusion' and originalname == 'test_coalesce':

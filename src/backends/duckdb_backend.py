@@ -7,9 +7,9 @@ from pathlib import Path
 import duckdb
 import pyarrow as pa
 from substrait.gen.proto import plan_pb2
+from transforms.rename_functions import RenameFunctionsForDuckDB
 
 from backends.backend import Backend
-from src.gateway.converter.rename_functions import RenameFunctionsForDuckDB
 
 
 # pylint: disable=fixme

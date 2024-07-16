@@ -2,10 +2,11 @@
 """A library to search Substrait plan for local files."""
 from typing import Any
 
-from gateway.converter.label_relations import get_common_section
-from gateway.converter.substrait_plan_visitor import SubstraitPlanVisitor
 from gateway.converter.symbol_table import SymbolTable
 from substrait.gen.proto import algebra_pb2, plan_pb2
+from substrait_visitors.substrait_plan_visitor import SubstraitPlanVisitor
+
+from transforms.label_relations import get_common_section
 
 
 # pylint: disable=E1101
