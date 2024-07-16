@@ -8,8 +8,6 @@ from substrait_visitors.substrait_plan_visitor import SubstraitPlanVisitor
 
 from transforms.label_relations import get_common_section
 
-from transforms.label_relations import get_common_section
-
 
 # pylint: disable=E1101
 def get_plan_id_from_common(common: algebra_pb2.RelCommon) -> int:
