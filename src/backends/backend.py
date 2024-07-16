@@ -64,11 +64,13 @@ class Backend:
 
     def convert_sql(self, sql: str) -> plan_pb2.Plan:
         """Convert SQL into a Substrait plan."""
+        # TODO -- Remove in favor of the Ibis Substrait conversion.
         raise NotImplementedError()
 
     @staticmethod
     def expand_location(location: Path | str) -> list[str]:
         """Expand the location of a file or directory into a list of files."""
+        # TODO -- Move into the gateway code.
         # TODO -- Handle more than just Parquet files.
         path = Path(location)
         files = Path(location).resolve().glob('*.parquet') if path.is_dir() else [path]
@@ -77,6 +79,7 @@ class Backend:
     @staticmethod
     def find_tpch() -> Path:
         """Find the location of the TPCH dataset."""
+        # TODO -- Move into the gateway module.
         current_location = Path('').resolve()
         while current_location != Path('/'):
             location = current_location / 'third_party' / 'tpch' / 'parquet'
@@ -87,6 +90,7 @@ class Backend:
 
     def register_tpch(self):
         """Register the entire TPC-H dataset."""
+        # TODO -- Remove all remaining uses and eliminate.
         tpch_location = Backend.find_tpch()
         self.register_table('customer', tpch_location / 'customer')
         self.register_table('lineitem', tpch_location / 'lineitem')

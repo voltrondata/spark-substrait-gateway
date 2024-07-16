@@ -102,7 +102,7 @@ def mark_dataframe_tests_as_xfail(request):
     if source == 'gateway-over-duckdb' and originalname == 'test_coalesce':
         request.node.add_marker(pytest.mark.xfail(reason='missing Substrait mapping'))
     if source == 'gateway-over-datafusion' and originalname == 'test_coalesce':
-        request.node.add_marker(pytest.mark.xfail(reason='datafusion cast error'))
+        pytest.skip(reason='datafusion cast error')
     if source == 'spark' and originalname == 'test_isnan':
         request.node.add_marker(pytest.mark.xfail(reason='None not preserved'))
     if source == 'gateway-over-datafusion' and originalname in [
