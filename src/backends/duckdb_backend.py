@@ -70,7 +70,7 @@ class DuckDBBackend(Backend):
             file_format: str = "parquet"
     ) -> None:
         """Register the given table with the backend."""
-        files = Backend.expand_location(location)
+        files = Backend._expand_location(location)
         if not files:
             raise ValueError(f"No parquet files found at {location}")
 
@@ -86,7 +86,7 @@ class DuckDBBackend(Backend):
         """Asks the backend to describe the given files."""
         files = paths
         if len(paths) == 1:
-            files = Backend.expand_location(paths[0])
+            files = Backend._expand_location(paths[0])
         # TODO -- Handle resolution of a combined schema.
         df = self._connection.read_parquet(files)
         schema = df.to_arrow_table().schema

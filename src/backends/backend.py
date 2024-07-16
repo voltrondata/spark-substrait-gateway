@@ -68,35 +68,9 @@ class Backend:
         raise NotImplementedError()
 
     @staticmethod
-    def expand_location(location: Path | str) -> list[str]:
+    def _expand_location(location: Path | str) -> list[str]:
         """Expand the location of a file or directory into a list of files."""
-        # TODO -- Move into the gateway code.
         # TODO -- Handle more than just Parquet files.
         path = Path(location)
         files = Path(location).resolve().glob('*.parquet') if path.is_dir() else [path]
         return sorted(str(f) for f in files)
-
-    @staticmethod
-    def find_tpch() -> Path:
-        """Find the location of the TPCH dataset."""
-        # TODO -- Move into the gateway module.
-        current_location = Path('').resolve()
-        while current_location != Path('/'):
-            location = current_location / 'third_party' / 'tpch' / 'parquet'
-            if location.exists():
-                return location.resolve()
-            current_location = current_location.parent
-        raise ValueError('TPCH dataset not found')
-
-    def register_tpch(self):
-        """Register the entire TPC-H dataset."""
-        # TODO -- Remove all remaining uses and eliminate.
-        tpch_location = Backend.find_tpch()
-        self.register_table('customer', tpch_location / 'customer')
-        self.register_table('lineitem', tpch_location / 'lineitem')
-        self.register_table('nation', tpch_location / 'nation')
-        self.register_table('orders', tpch_location / 'orders')
-        self.register_table('part', tpch_location / 'part')
-        self.register_table('partsupp', tpch_location / 'partsupp')
-        self.register_table('region', tpch_location / 'region')
-        self.register_table('supplier', tpch_location / 'supplier')
