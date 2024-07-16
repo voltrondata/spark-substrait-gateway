@@ -1,11 +1,23 @@
 # SPDX-License-Identifier: Apache-2.0
 """A PySpark client that can send sample queries to the gateway."""
+from pathlib import Path
 
 from backends.backend import Backend
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.functions import col
 
 USE_GATEWAY = True
+
+
+def find_tpch() -> Path:
+    """Find the location of the TPCH dataset."""
+    current_location = Path('').resolve()
+    while current_location != Path('/'):
+        location = current_location / 'third_party' / 'tpch' / 'parquet'
+        if location.exists():
+            return location.resolve()
+        current_location = current_location.parent
+    raise ValueError('TPCH dataset not found')
 
 
 # pylint: disable=fixme
