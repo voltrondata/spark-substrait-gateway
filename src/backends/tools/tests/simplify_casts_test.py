@@ -3,10 +3,11 @@
 from pathlib import Path
 
 import pytest
-from backends.tools.duckdb_substrait_to_arrow import simplify_substrait_dialect
 from google.protobuf import json_format, text_format
 from hamcrest import assert_that, equal_to
 from substrait.gen.proto import plan_pb2
+
+from backends.tools.duckdb_substrait_to_arrow import simplify_substrait_dialect
 
 test_case_directory = Path(__file__).resolve().parent / 'data'
 
