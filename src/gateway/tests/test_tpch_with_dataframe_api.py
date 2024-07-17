@@ -28,12 +28,8 @@ def mark_tests_as_xfail(request):
                 reason='Cannot create filter with non-boolean predicate - substr function'))
         elif originalname in ['test_query_11']:
             request.node.add_marker(pytest.mark.xfail(reason='Duplicate field in schema'))
-        elif originalname in ['test_query_08', 'test_query_14']:
-            request.node.add_marker(pytest.mark.xfail(reason='Sum not implemented'))
         elif originalname in ['test_query_15']:
             request.node.add_marker(pytest.mark.xfail(reason='No results (float vs decimal)'))
-        elif originalname in ['test_query_17']:
-            request.node.add_marker(pytest.mark.xfail(reason='Avg not implemented'))
 
 
 class TestTpchWithDataFrameAPI:
