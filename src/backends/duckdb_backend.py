@@ -53,7 +53,7 @@ class DuckDBBackend(Backend):
         registered_tables = set()
         for files in file_groups:
             table_name = files[0]
-            location = Path(files[1][0]).parent
+            location = Path(files[1][0])
             self.register_table(table_name, location)
             registered_tables.add(table_name)
 
@@ -63,7 +63,9 @@ class DuckDBBackend(Backend):
             yield plan
         finally:
             for table_name in registered_tables:
-                self._connection.deregister_table(table_name)
+                # TODO -- Tell DuckDB to forget about this table.
+                # self._connection.deregister_table(table_name)
+                pass
 
     # ruff: noqa: BLE001
     def _execute_plan(self, plan: plan_pb2.Plan) -> pa.lib.Table:

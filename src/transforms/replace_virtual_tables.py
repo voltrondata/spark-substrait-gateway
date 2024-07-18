@@ -69,7 +69,8 @@ class ReplaceVirtualTablesWithNamedTable(SubstraitPlanVisitor):
 
         # TODO -- Create guaranteed unique temporary table names.
         table_name = 'virtual_table1'
-        file_name = f'{table_name}.parquet'
+        # TODO -- Use a full path.
+        file_name = f'./{table_name}.parquet'
         self._file_groups.append((table_name, [file_name]))
         pq.write_table(table, file_name)
 
