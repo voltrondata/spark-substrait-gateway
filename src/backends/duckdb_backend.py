@@ -10,6 +10,7 @@ from substrait.gen.proto import plan_pb2
 from transforms.rename_functions import RenameFunctionsForDuckDB
 
 from backends.backend import Backend
+from transforms.replace_virtual_tables import ReplaceVirtualTablesWithNamedTable
 
 
 # pylint: disable=fixme
@@ -48,9 +49,21 @@ class DuckDBBackend(Backend):
     @contextmanager
     def adjust_plan(self, plan: plan_pb2.Plan) -> Iterator[plan_pb2.Plan]:
         """Modify the given Substrait plan for use with DuckDB."""
+        file_groups = ReplaceVirtualTablesWithNamedTable().visit_plan(plan)
+        registered_tables = set()
+        for files in file_groups:
+            table_name = files[0]
+            location = Path(files[1][0]).parent
+            self.register_table(table_name, location)
+            registered_tables.add(table_name)
+
         RenameFunctionsForDuckDB().visit_plan(plan)
 
-        yield plan
+        try:
+            yield plan
+        finally:
+            for table_name in registered_tables:
+                self._connection.deregister_table(table_name)
 
     # ruff: noqa: BLE001
     def _execute_plan(self, plan: plan_pb2.Plan) -> pa.lib.Table:
