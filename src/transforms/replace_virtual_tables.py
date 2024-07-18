@@ -1,26 +1,30 @@
 # SPDX-License-Identifier: Apache-2.0
 """A library to search Substrait plan for virtual tables."""
+from pathlib import Path
 from typing import Any
 
-from substrait.gen.proto import algebra_pb2, plan_pb2, type_pb2
-from substrait_visitors.substrait_plan_visitor import SubstraitPlanVisitor
 import pyarrow as pa
 import pyarrow.parquet as pq
+from substrait.gen.proto import algebra_pb2, plan_pb2, type_pb2
+from substrait_visitors.substrait_plan_visitor import SubstraitPlanVisitor
 
 
 # pylint: disable=no-member
 class ReplaceVirtualTablesWithNamedTable(SubstraitPlanVisitor):
-    """Replaces all the local file instances with named tables."""
+    """Replaces all the virtual table instances with named tables."""
+
+    _TABLES_FOUND: int = 0
 
     def __init__(self):
         """Initialize the visitor."""
-        self._file_groups: list[tuple[str, list[str]]] = []
+        self._table_definitions: list[tuple[str, Path]] = []
         self._schema: type_pb2.NamedStruct | None = None
 
         super().__init__()
 
     def get_arrow_value_from_literal(self, literal: algebra_pb2.Expression.Literal) -> Any:
-        # TODO -- Implement.
+        """Return the value from a Substrait literal."""
+        # TODO -- Handle the rest of the types including maps, lists, and structs.
         match literal.WhichOneof('literal_type'):
             case 'boolean':
                 return literal.boolean
@@ -55,10 +59,8 @@ class ReplaceVirtualTablesWithNamedTable(SubstraitPlanVisitor):
         # TODO -- Ensure that the schema of the virtual table matches the base_schema.
         for values in virtual_table.values:
             row = {}
-            current_name = 0
-            for field in values.fields:
-                row[self._schema.names[current_name]] = self.get_arrow_value_from_literal(field)
-                current_name += 1
+            for idx, field in enumerate(values.fields):
+                row[self._schema.names[idx]] = self.get_arrow_value_from_literal(field)
             table_data.append(row)
         return pa.Table.from_pylist(table_data)
 
@@ -67,12 +69,11 @@ class ReplaceVirtualTablesWithNamedTable(SubstraitPlanVisitor):
         super().visit_virtual_table(virtual_table)
         table = self.create_arrow_table(virtual_table)
 
-        # TODO -- Create guaranteed unique temporary table names.
-        table_name = 'virtual_table1'
-        # TODO -- Use a full path.
-        file_name = f'./{table_name}.parquet'
-        self._file_groups.append((table_name, [file_name]))
-        pq.write_table(table, file_name)
+        ReplaceVirtualTablesWithNamedTable._TABLES_FOUND += 1
+        table_name = f'virtual_table{ReplaceVirtualTablesWithNamedTable._TABLES_FOUND}'
+        location = Path(f'./{table_name}.parquet').absolute()
+        self._table_definitions.append((table_name, location))
+        pq.write_table(table, location)
 
     def visit_read_relation(self, rel: algebra_pb2.ReadRel) -> Any:
         """Visit a read relation node."""
@@ -80,10 +81,10 @@ class ReplaceVirtualTablesWithNamedTable(SubstraitPlanVisitor):
         super().visit_read_relation(rel)
         if rel.HasField('virtual_table'):
             rel.ClearField('virtual_table')
-            rel.named_table.names.append(self._file_groups[-1][0])
+            rel.named_table.names.append(self._table_definitions[-1][0])
         self._schema = None
 
-    def visit_plan(self, plan: plan_pb2.Plan) -> list[tuple[str, list[str]]]:
+    def visit_plan(self, plan: plan_pb2.Plan) -> list[tuple[str, Path]]:
         """Modify the provided plan so that Local Files are replaced with Named Tables."""
         super().visit_plan(plan)
-        return self._file_groups
+        return self._table_definitions

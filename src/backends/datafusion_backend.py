@@ -67,7 +67,8 @@ class DatafusionBackend(Backend):
         return df_result.to_arrow_table()
 
     def register_table(
-            self, name: str, location: Path, file_format: str = 'parquet'
+            self, name: str, location: Path, file_format: str = 'parquet',
+            temporary: bool = False
     ) -> None:
         """Register the given table with the backend."""
         files = Backend._expand_location(location)

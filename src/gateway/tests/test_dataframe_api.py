@@ -158,7 +158,6 @@ class TestDataFrameAPI:
 
         assert len(outcome) == 29
 
-    @pytest.mark.interesting
     def test_create_dataframe(self, spark_session, caplog):
         expected = [
             Row(age=1, name='Alice'),
