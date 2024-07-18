@@ -158,6 +158,18 @@ class TestDataFrameAPI:
 
         assert len(outcome) == 29
 
+    @pytest.mark.interesting
+    def test_create_dataframe(self, spark_session, caplog):
+        expected = [
+            Row(age=1, name='Alice'),
+            Row(age=2, name='Bob'),
+        ]
+
+        with utilizes_valid_plans(spark_session, caplog):
+            test_df = spark_session.createDataFrame([(1, 'Alice'), (2, 'Bob')], ['age', 'name'])
+
+        assertDataFrameEqual(test_df.collect(), expected)
+
     def test_dropna(self, spark_session, caplog):
         schema = pa.schema({'name': pa.string(), 'age': pa.int32()})
         table = pa.Table.from_pydict(
