@@ -1255,7 +1255,6 @@ class SparkSubstraitConverter:
     def convert_to_df_relation(self, rel: spark_relations_pb2.ToDF) -> algebra_pb2.Rel:
         """Convert a to dataframe relation into a Substrait project relation."""
         input_rel = self.convert_relation(rel.input)
-        project = algebra_pb2.ProjectRel(input=input_rel)
         self.update_field_references(rel.input.common.plan_id)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         if len(rel.column_names) != len(symbol.input_fields):
@@ -1264,8 +1263,7 @@ class SparkSubstraitConverter:
         symbol.output_fields.clear()
         for field_name in rel.column_names:
             symbol.output_fields.append(field_name)
-        project.common.CopyFrom(self.create_common_relation())
-        return algebra_pb2.Rel(project=project)
+        return input_rel
 
     def convert_arrow_to_literal(self, val: pa.Scalar) -> algebra_pb2.Expression.Literal:
         """Convert an Arrow scalar into a Substrait literal."""

@@ -8,7 +8,7 @@ from substrait_visitors.substrait_plan_visitor import SubstraitPlanVisitor
 
 # pylint: disable=no-member
 class ReplaceLocalFilesWithNamedTable(SubstraitPlanVisitor):
-    """Replaces all of the local file instances with named tables."""
+    """Replaces all the local file instances with named tables."""
 
     def __init__(self):
         """Initialize the visitor."""

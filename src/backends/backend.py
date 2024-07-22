@@ -46,7 +46,8 @@ class Backend:
         with self.adjust_plan(plan) as modified_plan:
             return self._execute_plan(modified_plan)
 
-    def register_table(self, name: str, path: Path, file_format: str = 'parquet') -> None:
+    def register_table(self, name: str, path: Path, file_format: str = 'parquet',
+                       temporary: bool = False) -> None:
         """Register the given table with the backend."""
         raise NotImplementedError()
 

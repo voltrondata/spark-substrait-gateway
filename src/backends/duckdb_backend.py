@@ -8,6 +8,7 @@ import duckdb
 import pyarrow as pa
 from substrait.gen.proto import plan_pb2
 from transforms.rename_functions import RenameFunctionsForDuckDB
+from transforms.replace_virtual_tables import ReplaceVirtualTablesWithNamedTable
 
 from backends.backend import Backend
 
@@ -48,9 +49,20 @@ class DuckDBBackend(Backend):
     @contextmanager
     def adjust_plan(self, plan: plan_pb2.Plan) -> Iterator[plan_pb2.Plan]:
         """Modify the given Substrait plan for use with DuckDB."""
+        table_definitions = ReplaceVirtualTablesWithNamedTable().visit_plan(plan)
+        for table_name, location in table_definitions:
+            self.register_table(table_name, location, temporary=True)
+
         RenameFunctionsForDuckDB().visit_plan(plan)
 
-        yield plan
+        try:
+            yield plan
+        finally:
+            for _, location in table_definitions:
+                # TODO -- Tell DuckDB to forget about this table.
+                # self._connection.deregister_table(table_name)
+                location.unlink(missing_ok=True)
+                pass
 
     # ruff: noqa: BLE001
     def _execute_plan(self, plan: plan_pb2.Plan) -> pa.lib.Table:
@@ -67,14 +79,16 @@ class DuckDBBackend(Backend):
             self,
             table_name: str,
             location: Path,
-            file_format: str = "parquet"
+            file_format: str = "parquet",
+            temporary: bool = False,
     ) -> None:
         """Register the given table with the backend."""
         files = Backend._expand_location(location)
         if not files:
             raise ValueError(f"No parquet files found at {location}")
 
-        self._tables[table_name] = (table_name, location, file_format)
+        if not temporary:
+            self._tables[table_name] = (table_name, location, file_format)
         if self._use_duckdb_python_api:
             self._connection.register(table_name, self._connection.read_parquet(files))
         else:

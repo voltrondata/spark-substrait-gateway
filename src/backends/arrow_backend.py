@@ -34,7 +34,8 @@ class ArrowBackend(Backend):
         reader = pa.substrait.run_query(plan_data, table_provider=self._provide_tables)
         return reader.read_all()
 
-    def register_table(self, name: str, path: Path, file_format: str = 'parquet') -> None:
+    def register_table(self, name: str, path: Path, file_format: str = 'parquet',
+                       temporary: bool = False) -> None:
         """Register the given table with Acero."""
         self._registered_tables[name] = path
 

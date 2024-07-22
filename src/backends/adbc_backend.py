@@ -52,7 +52,8 @@ class AdbcBackend(Backend):
             res = cur.adbc_statement.execute_query()
             return _import(res[0]).read_all()
 
-    def register_table(self, name: str, path: Path, file_format: str = 'parquet') -> None:
+    def register_table(self, name: str, path: Path, file_format: str = 'parquet',
+                       temporary: bool = False) -> None:
         """Register the given table with the backend."""
         file_paths = sorted(Path(path).glob(f'*.{file_format}'))
         if len(file_paths) > 0:
