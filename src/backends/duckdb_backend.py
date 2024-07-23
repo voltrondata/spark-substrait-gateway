@@ -103,7 +103,7 @@ class DuckDBBackend(Backend):
             files = Backend._expand_location(paths[0])
         # TODO -- Handle resolution of a combined schema.
         df = self._connection.read_parquet(files)
-        schema = df.to_arrow_table().schema
+        schema = df.fetch_arrow_reader().schema
         if 'aggr' in schema.names:
             raise ValueError("Aggr column found in schema")
         return schema
