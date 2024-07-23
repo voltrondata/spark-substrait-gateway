@@ -23,7 +23,7 @@ def find_tpch() -> Path:
 # pylint: disable=fixme
 def get_customer_database(spark_session: SparkSession) -> DataFrame:
     """Register the TPC-H customer database."""
-    location_customer = str(Backend.find_tpch() / 'customer')
+    location_customer = str(find_tpch() / 'customer')
 
     return spark_session.read.parquet(location_customer, mergeSchema=False)
 
