@@ -2,7 +2,6 @@
 """A PySpark client that can send sample queries to the gateway."""
 from pathlib import Path
 
-from backends.backend import Backend
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.functions import col
 
