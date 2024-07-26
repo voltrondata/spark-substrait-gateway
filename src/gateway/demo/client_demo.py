@@ -10,12 +10,9 @@ USE_GATEWAY = True
 
 def find_tpch() -> Path:
     """Find the location of the TPCH dataset."""
-    current_location = Path('').resolve()
-    while current_location != Path('/'):
-        location = current_location / 'third_party' / 'tpch' / 'parquet'
-        if location.exists():
-            return location.resolve()
-        current_location = current_location.parent
+    location = Path('third_party') / 'tpch' / 'parquet'
+    if location.exists():
+        return location
     raise ValueError('TPCH dataset not found')
 
 

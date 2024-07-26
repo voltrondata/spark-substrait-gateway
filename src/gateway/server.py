@@ -440,6 +440,7 @@ def serve(port: int, wait: bool = True):
     pb2_grpc.add_SparkConnectServiceServicer_to_server(SparkConnectService(), server)
     channelz.add_channelz_servicer(server)
     server.add_insecure_port(f'[::]:{port}')
+    _LOGGER.info(f'Starting SparkConnect server - listening on port: {port}')
     server.start()
     if wait:
         server.wait_for_termination()
@@ -449,4 +450,7 @@ def serve(port: int, wait: bool = True):
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, encoding='utf-8')
-    serve(50051)
+
+    serve(port=50051,
+          wait=True
+          )
