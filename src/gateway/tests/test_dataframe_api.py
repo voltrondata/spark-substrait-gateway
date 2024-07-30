@@ -2434,7 +2434,6 @@ class TestDataFrameAPIMathFunctions:
         assertDataFrameEqual(outcome, expected)
 
 
-@pytest.mark.interesting
 class TestDataFrameAggregateBehavior:
     """Tests aggregation behavior using the dataframe side of SparkConnect."""
 
@@ -2498,6 +2497,25 @@ class TestDataFrameAggregateBehavior:
 
             outcome = lineitem.groupBy('l_suppkey').agg(
                 try_sum(col('l_extendedprice')) *
+                try_sum(col('l_quantity'))
+            ).orderBy('l_suppkey').limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    @pytest.mark.interesting
+    def test_computation_with_two_aggregations_and_internal_calculation(
+            self, register_tpch_dataset, spark_session):
+        expected = [
+            Row(l_suppkey=1, a=3903113211864.30),
+            Row(l_suppkey=2, a=2883714563527.20),
+            Row(l_suppkey=3, a=3065404357629.60),
+        ]
+
+        with utilizes_valid_plans(spark_session):
+            lineitem = spark_session.table('lineitem')
+
+            outcome = lineitem.groupBy('l_suppkey').agg(
+                try_sum(col('l_extendedprice') * 10) *
                 try_sum(col('l_quantity'))
             ).orderBy('l_suppkey').limit(3).collect()
 
