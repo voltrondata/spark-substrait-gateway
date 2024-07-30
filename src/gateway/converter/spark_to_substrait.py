@@ -741,6 +741,8 @@ class SparkSubstraitConverter:
         match str(arrow_type):
             case 'bool':
                 field_type = type_pb2.Type(bool=type_pb2.Type.Boolean(nullability=nullability))
+            case 'int8':
+                field_type = type_pb2.Type(i8=type_pb2.Type.I8(nullability=nullability))
             case 'int16':
                 field_type = type_pb2.Type(i16=type_pb2.Type.I16(nullability=nullability))
             case 'int32':
@@ -1615,7 +1617,7 @@ class SparkSubstraitConverter:
         """Convert a Spark plan into a Substrait plan."""
         result = plan_pb2.Plan()
         result.version.CopyFrom(
-            plan_pb2.Version(minor_number=42, producer='spark-substrait-gateway'))
+            plan_pb2.Version(minor_number=52, producer='spark-substrait-gateway'))
         if plan.HasField('root'):
             rel_root = algebra_pb2.RelRoot(input=self.convert_relation(plan.root))
             symbol = self._symbol_table.get_symbol(plan.root.common.plan_id)
