@@ -62,19 +62,6 @@ class ExpressionProcessingMode(Enum):
     AGGR_UNDER_AGGREGATE = 3
 
 
-class AggregateConversionDetails:
-    """Stores the state of an individual measure as it is being converted."""
-
-    def __init__(self):
-        """Initialize the conversion details."""
-        self.top_level_project: algebra_pb2.Rel | None = None
-        self.aggregations: list[algebra_pb2.AggregateFunction] = []
-        self.under_aggregation_projects: list[algebra_pb2.Rel] = []
-
-        self._next_aggregation_reference_id = None
-        self._next_under_aggregation_reference_id = 0
-
-
 # ruff: noqa: RUF005
 class SparkSubstraitConverter:
     """Converts SparkConnect plans to Substrait plans."""
