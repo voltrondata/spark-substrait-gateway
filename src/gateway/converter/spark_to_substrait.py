@@ -561,8 +561,6 @@ class SparkSubstraitConverter:
         """Convert a SparkConnect expression to a Substrait expression."""
         parent_processing_mode = self._expression_processing_mode
         try:
-            if parent_processing_mode == ExpressionProcessingMode.AGGR_NOT_TOP_LEVEL:
-                self._expression_processing_mode = ExpressionProcessingMode.AGGR_UNDER_AGGREGATE
             match expr.WhichOneof('expr_type'):
                 case 'literal':
                     result = self.convert_literal_expression(expr.literal)
@@ -572,7 +570,11 @@ class SparkSubstraitConverter:
                 case 'unresolved_attribute':
                     result = self.convert_unresolved_attribute(expr.unresolved_attribute)
                 case 'unresolved_function':
+                    if parent_processing_mode == ExpressionProcessingMode.AGGR_NOT_TOP_LEVEL:
+                        self._expression_processing_mode = ExpressionProcessingMode.AGGR_UNDER_AGGREGATE
                     result = self.convert_unresolved_function(expr.unresolved_function)
+                    if parent_processing_mode == ExpressionProcessingMode.AGGR_NOT_TOP_LEVEL:
+                        self._expression_processing_mode = parent_processing_mode
                     if isinstance(result, algebra_pb2.AggregateFunction):
                         match parent_processing_mode:
                             case ExpressionProcessingMode.AGGR_TOP_LEVEL:
