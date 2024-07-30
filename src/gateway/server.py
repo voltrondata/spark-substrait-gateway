@@ -2,6 +2,7 @@
 """SparkConnect server that drives a backend using Substrait."""
 import io
 import logging
+import os
 from collections.abc import Generator
 from concurrent import futures
 
@@ -9,6 +10,8 @@ import grpc
 import pyarrow as pa
 import pyspark.sql.connect.proto.base_pb2 as pb2
 import pyspark.sql.connect.proto.base_pb2_grpc as pb2_grpc
+import click
+from pathlib import Path
 from backends.backend import Backend
 from backends.backend_options import BackendEngine, BackendOptions
 from backends.backend_selector import find_backend
@@ -19,6 +22,9 @@ from substrait.gen.proto import plan_pb2
 
 from gateway.converter.conversion_options import arrow, datafusion, duck_db
 from gateway.converter.spark_to_substrait import SparkSubstraitConverter
+from gateway.config import DEFAULT_CERT_FILE, DEFAULT_KEY_FILE, SERVER_PORT
+from gateway.security import BearerTokenAuthInterceptor
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -404,12 +410,142 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
         return pb2.ReleaseExecuteResponse()
 
 
-def serve(port: int, wait: bool = True):
-    """Start the SparkConnect to Substrait gateway server."""
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+@click.command()
+@click.option(
+    "--port",
+    type=int,
+    default=os.getenv("SERVER_PORT", SERVER_PORT),
+    show_default=True,
+    required=True,
+    help="Run the Spark Substrait Gateway server on this port."
+)
+@click.option(
+    "--wait/--no-wait",
+    type=bool,
+    default=True,
+    show_default=True,
+    required=True,
+    help="Keep the server running until it is manually stopped."
+)
+@click.option(
+    "--tls",
+    nargs=2,
+    default=os.getenv("TLS").split(" ") if os.getenv("TLS") else None,
+    required=False,
+    metavar=('CERTFILE', 'KEYFILE'),
+    help="Enable transport-level security (TLS/SSL).  Provide a Certificate file path, and a Key file path - separated by a space.  Example: tls/server.crt tls/server.key"
+)
+@click.option(
+    "--verify-client/--no-verify-client",
+    type=bool,
+    default=(os.getenv("VERIFY_CLIENT", "False").upper() == "TRUE"),
+    show_default=True,
+    required=True,
+    help="enable mutual TLS and verify the client if True"
+)
+@click.option(
+    "--mtls",
+    type=str,
+    default=os.getenv("MTLS"),
+    required=False,
+    help="If you provide verify-client, you must supply an MTLS CA Certificate file (public key only)"
+)
+@click.option(
+    "--enable-auth/--no-enable-auth",
+    type=bool,
+    default=os.getenv("ENABLE_AUTH", "False").upper() == "TRUE",
+    required=True,
+    help="Enable JWT authentication for the server."
+)
+@click.option(
+    "--jwt-audience",
+    type=str,
+    default=os.getenv("JWT_AUDIENCE", "spark-client"),
+    required=False,
+    help="The JWT audience used for verification."
+)
+@click.option(
+    "--secret-key",
+    type=str,
+    default=os.getenv("SECRET_KEY"),
+    required=False,
+    help="The secret key used to sign/verify the JWT - if authentication is enabled."
+)
+@click.option(
+    "--log-level",
+    type=str,
+    default=os.getenv("LOG_LEVEL", "INFO"),
+    required=True,
+    help="The logging level to use for the server."
+)
+def start_server(port: int,
+                 wait: bool,
+                 tls: list[str],
+                 verify_client: bool,
+                 mtls: str,
+                 enable_auth: bool,
+                 jwt_audience: str,
+                 secret_key: str,
+                 log_level: str
+                 ):
+    logging.basicConfig(level=getattr(logging, log_level), encoding='utf-8')
+
+    arg_dict = locals()
+    if arg_dict.pop("secret_key"):
+        arg_dict["secret_key"] = "(redacted)"
+
+    _LOGGER.info(
+        msg=f"Starting SparkConnect server - args: {arg_dict}"
+    )
+
+    interceptors = []
+    if enable_auth:
+        if not secret_key:
+            raise ValueError("Secret key must be provided when enabling auth.")
+        interceptors.append(BearerTokenAuthInterceptor(audience=jwt_audience,
+                                                       secret_key=secret_key,
+                                                       logger=_LOGGER
+                                                       )
+                            )
+    server = grpc.server(thread_pool=futures.ThreadPoolExecutor(max_workers=10),
+                         interceptors=interceptors
+                         )
+
+    server_credentials = None
+    if tls:
+        tls_certfile = Path(tls[0])
+        tls_keyfile = Path(tls[1])
+
+        # Load server certificate and key
+        with open(tls_certfile, 'rb') as f:
+            server_certificate = f.read()
+        with open(tls_keyfile, 'rb') as f:
+            server_key = f.read()
+
+        ca_certificate = None
+        if verify_client:
+            if mtls:
+                mtls_ca_file = Path(mtls)
+                with open(mtls_ca_file, 'rb') as f:
+                    ca_certificate = f.read()
+
+        # Create SSL credentials for the server
+        server_credentials = grpc.ssl_server_credentials(
+            private_key_certificate_chain_pairs=[(server_key, server_certificate)],
+            root_certificates=ca_certificate,
+            require_client_auth=verify_client
+        )
+
+    if server_credentials:
+        server.add_secure_port(address=f'[::]:{port}',
+                               server_credentials=server_credentials
+                               )
+    else:
+        server.add_insecure_port(address=f'[::]:{port}')
+
     pb2_grpc.add_SparkConnectServiceServicer_to_server(SparkConnectService(), server)
     channelz.add_channelz_servicer(server)
-    server.add_insecure_port(f'[::]:{port}')
+
     _LOGGER.info(f'Starting SparkConnect server - listening on port: {port}')
     server.start()
     if wait:
@@ -419,8 +555,4 @@ def serve(port: int, wait: bool = True):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO, encoding='utf-8')
-
-    serve(port=50051,
-          wait=True
-          )
+    start_server()

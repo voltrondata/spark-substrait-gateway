@@ -76,3 +76,10 @@ unfixable = [
 
 [tool.pylint.MASTER]
 extension-pkg-allow-list = ["pyarrow.lib"]
+
+
+[project.scripts]
+spark-substrait-gateway-server = "gateway.server:start_server"
+spark-substrait-client-demo = "gateway.demo.client_demo:run_demo"
+spark-substrait-create-tls-keypair = "gateway.setup.tls_utilities:create_tls_keypair"
+spark-substrait-create-jwt = "gateway.utilities.create_jwt:main"
