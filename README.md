@@ -35,7 +35,10 @@ Here's how to use PySpark to connect to the running gateway:
 from pyspark.sql import SparkSession
 
 # Create a Spark Connect session to local port 50051.
-spark = SparkSession.builder.remote("sc://localhost:50051").getOrCreate()
+spark = (SparkSession.builder
+         .remote("sc://localhost:50051/;use_ssl=true")
+         .getOrCreate()
+         )
 
 # Use the spark session normally.
 ```
