@@ -232,4 +232,3 @@ def register_tpcds_dataset(spark_session_for_setup: SparkSession) -> None:
     _register_table(spark_session_for_setup, benchmark, 'web_returns.parquet')
     _register_table(spark_session_for_setup, benchmark, 'web_sales.parquet')
     _register_table(spark_session_for_setup, benchmark, 'web_site.parquet')
-        
