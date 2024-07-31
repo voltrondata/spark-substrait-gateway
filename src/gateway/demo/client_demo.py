@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 """A PySpark client that can send sample queries to the gateway."""
+import logging
 import os
 from pathlib import Path
 
 import click
+from gateway.config import SERVER_PORT
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.functions import col
-from gateway.config import SERVER_PORT
-import logging
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -49,6 +49,40 @@ def execute_query(spark_session: SparkSession) -> None:
     print(sql_results)
 
 
+def run_demo(use_gateway: bool = True,
+             host: str = "localhost",
+             port: int = SERVER_PORT,
+             use_tls: bool = False,
+             token: str = None
+             ):
+    """Runs a small Spark Substrait Gateway client demo"""
+    logging.basicConfig(level=logging.INFO, encoding='utf-8')
+
+    arg_dict = locals()
+    if arg_dict.pop("token"):
+        arg_dict["token"] = "(redacted)"
+
+    _LOGGER.info(
+        msg=f"Starting SparkConnect client demo - args: {arg_dict}"
+    )
+
+    if use_gateway:
+        uri_parameters = ""
+
+        if use_tls:
+            uri_parameters += ";use_ssl=true"
+        if token:
+            uri_parameters += ";token=" + token
+
+        spark = (SparkSession.builder
+                 .remote(f'sc://{host}:{port}/{uri_parameters}')
+                 .getOrCreate()
+                 )
+    else:
+        spark = SparkSession.builder.master('local').getOrCreate()
+    execute_query(spark)
+
+
 @click.command()
 @click.option(
     "--use-gateway/--no-use-gateway",
@@ -88,38 +122,15 @@ def execute_query(spark_session: SparkSession) -> None:
     required=False,
     help="The JWT token to use for authentication - if required."
 )
-def run_demo(use_gateway: bool,
-             host: str,
-             port: int,
-             use_tls: bool,
-             token: str
-             ):
-    logging.basicConfig(level=logging.INFO, encoding='utf-8')
-
-    arg_dict = locals()
-    if arg_dict.pop("token"):
-        arg_dict["token"] = "(redacted)"
-
-    _LOGGER.info(
-        msg=f"Starting SparkConnect client demo - args: {arg_dict}"
-    )
-
-    if use_gateway:
-        uri_parameters = ""
-
-        if use_tls:
-            uri_parameters += ";use_ssl=true"
-        if token:
-            uri_parameters += ";token=" + token
-
-        spark = (SparkSession.builder
-                 .remote(f'sc://{host}:{port}/{uri_parameters}')
-                 .getOrCreate()
-                 )
-    else:
-        spark = SparkSession.builder.master('local').getOrCreate()
-    execute_query(spark)
+def click_run_demo(use_gateway: bool,
+                   host: str,
+                   port: int,
+                   use_tls: bool,
+                   token: str
+                   ):
+    """Provides a click interface for running the Spark Substrait Gateway client demo"""
+    run_demo(**locals())
 
 
 if __name__ == '__main__':
-    run_demo()
+    click_run_demo()

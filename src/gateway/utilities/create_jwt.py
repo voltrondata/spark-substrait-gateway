@@ -1,11 +1,15 @@
 # SPDX-License-Identifier: Apache-2.0
-import time
-import jwt
-import click
+import logging
 import os
+import time
+
+import click
+import jwt
 
 # Constants
 DEFAULT_JWT_LIFETIME: int = 3600 * 24 * 365  # 1 year
+
+_LOGGER = logging.getLogger(__name__)
 
 
 @click.command()
@@ -54,6 +58,7 @@ def main(issuer: str,
          lifetime: int,
          secret_key: str
          ):
+    """Create a JWT token for the given issuer, subject, audience, lifetime and secret key."""
     iat = time.time()
     exp = iat + lifetime
     payload = {'iss': issuer,
@@ -66,7 +71,7 @@ def main(issuer: str,
                             algorithm='HS256'
                             )
 
-    print(signed_jwt)
+    _LOGGER.info(msg=signed_jwt)
 
 
 if __name__ == "__main__":

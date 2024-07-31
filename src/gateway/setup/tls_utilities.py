@@ -1,18 +1,24 @@
 # SPDX-License-Identifier: Apache-2.0
-from pathlib import Path
-import click
+import logging
 import random
 import socket
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+import click
 from cryptography import x509
-from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.backends import default_backend
-from datetime import datetime, timedelta, timezone
+from cryptography.hazmat.primitives.asymmetric import rsa
 from gateway.config import DEFAULT_CERT_FILE, DEFAULT_KEY_FILE
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def _gen_cryptography():
+    """Generate a self-signed certificate using the cryptography library."""
+
     # Generate RSA private key
     private_key = rsa.generate_private_key(
         public_exponent=65537,
@@ -66,9 +72,7 @@ def _gen_cryptography():
 
 
 def gen_self_signed_cert():
-    '''
-    Returns (cert, key) as ASCII PEM strings
-    '''
+    """Returns (cert, key) as ASCII PEM strings"""
     return _gen_cryptography()
 
 
@@ -76,15 +80,19 @@ def create_tls_keypair(cert_file: str = DEFAULT_CERT_FILE,
                        key_file: str = DEFAULT_KEY_FILE,
                        overwrite: bool = False
                        ):
+    """Create a self-signed TLS key pair and write to disk."""
     cert_file_path = Path(cert_file)
     key_file_path = Path(key_file)
 
     if cert_file_path.exists() or key_file_path.exists():
         if not overwrite:
-            raise RuntimeError(f"The TLS Cert file(s): '{cert_file_path.as_posix()}' or '{key_file_path.as_posix()}' - exist - and overwrite is False, aborting.")
-        else:
-            cert_file_path.unlink(missing_ok=True)
-            key_file_path.unlink(missing_ok=True)
+            raise RuntimeError(
+                f"The TLS Cert file(s): '{cert_file_path.as_posix()}' or "
+                f"'{key_file_path.as_posix()}' - exist - and overwrite is False, aborting."
+            )
+
+        cert_file_path.unlink(missing_ok=True)
+        key_file_path.unlink(missing_ok=True)
 
     cert, key = gen_self_signed_cert()
 
@@ -96,9 +104,9 @@ def create_tls_keypair(cert_file: str = DEFAULT_CERT_FILE,
     with open(file=key_file_path, mode="wb") as key_file:
         key_file.write(key)
 
-    print("Created TLS Key pair successfully.")
-    print(f"Cert file path: {cert_file_path.as_posix()}")
-    print(f"Key file path: {key_file_path.as_posix()}")
+    _LOGGER.info(msg="Created TLS Key pair successfully.")
+    _LOGGER.info(msg=f"Cert file path: {cert_file_path.as_posix()}")
+    _LOGGER.info(msg=f"Key file path: {key_file_path.as_posix()}")
 
 
 @click.command()
@@ -124,12 +132,13 @@ def create_tls_keypair(cert_file: str = DEFAULT_CERT_FILE,
     required=True,
     help="Can we overwrite the cert/key if they exist?"
 )
-def main(cert_file: str,
-         key_file: str,
-         overwrite: bool
-         ):
+def click_create_tls_keypair(cert_file: str,
+                             key_file: str,
+                             overwrite: bool
+                             ):
+    """Provides a click interface to create a self-signed TLS key pair."""
     create_tls_keypair(**locals())
 
 
 if __name__ == '__main__':
-    create_tls_keypair()
+    click_create_tls_keypair()

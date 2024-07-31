@@ -2,28 +2,28 @@
 """SparkConnect server that drives a backend using Substrait."""
 import io
 import logging
+import os
 from collections.abc import Generator
 from concurrent import futures
+from pathlib import Path
 
+import click
 import grpc
 import pyarrow as pa
 import pyspark.sql.connect.proto.base_pb2 as pb2
 import pyspark.sql.connect.proto.base_pb2_grpc as pb2_grpc
-import click
-from pathlib import Path
 from backends.backend import Backend
 from backends.backend_options import BackendEngine, BackendOptions
 from backends.backend_selector import find_backend
+from gateway.config import SERVER_PORT
+from gateway.converter.conversion_options import arrow, datafusion, duck_db
+from gateway.converter.spark_to_substrait import SparkSubstraitConverter
+from gateway.security import BearerTokenAuthInterceptor
 import pyspark.sql.connect.proto.commands_pb2 as commands_pb2
 from google.protobuf.json_format import MessageToJson
 from grpc_channelz.v1 import channelz
 from pyspark.sql.connect.proto import types_pb2
 from substrait.gen.proto import plan_pb2
-
-from gateway.converter.conversion_options import arrow, datafusion, duck_db
-from gateway.converter.spark_to_substrait import SparkSubstraitConverter
-from gateway.config import DEFAULT_CERT_FILE, DEFAULT_KEY_FILE, SERVER_PORT
-from gateway.security import BearerTokenAuthInterceptor
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -442,10 +442,11 @@ def serve(port: int,
           wait: bool,
           tls: list[str] | None = None,
           enable_auth: bool = False,
-          jwt_audience: str = None,
-          secret_key: str = None,
+          jwt_audience: str | None = None,
+          secret_key: str | None = None,
           log_level: str = "INFO"
           ) -> grpc.Server:
+    """Starts the Spark Substrait Gateway server."""
     logging.basicConfig(level=getattr(logging, log_level), encoding='utf-8')
 
     arg_dict = locals()
@@ -526,7 +527,9 @@ def serve(port: int,
     default=os.getenv("TLS").split(" ") if os.getenv("TLS") else None,
     required=False,
     metavar=('CERTFILE', 'KEYFILE'),
-    help="Enable transport-level security (TLS/SSL).  Provide a Certificate file path, and a Key file path - separated by a space.  Example: tls/server.crt tls/server.key"
+    help="Enable transport-level security (TLS/SSL).  Provide a "
+         "Certificate file path, and a Key file path - separated by a space.  "
+         "Example: tls/server.crt tls/server.key"
 )
 @click.option(
     "--enable-auth/--no-enable-auth",
@@ -556,16 +559,17 @@ def serve(port: int,
     required=True,
     help="The logging level to use for the server."
 )
-def start_server(port: int,
-                 wait: bool,
-                 tls: list[str],
-                 enable_auth: bool,
-                 jwt_audience: str,
-                 secret_key: str,
-                 log_level: str
-                 ) -> grpc.Server:
+def click_serve(port: int,
+                wait: bool,
+                tls: list[str],
+                enable_auth: bool,
+                jwt_audience: str,
+                secret_key: str,
+                log_level: str
+                ) -> grpc.Server:
+    """Provides a click interface for starting the Spark Substrait Gateway server."""
     return serve(**locals())
 
 
 if __name__ == '__main__':
-    start_server()
+    click_serve()
