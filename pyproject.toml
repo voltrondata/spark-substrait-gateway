@@ -37,7 +37,7 @@ respect-gitignore = true
 # should target minimum supported version
 target-version = "py310"
 # never autoformat upstream or generated code
-exclude = ["third_party/"]
+exclude = ["third_party/", "helm-chart/"]
 
 [tool.ruff.lint]
 select = [
@@ -73,8 +73,6 @@ unfixable = [
 [tool.ruff.lint.per-file-ignores]
 "*test*.py" = ["D"] # ignore all docstring lints in tests
 "__init__.py" = ["D"]
-"NOTES.txt" = ["D"]
-"_helpers.tpl" = ["D"]
 
 [tool.pylint.MASTER]
 extension-pkg-allow-list = ["pyarrow.lib"]
