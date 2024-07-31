@@ -13,6 +13,8 @@ header:
     - 'environment.yml'
     - 'pyproject.toml'
     - 'LICENSE'
+    - 'NOTES.txt'
+    - '_helpers.tpl'
     - '**/__init__.py'
     - '**/*.golden'
     - '**/*.md'

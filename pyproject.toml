@@ -37,7 +37,7 @@ respect-gitignore = true
 # should target minimum supported version
 target-version = "py310"
 # never autoformat upstream or generated code
-exclude = ["third_party/", "helm-chart/"]
+exclude = ["third_party/"]
 
 [tool.ruff.lint]
 select = [
