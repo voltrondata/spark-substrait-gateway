@@ -73,6 +73,8 @@ unfixable = [
 [tool.ruff.lint.per-file-ignores]
 "*test*.py" = ["D"] # ignore all docstring lints in tests
 "__init__.py" = ["D"]
+"helm-chart/templates/NOTES.txt" = ["D"]
+"helm-chart/templates/_helpers.tpl" = ["D"]
 
 [tool.pylint.MASTER]
 extension-pkg-allow-list = ["pyarrow.lib"]
