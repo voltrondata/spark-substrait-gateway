@@ -53,9 +53,9 @@ def run_demo(use_gateway: bool = True,
              host: str = "localhost",
              port: int = SERVER_PORT,
              use_tls: bool = False,
-             token: str = None
+             token: str | None = None
              ):
-    """Runs a small Spark Substrait Gateway client demo"""
+    """Run a small Spark Substrait Gateway client demo."""
     logging.basicConfig(level=logging.INFO, encoding='utf-8')
 
     arg_dict = locals()
@@ -128,7 +128,7 @@ def click_run_demo(use_gateway: bool,
                    use_tls: bool,
                    token: str
                    ):
-    """Provides a click interface for running the Spark Substrait Gateway client demo"""
+    """Provide a click interface for running the Spark Substrait Gateway client demo."""
     run_demo(**locals())
 
 

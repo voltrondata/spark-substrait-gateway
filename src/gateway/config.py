@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+"""Configuration settings for the gateway."""
 from pathlib import Path
 
 # Constants

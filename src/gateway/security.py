@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+"""A gRPC interceptor that validates bearer tokens."""
 import logging
 
 import grpc
@@ -6,18 +7,20 @@ import jwt
 
 
 class BearerTokenAuthInterceptor(grpc.ServerInterceptor):
+    """A gRPC interceptor that validates bearer tokens."""
+
     def __init__(self,
                  audience: str,
                  secret_key: str,
                  logger: logging.Logger
                  ):
-        """Initializes the BearerTokenAuthInterceptor"""
+        """Initialize the BearerTokenAuthInterceptor."""
         self.audience = audience
         self.secret_key = secret_key
         self.logger = logger
 
     def intercept_service(self, continuation, handler_call_details):
-        """Intercepts the incoming request and validates the bearer token"""
+        """Intercept the incoming request and validates the bearer token."""
         # Extract metadata from the incoming request
         metadata = dict(handler_call_details.invocation_metadata)
         auth_header = metadata.get('authorization')
@@ -48,7 +51,7 @@ class BearerTokenAuthInterceptor(grpc.ServerInterceptor):
             except jwt.exceptions.DecodeError:
                 def unauthenticated_response(request, context):
                     context.set_code(grpc.StatusCode.UNAUTHENTICATED)
-                    context.set_details(f'Invalid token')
+                    context.set_details('Invalid token')
 
                 return grpc.unary_unary_rpc_method_handler(unauthenticated_response)
         else:
