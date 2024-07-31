@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+"""Utilities for generating self-signed TLS certificates."""
 import logging
 import random
 import socket
@@ -8,8 +9,7 @@ from pathlib import Path
 import click
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from gateway.config import DEFAULT_CERT_FILE, DEFAULT_KEY_FILE
 
@@ -18,7 +18,6 @@ _LOGGER = logging.getLogger(__name__)
 
 def _gen_cryptography():
     """Generate a self-signed certificate using the cryptography library."""
-
     # Generate RSA private key
     private_key = rsa.generate_private_key(
         public_exponent=65537,
@@ -72,7 +71,7 @@ def _gen_cryptography():
 
 
 def gen_self_signed_cert():
-    """Returns (cert, key) as ASCII PEM strings"""
+    """Return (cert, key) as ASCII PEM strings."""
     return _gen_cryptography()
 
 
@@ -136,7 +135,7 @@ def click_create_tls_keypair(cert_file: str,
                              key_file: str,
                              overwrite: bool
                              ):
-    """Provides a click interface to create a self-signed TLS key pair."""
+    """Provide a click interface to create a self-signed TLS key pair."""
     create_tls_keypair(**locals())
 
 

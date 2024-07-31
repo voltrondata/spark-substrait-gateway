@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+"""A utility to create a JWT token for the gateway."""
 import logging
 import os
 import time

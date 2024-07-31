@@ -15,14 +15,15 @@ import pyspark.sql.connect.proto.base_pb2_grpc as pb2_grpc
 from backends.backend import Backend
 from backends.backend_options import BackendEngine, BackendOptions
 from backends.backend_selector import find_backend
-from gateway.config import SERVER_PORT
-from gateway.converter.conversion_options import arrow, datafusion, duck_db
-from gateway.converter.spark_to_substrait import SparkSubstraitConverter
-from gateway.security import BearerTokenAuthInterceptor
 from google.protobuf.json_format import MessageToJson
 from grpc_channelz.v1 import channelz
 from pyspark.sql.connect.proto import types_pb2
 from substrait.gen.proto import plan_pb2
+
+from gateway.config import SERVER_PORT
+from gateway.converter.conversion_options import arrow, datafusion, duck_db
+from gateway.converter.spark_to_substrait import SparkSubstraitConverter
+from gateway.security import BearerTokenAuthInterceptor
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -416,7 +417,7 @@ def serve(port: int,
           secret_key: str | None = None,
           log_level: str = "INFO"
           ) -> grpc.Server:
-    """Starts the Spark Substrait Gateway server."""
+    """Start the Spark Substrait Gateway server."""
     logging.basicConfig(level=getattr(logging, log_level), encoding='utf-8')
 
     arg_dict = locals()
@@ -537,7 +538,7 @@ def click_serve(port: int,
                 secret_key: str,
                 log_level: str
                 ) -> grpc.Server:
-    """Provides a click interface for starting the Spark Substrait Gateway server."""
+    """Provide a click interface for starting the Spark Substrait Gateway server."""
     return serve(**locals())
 
 
