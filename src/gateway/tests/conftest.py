@@ -207,7 +207,7 @@ def prepare_tpcds_parquet_data(scale_factor=0.1):
 
 @pytest.fixture(scope='class')
 def register_tpcds_dataset(spark_session_for_setup: SparkSession) -> None:
-    """Add the TPC-H dataset to the current spark session."""
+    """Add the TPC-DS dataset to the current spark session."""
     benchmark = 'tpcds'
     _register_table(spark_session_for_setup, benchmark, 'call_center.parquet')
     _register_table(spark_session_for_setup, benchmark, 'catalog_page.parquet')
