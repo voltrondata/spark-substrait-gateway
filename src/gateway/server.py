@@ -25,7 +25,6 @@ from gateway.converter.spark_to_substrait import SparkSubstraitConverter
 from gateway.config import DEFAULT_CERT_FILE, DEFAULT_KEY_FILE, SERVER_PORT
 from gateway.security import BearerTokenAuthInterceptor
 
-
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -439,6 +438,71 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
         return pb2.ReleaseExecuteResponse()
 
 
+def serve(port: int,
+          wait: bool,
+          tls: list[str] | None = None,
+          enable_auth: bool = False,
+          jwt_audience: str = None,
+          secret_key: str = None,
+          log_level: str = "INFO"
+          ) -> grpc.Server:
+    logging.basicConfig(level=getattr(logging, log_level), encoding='utf-8')
+
+    arg_dict = locals()
+    if arg_dict.pop("secret_key"):
+        arg_dict["secret_key"] = "(redacted)"
+
+    _LOGGER.info(
+        msg=f"Starting SparkConnect server - args: {arg_dict}"
+    )
+
+    interceptors = []
+    if enable_auth:
+        if not secret_key:
+            raise ValueError("Secret key must be provided when enabling auth.")
+        interceptors.append(BearerTokenAuthInterceptor(audience=jwt_audience,
+                                                       secret_key=secret_key,
+                                                       logger=_LOGGER
+                                                       )
+                            )
+    server = grpc.server(thread_pool=futures.ThreadPoolExecutor(max_workers=10),
+                         interceptors=interceptors
+                         )
+
+    server_credentials = None
+    if tls:
+        tls_certfile = Path(tls[0])
+        tls_keyfile = Path(tls[1])
+
+        # Load server certificate and key
+        with open(tls_certfile, 'rb') as f:
+            server_certificate = f.read()
+        with open(tls_keyfile, 'rb') as f:
+            server_key = f.read()
+
+        # Create SSL credentials for the server
+        server_credentials = grpc.ssl_server_credentials(
+            private_key_certificate_chain_pairs=[(server_key, server_certificate)]
+        )
+
+    if server_credentials:
+        server.add_secure_port(address=f'[::]:{port}',
+                               server_credentials=server_credentials
+                               )
+    else:
+        server.add_insecure_port(address=f'[::]:{port}')
+
+    pb2_grpc.add_SparkConnectServiceServicer_to_server(SparkConnectService(), server)
+    channelz.add_channelz_servicer(server)
+
+    _LOGGER.info(f'Starting SparkConnect server - listening on port: {port}')
+    server.start()
+    if wait:
+        server.wait_for_termination()
+        return None
+    return server
+
+
 @click.command()
 @click.option(
     "--port",
@@ -499,62 +563,8 @@ def start_server(port: int,
                  jwt_audience: str,
                  secret_key: str,
                  log_level: str
-                 ):
-    logging.basicConfig(level=getattr(logging, log_level), encoding='utf-8')
-
-    arg_dict = locals()
-    if arg_dict.pop("secret_key"):
-        arg_dict["secret_key"] = "(redacted)"
-
-    _LOGGER.info(
-        msg=f"Starting SparkConnect server - args: {arg_dict}"
-    )
-
-    interceptors = []
-    if enable_auth:
-        if not secret_key:
-            raise ValueError("Secret key must be provided when enabling auth.")
-        interceptors.append(BearerTokenAuthInterceptor(audience=jwt_audience,
-                                                       secret_key=secret_key,
-                                                       logger=_LOGGER
-                                                       )
-                            )
-    server = grpc.server(thread_pool=futures.ThreadPoolExecutor(max_workers=10),
-                         interceptors=interceptors
-                         )
-
-    server_credentials = None
-    if tls:
-        tls_certfile = Path(tls[0])
-        tls_keyfile = Path(tls[1])
-
-        # Load server certificate and key
-        with open(tls_certfile, 'rb') as f:
-            server_certificate = f.read()
-        with open(tls_keyfile, 'rb') as f:
-            server_key = f.read()
-
-        # Create SSL credentials for the server
-        server_credentials = grpc.ssl_server_credentials(
-            private_key_certificate_chain_pairs=[(server_key, server_certificate)]
-        )
-
-    if server_credentials:
-        server.add_secure_port(address=f'[::]:{port}',
-                               server_credentials=server_credentials
-                               )
-    else:
-        server.add_insecure_port(address=f'[::]:{port}')
-
-    pb2_grpc.add_SparkConnectServiceServicer_to_server(SparkConnectService(), server)
-    channelz.add_channelz_servicer(server)
-
-    _LOGGER.info(f'Starting SparkConnect server - listening on port: {port}')
-    server.start()
-    if wait:
-        server.wait_for_termination()
-        return None
-    return server
+                 ) -> grpc.Server:
+    return serve(**locals())
 
 
 if __name__ == '__main__':

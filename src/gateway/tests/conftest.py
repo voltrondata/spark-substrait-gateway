@@ -88,7 +88,7 @@ def manage_database() -> None:
 @pytest.fixture(scope='class', autouse=True)
 def gateway_server():
     """Starts up a spark to substrait gateway service."""
-    server = serve(50052, wait=False)
+    server = serve(port=50052, wait=False)
     yield
     server.stop(None)
 
