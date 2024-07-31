@@ -3,7 +3,9 @@
 import re
 from pathlib import Path
 
+import duckdb
 import pytest
+from filelock import FileLock
 from gateway.demo.mystream_database import (
     create_mystream_database,
     delete_mystream_database,
@@ -143,21 +145,90 @@ def find_tpch() -> Path:
     raise ValueError('TPC-H dataset not found')
 
 
-def _register_table(spark_session: SparkSession, name: str) -> None:
-    """Registers a TPC-H table with the given name into spark_session."""
-    location = find_tpch() / name
+def find_tpcds() -> Path:
+    """Find the location of the TPC-DS dataset."""
+    current_location = Path('.').resolve()
+    while current_location != Path('/'):
+        location = current_location / 'third_party' / 'tpcds' / 'parquet'
+        if location.exists():
+            return location.resolve()
+        current_location = current_location.parent
+    raise ValueError('TPC-DS dataset not found')
+
+
+def _register_table(spark_session: SparkSession, benchmark: str, name: str) -> None:
+    """Registers a TPC table with the given name into spark_session."""
+    if benchmark == 'tpch':
+        location = find_tpch() / name
+    elif benchmark == 'tpcds':
+        location = find_tpcds() / name
+    else:
+        raise ValueError(f'Unknown benchmark: {benchmark}')
     df = spark_session.read.parquet(str(location))
-    df.createOrReplaceTempView(name)
+    df.createOrReplaceTempView(Path(location).stem)
 
 
 @pytest.fixture(scope='class')
 def register_tpch_dataset(spark_session_for_setup: SparkSession) -> None:
     """Add the TPC-H dataset to the current spark session."""
-    _register_table(spark_session_for_setup, 'customer')
-    _register_table(spark_session_for_setup, 'lineitem')
-    _register_table(spark_session_for_setup, 'nation')
-    _register_table(spark_session_for_setup, 'orders')
-    _register_table(spark_session_for_setup, 'part')
-    _register_table(spark_session_for_setup, 'partsupp')
-    _register_table(spark_session_for_setup, 'region')
-    _register_table(spark_session_for_setup, 'supplier')
+    benchmark = 'tpch'
+    _register_table(spark_session_for_setup, benchmark, 'customer')
+    _register_table(spark_session_for_setup, benchmark, 'lineitem')
+    _register_table(spark_session_for_setup, benchmark, 'nation')
+    _register_table(spark_session_for_setup, benchmark, 'orders')
+    _register_table(spark_session_for_setup, benchmark, 'part')
+    _register_table(spark_session_for_setup, benchmark, 'partsupp')
+    _register_table(spark_session_for_setup, benchmark, 'region')
+    _register_table(spark_session_for_setup, benchmark, 'supplier')
+
+
+def get_project_root() -> Path:
+    """Finds the root of the project."""
+    return Path(__file__).parent.parent.parent.parent
+
+
+@pytest.fixture(scope="session")
+def prepare_tpcds_parquet_data(scale_factor=0.1):
+    """
+    Generate TPC-DS data to be used for testing. Data is generated in
+
+    Parameters:
+        scale_factor:
+            Scale factor for TPC-DS data generation.
+    """
+    data_path = get_project_root() / "third_party" / "tpcds"/ "parquet"
+    data_path.mkdir(parents=True, exist_ok=True)
+    lock_file = data_path / "data.json"
+    with FileLock(str(lock_file) + ".lock"):
+        con = duckdb.connect()
+        con.execute(f"CALL dsdgen(sf={scale_factor})")
+        con.execute(f"EXPORT DATABASE '{data_path}' (FORMAT PARQUET);")
+
+
+@pytest.fixture(scope='class')
+def register_tpcds_dataset(spark_session_for_setup: SparkSession) -> None:
+    """Add the TPC-DS dataset to the current spark session."""
+    benchmark = 'tpcds'
+    _register_table(spark_session_for_setup, benchmark, 'call_center.parquet')
+    _register_table(spark_session_for_setup, benchmark, 'catalog_page.parquet')
+    _register_table(spark_session_for_setup, benchmark, 'catalog_returns.parquet')
+    _register_table(spark_session_for_setup, benchmark, 'catalog_sales.parquet')
+    _register_table(spark_session_for_setup, benchmark, 'customer.parquet')
+    _register_table(spark_session_for_setup, benchmark, 'customer_address.parquet')
+    _register_table(spark_session_for_setup, benchmark, 'customer_demographics.parquet')
+    _register_table(spark_session_for_setup, benchmark, 'household_demographics.parquet')
+    _register_table(spark_session_for_setup, benchmark, 'income_band.parquet')
+    _register_table(spark_session_for_setup, benchmark, 'inventory.parquet')
+    _register_table(spark_session_for_setup, benchmark, 'item.parquet')
+    _register_table(spark_session_for_setup, benchmark, 'promotion.parquet')
+    _register_table(spark_session_for_setup, benchmark, 'reason.parquet')
+    _register_table(spark_session_for_setup, benchmark, 'ship_mode.parquet')
+    _register_table(spark_session_for_setup, benchmark, 'store.parquet')
+    _register_table(spark_session_for_setup, benchmark, 'store_returns.parquet')
+    _register_table(spark_session_for_setup, benchmark, 'store_sales.parquet')
+    _register_table(spark_session_for_setup, benchmark, 'time_dim.parquet')
+    _register_table(spark_session_for_setup, benchmark, 'warehouse.parquet')
+    _register_table(spark_session_for_setup, benchmark, 'web_page.parquet')
+    _register_table(spark_session_for_setup, benchmark, 'web_returns.parquet')
+    _register_table(spark_session_for_setup, benchmark, 'web_sales.parquet')
+    _register_table(spark_session_for_setup, benchmark, 'web_site.parquet')
