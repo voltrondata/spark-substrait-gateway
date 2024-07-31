@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 FROM continuumio/miniconda3:24.5.0-0
 
 # Update OS and install packages
