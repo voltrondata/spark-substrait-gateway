@@ -436,21 +436,6 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
     help="Enable transport-level security (TLS/SSL).  Provide a Certificate file path, and a Key file path - separated by a space.  Example: tls/server.crt tls/server.key"
 )
 @click.option(
-    "--verify-client/--no-verify-client",
-    type=bool,
-    default=(os.getenv("VERIFY_CLIENT", "False").upper() == "TRUE"),
-    show_default=True,
-    required=True,
-    help="enable mutual TLS and verify the client if True"
-)
-@click.option(
-    "--mtls",
-    type=str,
-    default=os.getenv("MTLS"),
-    required=False,
-    help="If you provide verify-client, you must supply an MTLS CA Certificate file (public key only)"
-)
-@click.option(
     "--enable-auth/--no-enable-auth",
     type=bool,
     default=os.getenv("ENABLE_AUTH", "False").upper() == "TRUE",
@@ -481,8 +466,6 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
 def start_server(port: int,
                  wait: bool,
                  tls: list[str],
-                 verify_client: bool,
-                 mtls: str,
                  enable_auth: bool,
                  jwt_audience: str,
                  secret_key: str,
@@ -522,18 +505,9 @@ def start_server(port: int,
         with open(tls_keyfile, 'rb') as f:
             server_key = f.read()
 
-        ca_certificate = None
-        if verify_client:
-            if mtls:
-                mtls_ca_file = Path(mtls)
-                with open(mtls_ca_file, 'rb') as f:
-                    ca_certificate = f.read()
-
         # Create SSL credentials for the server
         server_credentials = grpc.ssl_server_credentials(
-            private_key_certificate_chain_pairs=[(server_key, server_certificate)],
-            root_certificates=ca_certificate,
-            require_client_auth=verify_client
+            private_key_certificate_chain_pairs=[(server_key, server_certificate)]
         )
 
     if server_credentials:
