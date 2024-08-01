@@ -16,8 +16,7 @@ sql_test_case_names = [p.stem for p in sql_test_case_paths]
 def mark_tests_as_xfail(request):
     """Marks a subset of tests as expected to be fail."""
     source = request.getfixturevalue('source')
-    originalname = request.keywords.node.originalname
-    if source == 'gateway-over-duckdb' and originalname == 'test_tpcds':
+    if source == 'gateway-over-duckdb':
         path = request.getfixturevalue('path')
         if path.stem in ['01', '06', '10', '30', '35', '69', '81', '86']:
             pytest.skip(reason='DuckDB needs Delim join')
@@ -47,11 +46,9 @@ def mark_tests_as_xfail(request):
         elif path.stem in ['58']:
             pytest.skip(reason='AssertionError: assert table is not None')
     if source == 'gateway-over-datafusion':
-        if originalname in ['test_tpcds']:
-            pytest.skip(reason='not yet ready to run SQL tests regularly')
+        pytest.skip(reason='not yet ready to run SQL tests regularly')
     if source == 'gateway-over-arrow':
-        if originalname in ['test_tpcds']:
-            pytest.skip(reason='not yet ready to run SQL tests regularly')
+        pytest.skip(reason='not yet ready to run SQL tests regularly')
 
 
 @pytest.mark.usefixtures("prepare_tpcds_parquet_data")
