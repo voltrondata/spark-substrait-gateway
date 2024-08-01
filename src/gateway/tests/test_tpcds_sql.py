@@ -21,14 +21,18 @@ def mark_tests_as_xfail(request):
         path = request.getfixturevalue('path')
         if path.stem in ['01', '06', '10', '30', '35', '69', '81', '86']:
             pytest.skip(reason='DuckDB needs Delim join')
-        elif path.stem in ['02', '03', '04', '05', '07', '08', '11', '13', '14', '15', '17', '18', '19', '21', '22',
-                           '23', '25', '26', '27', '29', '31', '33', '34', '37', '39', '40', '42', '43', '45', '46',
-                           '48', '52', '55', '56', '60', '61', '64', '65', '66', '68', '71', '72', '73', '74', '75',
-                           '77', '78', '79', '80', '82', '85', '88', '90', '91', '96', '97']:
+        elif path.stem in ['02', '03', '04', '05', '07', '08', '11', '13', '14', '15', '17',
+                           '18', '19', '21', '22', '23', '25', '26', '27', '29', '31', '33',
+                           '34', '37', '39', '40', '42', '43', '45', '46', '48', '52', '55',
+                           '56', '60', '61', '64', '65', '66', '68', '71', '72', '73', '74',
+                           '75', '77', '78', '79', '80', '82', '85', '88', '90', '91', '96',
+                           '97']:
             pytest.skip(reason='DuckDB INTERNAL Error: COMPARE_BETWEEN')
         elif path.stem in ['09']:
-            pytest.skip(reason='Binder Error: Cannot compare values of type VARCHAR and type INTEGER_LITERAL')
-        elif path.stem in ['12', '20', '36', '44', '47', '49', '51', '53', '57', '63', '67', '70', '89', '98']:
+            pytest.skip(reason='Binder Error: Cannot compare values of type VARCHAR and '
+                               'type INTEGER_LITERAL')
+        elif path.stem in ['12', '20', '36', '44', '47', '49', '51', '53', '57', '63', '67',
+                           '70', '89', '98']:
             pytest.skip(reason='DUCKDB INTERNAL Error: WINDOW')
         elif path.stem in ['24']:
             pytest.skip(reason='INTERNAL Error: EMPTY_RESULT')
