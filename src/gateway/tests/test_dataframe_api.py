@@ -929,6 +929,16 @@ only showing top 1 row
 
         assert len(outcome) == 29968
 
+    def test_data_source_options(self, spark_session):
+        location_customer = str(find_tpch() / 'customer')
+        spark_options = {"path": location_customer}
+        customer_dataframe = spark_session.read.format('parquet').options(**spark_options).load()
+
+        with utilizes_valid_plans(spark_session):
+            outcome = customer_dataframe.filter(col('c_mktsegment') == 'FURNITURE').collect()
+
+        assert len(outcome) == 29968
+
     def test_table(self, register_tpch_dataset, spark_session):
         with utilizes_valid_plans(spark_session):
             outcome = spark_session.table('customer').collect()
