@@ -843,7 +843,11 @@ class SparkSubstraitConverter:
         local = algebra_pb2.ReadRel.LocalFiles()
         schema = self.convert_schema(rel.schema)
         if not schema:
-            arrow_schema = self._backend.describe_files([str(path) for path in rel.paths])
+            if rel.options:
+                paths = list(rel.options.values())
+            else:
+                paths = [str(path) for path in rel.paths]
+            arrow_schema = self._backend.describe_files(paths)
             schema = self.convert_arrow_schema(arrow_schema)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         for field_name in schema.names:
@@ -854,10 +858,10 @@ class SparkSubstraitConverter:
                                          named_table=algebra_pb2.ReadRel.NamedTable(
                                              names=['demotable']),
                                          common=self.create_common_relation()))
-        if pathlib.Path(rel.paths[0]).is_dir():
-            file_paths = glob.glob(f'{rel.paths[0]}/*{rel.format}')
+        if pathlib.Path(paths[0]).is_dir():
+            file_paths = glob.glob(f'{paths[0]}/*{rel.format}')
         else:
-            file_paths = rel.paths
+            file_paths = paths
         for path in file_paths:
             uri_path = path
             if self._conversion_options.needs_scheme_in_path_uris and uri_path.startswith('/'):
