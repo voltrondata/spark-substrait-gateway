@@ -791,6 +791,8 @@ class SparkSubstraitConverter:
             match str(field.type):
                 case 'bool':
                     field_type = type_pb2.Type(bool=type_pb2.Type.Boolean(nullability=nullability))
+                case 'int8':
+                    field_type = type_pb2.Type(i8=type_pb2.Type.I8(nullability=nullability))
                 case 'int16':
                     field_type = type_pb2.Type(i16=type_pb2.Type.I16(nullability=nullability))
                 case 'int32':
