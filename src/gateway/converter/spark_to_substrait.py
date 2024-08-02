@@ -842,9 +842,9 @@ class SparkSubstraitConverter:
         """Convert a read data source relation into a Substrait relation."""
         local = algebra_pb2.ReadRel.LocalFiles()
         schema = self.convert_schema(rel.schema)
+        paths = ([str(path) for path in rel.paths] if rel.paths
+                 else list(rel.options.values()))
         if not schema:
-            paths = (list(rel.options.values()) if rel.options
-                     else [str(path) for path in rel.paths])
             arrow_schema = self._backend.describe_files(paths)
             schema = self.convert_arrow_schema(arrow_schema)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
