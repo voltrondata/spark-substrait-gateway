@@ -61,7 +61,7 @@ class TestTpcds:
         ids=sql_test_case_names,
     )
     def test_tpcds(self, register_tpcds_dataset, spark_session, path, caplog):
-        """Test the TPC-H queries."""
+        """Test the TPC-DS queries."""
         # Read the SQL to run.
         with open(path, "rb") as file:
             sql_bytes = file.read()
