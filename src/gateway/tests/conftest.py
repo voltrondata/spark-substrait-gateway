@@ -216,6 +216,7 @@ def register_tpcds_dataset(spark_session_for_setup: SparkSession) -> None:
     _register_table(spark_session_for_setup, benchmark, 'customer.parquet')
     _register_table(spark_session_for_setup, benchmark, 'customer_address.parquet')
     _register_table(spark_session_for_setup, benchmark, 'customer_demographics.parquet')
+    _register_table(spark_session_for_setup, benchmark, 'date_dim.parquet')
     _register_table(spark_session_for_setup, benchmark, 'household_demographics.parquet')
     _register_table(spark_session_for_setup, benchmark, 'income_band.parquet')
     _register_table(spark_session_for_setup, benchmark, 'inventory.parquet')
