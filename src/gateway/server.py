@@ -354,6 +354,9 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
                 for key in request.operation.get_option.keys:
                     if key == 'spark.sql.session.timeZone':
                         response.pairs.add(key=key, value='UTC')
+                    elif key in ['spark.sql.session.localRelationCacheThreshold',
+                                 'spark.sql.repl.eagerEval.maxNumRows']:
+                        response.pairs.add(key=key, value='9999')
                     else:
                         _LOGGER.info(f'Unknown config item: {key}')
                         raise NotImplementedError(f'Unknown config item: {key}')
