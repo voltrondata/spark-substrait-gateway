@@ -1,0 +1,82 @@
+# SPDX-License-Identifier: Apache-2.0
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "spark-substrait-gateway.fullname" . }}-server
+  labels:
+    {{- include "spark-substrait-gateway.labels" . | nindent 4 }}
+    app: spark-substrait-gateway-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "spark-substrait-gateway.selectorLabels" . | nindent 6 }}
+      app: spark-substrait-gateway-server
+  serviceName: spark-substrait-gateway
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/global-secret.yaml") . | sha256sum }}
+        {{- with .Values.sparkSubstraitGateway.podAnnotations }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "spark-substrait-gateway.selectorLabels" . | nindent 8 }}
+        app: spark-substrait-gateway-server
+    spec:
+      {{- with .Values.sparkSubstraitGateway.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.sparkSubstraitGateway.podSecurityContext | nindent 8 }}
+      volumes:
+        - name: tls-volume
+          secret:
+            secretName: {{ include "spark-substrait-gateway.fullname" . }}-tls-secret
+            optional: true
+      containers:
+        - name: spark-substrait-gateway
+          volumeMounts:
+            - name: tls-volume
+              mountPath: /opt/spark_substrait_gateway/tls
+              readOnly: true
+          env:
+            - name: SERVER_PORT
+              value: {{ .Values.sparkSubstraitGateway.service.port | quote }}
+            - name: TLS
+              value: {{ .Values.sparkSubstraitGateway.config.TLS | quote }}
+            - name: VERIFY_CLIENT
+              value: {{ .Values.sparkSubstraitGateway.config.VERIFY_CLIENT | quote }}
+            - name: ENABLE_AUTH
+              value: {{ .Values.sparkSubstraitGateway.config.ENABLE_AUTH | quote }}
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "spark-substrait-gateway.fullname" . }}-secret
+                  key: SECRET_KEY
+                  optional: true
+            - name: LOG_LEVEL
+              value: {{ .Values.sparkSubstraitGateway.config.LOG_LEVEL | quote }}
+          securityContext:
+            {{- toYaml .Values.sparkSubstraitGateway.securityContext | nindent 12 }}
+          image: "{{ .Values.sparkSubstraitGateway.image.repository }}:{{ .Values.sparkSubstraitGateway.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.sparkSubstraitGateway.image.pullPolicy }}
+          ports:
+            - name: gateway-port
+              containerPort: {{ .Values.sparkSubstraitGateway.service.port }}
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.sparkSubstraitGateway.resources | nindent 12 }}
+      {{- with .Values.sparkSubstraitGateway.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.sparkSubstraitGateway.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.sparkSubstraitGateway.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

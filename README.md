@@ -17,17 +17,50 @@ The **[Gluten project](https://github.com/oap-project/gluten)** exposes
 the pushdown Substrait used in pipelines (think the join free parts of a plan) to either Clickhouse
 or Velox.
 
-## Starting the Gateway
+## Options for running the Gateway
+
+### Locally
+To run the gateway locally - you need to setup a Python (Conda) environment.
+
+Ensure you have [Miniconda](https://docs.anaconda.com/miniconda/miniconda-install/) and [Rust/Cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html) installed.
+
+Once that is done - run these steps from a bash terminal:
+```bash
+git clone --recursive https://github.com/<your-fork>/spark-substrait-gateway.git
+cd spark-substrait-gateway
+conda init bash
+. ~/.bashrc
+conda env create -f environment.yml
+pip install .
+```
+
+### Starting the Gateway
 
 To use the gateway simply start the gateway server:
 
 ```commandline
-python src/gateway/server.py
+spark-substrait-gateway-server
 ```
 
-This will start the service on local port 50051 (this is not currently configurable).
+*Note*: to see all of the options available to the server run:
+```commandline
+spark-substrait-gateway-server --help
+```
 
-## Connecting to the Gateway
+This will start the service on local port 50051 by default.
+
+### Running the client demo script
+To run the client demo - make sure you have the gateway server running and then (in another terminal) run the client demo script:
+```commandline
+spark-substrait-client-demo
+```
+
+*Note*: to see all of the options available to the client-demo run:
+```commandline
+spark-substrait-client-demo --help
+```
+
+### Connecting to the Gateway via PySpark
 
 Here's how to use PySpark to connect to the running gateway:
 
@@ -35,7 +68,10 @@ Here's how to use PySpark to connect to the running gateway:
 from pyspark.sql import SparkSession
 
 # Create a Spark Connect session to local port 50051.
-spark = SparkSession.builder.remote("sc://localhost:50051").getOrCreate()
+spark = (SparkSession.builder
+         .remote("sc://localhost:50051/")
+         .getOrCreate()
+         )
 
 # Use the spark session normally.
 ```
