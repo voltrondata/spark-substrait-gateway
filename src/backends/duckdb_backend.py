@@ -96,6 +96,14 @@ class DuckDBBackend(Backend):
             files_sql = f"CREATE OR REPLACE TABLE {table_name} AS FROM read_parquet([{files_str}])"
             self._connection.execute(files_sql)
 
+    def register_table_with_arrow_data(self, name: str, data: bytes,
+                                       temporary: bool = False) -> None:
+        """Register the given arrow data as a table with the backend."""
+        if not temporary:
+            self._tables[name] = (name, None, 'arrow')
+            x = pa.ipc.open_stream(data)
+        self._connection.register(name, x)
+
     def describe_files(self, paths: list[str]):
         """Asks the backend to describe the given files."""
         files = paths

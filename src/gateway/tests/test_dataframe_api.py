@@ -169,6 +169,20 @@ class TestDataFrameAPI:
 
         assertDataFrameEqual(test_df.collect(), expected)
 
+    @pytest.mark.interesting
+    def test_create_dataframe_and_temp_view(self, spark_session, caplog):
+        expected = [
+            Row(age=1, name='Alice'),
+            Row(age=2, name='Bob'),
+        ]
+
+        with utilizes_valid_plans(spark_session, caplog):
+            test_df = spark_session.createDataFrame([(1, 'Alice'), (2, 'Bob')], ['age', 'name'])
+            test_df.createOrReplaceTempView('mytempview')
+            view_df = spark_session.table('mytempview')
+
+        assertDataFrameEqual(view_df.collect(), expected)
+
     def test_dropna(self, spark_session, caplog):
         schema = pa.schema({'name': pa.string(), 'age': pa.int32()})
         table = pa.Table.from_pydict(

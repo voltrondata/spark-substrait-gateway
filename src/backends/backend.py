@@ -51,6 +51,10 @@ class Backend:
         """Register the given table with the backend."""
         raise NotImplementedError()
 
+    def register_table_with_arrow_data(self, name: str, data: bytes, temporary: bool = False) -> None:
+        """Register the given arrow data as a table with the backend."""
+        raise NotImplementedError()
+
     def describe_files(self, paths: list[str]):
         """Asks the backend to describe the given files."""
         raise NotImplementedError()
