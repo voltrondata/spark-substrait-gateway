@@ -149,7 +149,7 @@ def find_tpcds() -> Path:
     """Find the location of the TPC-DS dataset."""
     current_location = Path('.').resolve()
     while current_location != Path('/'):
-        location = current_location / 'third_party' / 'tpcds' / 'parquet'
+        location = current_location / 'data' / 'tpcds' / 'parquet'
         if location.exists():
             return location.resolve()
         current_location = current_location.parent
@@ -188,20 +188,47 @@ def get_project_root() -> Path:
 
 
 @pytest.fixture(scope="session")
+def prepare_tpch_parquet_data(scale_factor=0.1):
+    """
+    Generate TPC-H data to be used for testing.
+
+    Parameters:
+        scale_factor:
+            Scale factor for TPC-H data generation.
+    """
+    prepare_data("tpch", scale_factor)
+
+
+@pytest.fixture(scope="session")
 def prepare_tpcds_parquet_data(scale_factor=0.1):
     """
-    Generate TPC-DS data to be used for testing. Data is generated in
+    Generate TPC-DS data to be used for testing.
 
     Parameters:
         scale_factor:
             Scale factor for TPC-DS data generation.
     """
-    data_path = get_project_root() / "third_party" / "tpcds"/ "parquet"
+    prepare_data("tpcds", scale_factor)
+
+
+def prepare_data(benchmark, scale_factor):
+    """
+    Generate the benchmark data to be used for testing.
+
+    Parameters:
+        benchmark:
+            TPCH or TPCDS.
+    """
+    data_path = get_project_root() / "data" / benchmark / "parquet"
+    if benchmark == 'tpch':
+        generator = 'dbgen'
+    elif benchmark == 'tpcds':
+        generator = 'dsdgen'
     data_path.mkdir(parents=True, exist_ok=True)
     lock_file = data_path / "data.json"
     with FileLock(str(lock_file) + ".lock"):
         con = duckdb.connect()
-        con.execute(f"CALL dsdgen(sf={scale_factor})")
+        con.execute(f"CALL {generator}(sf={scale_factor})")
         con.execute(f"EXPORT DATABASE '{data_path}' (FORMAT PARQUET);")
 
 
