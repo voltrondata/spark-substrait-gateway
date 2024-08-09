@@ -21,6 +21,7 @@ class DuckDBBackend(Backend):
         """Initialize the DuckDB backend."""
         self._connection = None
         self._tables = {}
+        self._created_tables = set()
         super().__init__(options)
         self.create_connection()
         self._use_duckdb_python_api = options.use_duckdb_python_api
@@ -100,9 +101,13 @@ class DuckDBBackend(Backend):
                                        temporary: bool = False) -> None:
         """Register the given arrow data as a table with the backend."""
         if not temporary:
-            self._tables[name] = (name, None, 'arrow')
-            x = pa.ipc.open_stream(data)
-        self._connection.register(name, x)
+            # TODO -- Find a way to make this data persist.
+            pass
+        if name in self._created_tables:
+            # TODO -- Handle replacement.
+            return
+        self._created_tables.add(name)
+        self._connection.register(name, pa.ipc.open_stream(data))
 
     def describe_files(self, paths: list[str]):
         """Asks the backend to describe the given files."""

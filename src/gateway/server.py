@@ -126,8 +126,10 @@ def create_dataframe_view(session_id: str, view: commands_pb2.CreateDataFrameVie
                 raise NotImplementedError(
                     'Unsupported view to_df relation type: '
                     f'{view.input.to_df.input.WhichOneof("rel_type")}')
+            # TODO -- Allow locally constructed tables to be permanent.
             backend.register_table_with_arrow_data(view.name,
-                                                   view.input.to_df.input.local_relation.data)
+                                                   view.input.to_df.input.local_relation.data,
+                                                   temporary=False)
             # MEGAHACK -- Set it up so that the table will be cleaned up after the session goes away.
         case _:
             raise NotImplementedError(
