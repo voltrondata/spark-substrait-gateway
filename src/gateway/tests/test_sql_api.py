@@ -8,7 +8,7 @@ from hamcrest import assert_that, equal_to
 from pyspark import Row
 from pyspark.testing import assertDataFrameEqual
 
-test_case_directory = Path(__file__).resolve().parent / 'data'
+test_case_directory = Path(__file__).resolve().parent / 'data' / 'tpc-h'
 
 sql_test_case_paths = [f for f in sorted(test_case_directory.iterdir()) if f.suffix == '.sql']
 
