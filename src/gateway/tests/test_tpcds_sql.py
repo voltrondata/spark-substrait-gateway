@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from gateway.tests.plan_validator import utilizes_valid_plans
 
-test_case_directory = Path(__file__).resolve().parent / 'queries' / 'tpc' / 'ds'
+test_case_directory = Path(__file__).resolve().parent / 'data' / 'tpc-ds'
 
 sql_test_case_paths = [f for f in sorted(test_case_directory.iterdir()) if f.suffix == '.sql']
 
