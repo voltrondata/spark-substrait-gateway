@@ -21,7 +21,6 @@ class DuckDBBackend(Backend):
         """Initialize the DuckDB backend."""
         self._connection = None
         self._tables = {}
-        self._created_tables = set()
         super().__init__(options)
         self.create_connection()
         self._use_duckdb_python_api = options.use_duckdb_python_api
@@ -82,8 +81,16 @@ class DuckDBBackend(Backend):
             location: Path,
             file_format: str = "parquet",
             temporary: bool = False,
+            replace: bool = False,
     ) -> None:
         """Register the given table with the backend."""
+        if not replace:
+            try:
+                self._connection.table(table_name)
+                raise ValueError(f"Table {table_name} already exists")
+            except:
+                pass
+
         files = Backend._expand_location(location)
         if not files:
             raise ValueError(f"No parquet files found at {location}")
@@ -98,16 +105,25 @@ class DuckDBBackend(Backend):
             self._connection.execute(files_sql)
 
     def register_table_with_arrow_data(self, name: str, data: bytes,
-                                       temporary: bool = False) -> None:
+                                       temporary: bool = False,
+                                       replace: bool = False) -> None:
         """Register the given arrow data as a table with the backend."""
+        if not replace:
+            try:
+                self._connection.table(name)
+                raise ValueError(f"Table {name} already exists")
+            except:
+                pass
+
         if not temporary:
             # TODO -- Find a way to make this data persist.
             pass
-        if name in self._created_tables:
-            # TODO -- Handle replacement.
-            return
-        self._created_tables.add(name)
         self._connection.register(name, pa.ipc.open_stream(data))
+        v = self._connection.view(name)
+        t = self._connection.table(name)
+        print(v)
+        print(t)
+        print('waiting')
 
     def describe_files(self, paths: list[str]):
         """Asks the backend to describe the given files."""
@@ -117,6 +133,7 @@ class DuckDBBackend(Backend):
         # TODO -- Handle resolution of a combined schema.
         df = self._connection.read_parquet(files)
         schema = df.fetch_arrow_reader().schema
+        # TODO -- Figure out if we still need this check.
         if 'aggr' in schema.names:
             raise ValueError("Aggr column found in schema")
         return schema

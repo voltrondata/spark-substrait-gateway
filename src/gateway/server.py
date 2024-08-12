@@ -120,16 +120,16 @@ def create_dataframe_view(session_id: str, view: commands_pb2.CreateDataFrameVie
         case 'read':
             fmt = read_data_source_relation.format
             path = read_data_source_relation.paths[0]
-            backend.register_table(view.name, path, fmt)
+            backend.register_table(view.name, path, fmt, temporary=not view.is_global)
         case 'to_df':
             if view.input.to_df.input.WhichOneof('rel_type') != 'local_relation':
                 raise NotImplementedError(
                     'Unsupported view to_df relation type: '
                     f'{view.input.to_df.input.WhichOneof("rel_type")}')
-            # TODO -- Allow locally constructed tables to be permanent.
             backend.register_table_with_arrow_data(view.name,
                                                    view.input.to_df.input.local_relation.data,
-                                                   temporary=False)
+                                                   temporary=not view.is_global,
+                                                   replace=view.replace)
             # MEGAHACK -- Set it up so that the table will be cleaned up after the session goes away.
         case _:
             raise NotImplementedError(
@@ -240,9 +240,9 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
                         create_dataframe_view(request.session_id,
                                               request.plan.command.create_dataframe_view,
                                               self._backend)
-                        create_dataframe_view(request.session_id,
-                                              request.plan.command.create_dataframe_view,
-                                              self._sql_backend)
+                        #create_dataframe_view(request.session_id,
+                        #                      request.plan.command.create_dataframe_view,
+                        #                      self._sql_backend)
                         yield pb2.ExecutePlanResponse(
                             session_id=request.session_id,
                             result_complete=pb2.ExecutePlanResponse.ResultComplete())

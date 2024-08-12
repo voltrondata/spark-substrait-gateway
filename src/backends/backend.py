@@ -47,11 +47,13 @@ class Backend:
             return self._execute_plan(modified_plan)
 
     def register_table(self, name: str, path: Path, file_format: str = 'parquet',
-                       temporary: bool = False) -> None:
+                       temporary: bool = False,
+                       replace: bool = False) -> None:
         """Register the given table with the backend."""
         raise NotImplementedError()
 
-    def register_table_with_arrow_data(self, name: str, data: bytes, temporary: bool = False) -> None:
+    def register_table_with_arrow_data(self, name: str, data: bytes, temporary: bool = False,
+                                       replace: bool = False) -> None:
         """Register the given arrow data as a table with the backend."""
         raise NotImplementedError()
 
