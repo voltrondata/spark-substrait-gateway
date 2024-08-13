@@ -8,8 +8,8 @@ from concurrent import futures
 import grpc
 import pyarrow as pa
 import pyspark.sql.connect.proto.base_pb2 as pb2
-import pyspark.sql.connect.proto.commands_pb2 as commands_pb2
 import pyspark.sql.connect.proto.base_pb2_grpc as pb2_grpc
+import pyspark.sql.connect.proto.commands_pb2 as commands_pb2
 from backends.backend import Backend
 from backends.backend_options import BackendEngine, BackendOptions
 from backends.backend_selector import find_backend
@@ -130,7 +130,7 @@ def create_dataframe_view(session_id: str, view: commands_pb2.CreateDataFrameVie
                                                    view.input.to_df.input.local_relation.data,
                                                    temporary=not view.is_global,
                                                    replace=view.replace)
-            # MEGAHACK -- Set it up so that the table will be cleaned up after the session goes away.
+            # TODO -- Set it up so that the table will be cleaned up after the session goes away.
         case _:
             raise NotImplementedError(
                 f'Unsupported view relation type: {view.input.WhichOneof("rel_type")}')

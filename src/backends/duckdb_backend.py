@@ -6,7 +6,7 @@ from pathlib import Path
 
 import duckdb
 import pyarrow as pa
-from substrait.gen.proto import algebra_pb2, plan_pb2, type_pb2
+from substrait.gen.proto import plan_pb2
 from transforms.rename_functions import RenameFunctionsForDuckDB
 from transforms.replace_virtual_tables import ReplaceVirtualTablesWithNamedTable
 
@@ -88,7 +88,7 @@ class DuckDBBackend(Backend):
             try:
                 self._connection.table(table_name)
                 raise ValueError(f"Table {table_name} already exists")
-            except:
+            except Exception:
                 pass
 
         files = Backend._expand_location(location)
@@ -104,6 +104,7 @@ class DuckDBBackend(Backend):
             files_sql = f"CREATE OR REPLACE TABLE {table_name} AS FROM read_parquet([{files_str}])"
             self._connection.execute(files_sql)
 
+    # ruff: noqa: BLE001
     def register_table_with_arrow_data(self, name: str, data: bytes,
                                        temporary: bool = False,
                                        replace: bool = False) -> None:
@@ -112,7 +113,7 @@ class DuckDBBackend(Backend):
             try:
                 self._connection.table(name)
                 raise ValueError(f"Table {name} already exists")
-            except:
+            except Exception:
                 pass
 
         if not temporary:
