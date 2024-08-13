@@ -121,36 +121,6 @@ class DuckDBBackend(Backend):
         r = pa.ipc.open_stream(data)
         self._connection.register(name, self._connection.from_arrow(r.read_all()))
 
-        # MEGAHACK -- Remove all this debugging stuff.
-        plan = plan_pb2.Plan(relations=[
-            plan_pb2.PlanRel(
-                root=algebra_pb2.RelRoot(
-                    input=algebra_pb2.Rel(
-                        read=algebra_pb2.ReadRel(
-                            base_schema=type_pb2.NamedStruct(
-                                names=['a', 'b'],
-                                struct=type_pb2.Type.Struct(
-                                    types=[type_pb2.Type(i64=type_pb2.Type.I64()),
-                                           type_pb2.Type(string=type_pb2.Type.String())])),
-                            named_table=algebra_pb2.ReadRel.NamedTable(names=[name])
-                        )),
-                    names=['a', 'b']))])
-        print('About to execute Substrait')
-        #x = self._execute_plan(plan)
-        #print(f'x = %s' % x)
-
-        s = self._connection.execute(f"SELECT * FROM {name}")
-        t = self._connection.table(name)
-        v = self._connection.view(name)
-        print(r)
-        print(s.fetch_arrow_table())
-        print(t)
-        print(v)
-        s2 = self._connection.execute(f"SELECT * FROM {name}")
-        print(s2.fetch_arrow_table())
-        print(r)
-        print('waiting')
-
     def describe_files(self, paths: list[str]):
         """Asks the backend to describe the given files."""
         files = paths

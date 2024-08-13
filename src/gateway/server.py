@@ -240,9 +240,9 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
                         create_dataframe_view(request.session_id,
                                               request.plan.command.create_dataframe_view,
                                               self._backend)
-                        #create_dataframe_view(request.session_id,
-                        #                      request.plan.command.create_dataframe_view,
-                        #                      self._sql_backend)
+                        create_dataframe_view(request.session_id,
+                                              request.plan.command.create_dataframe_view,
+                                              self._sql_backend)
                         yield pb2.ExecutePlanResponse(
                             session_id=request.session_id,
                             result_complete=pb2.ExecutePlanResponse.ResultComplete())

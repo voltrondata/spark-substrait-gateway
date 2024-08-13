@@ -169,7 +169,6 @@ class TestDataFrameAPI:
 
         assertDataFrameEqual(test_df.collect(), expected)
 
-    @pytest.mark.interesting
     def test_create_dataframe_and_temp_view(self, spark_session, caplog):
         expected = [
             Row(age=1, name='Alice'),
@@ -178,8 +177,8 @@ class TestDataFrameAPI:
 
         with utilizes_valid_plans(spark_session, caplog):
             test_df = spark_session.createDataFrame([(1, 'Alice'), (2, 'Bob')], ['age', 'name'])
-            test_df.createOrReplaceTempView('mytempview')
-            view_df = spark_session.table('mytempview')
+            test_df.createOrReplaceTempView('mytempview_from_df')
+            view_df = spark_session.table('mytempview_from_df')
 
         assertDataFrameEqual(view_df.collect(), expected)
 
@@ -635,7 +634,7 @@ only showing top 1 row
 
         assertDataFrameEqual(outcome, expected)
 
-    def test_dropduplicates(self, spark_session):
+    def test_drop_duplicates(self, spark_session):
         expected = [
             Row(a=1, b=10, c='a'),
             Row(a=2, b=11, c='a'),
@@ -649,7 +648,7 @@ only showing top 1 row
         table = pa.Table.from_arrays([int1_array, int2_array, string_array],
                                      names=['a', 'b', 'c'])
 
-        df = create_parquet_table(spark_session, 'mytesttable1', table)
+        df = create_parquet_table(spark_session, 'mytesttable2', table)
 
         with utilizes_valid_plans(df):
             outcome = df.dropDuplicates().collect()
@@ -668,7 +667,7 @@ only showing top 1 row
         table = pa.Table.from_arrays([int_array, int_array, string_array, string_array],
                                      names=['a1', 'c', 'col', 'col2'])
 
-        df = create_parquet_table(spark_session, 'mytesttable1', table)
+        df = create_parquet_table(spark_session, 'mytesttable3', table)
 
         with utilizes_valid_plans(df, caplog):
             outcome = df.select(df.colRegex("`(c.l|a)?[0-9]`")).collect()
