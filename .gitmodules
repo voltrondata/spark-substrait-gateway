@@ -1,3 +1,0 @@
-[submodule "third_party/tpch"]
-	path = third_party/tpch
-	url = git@github.com:tripl-ai/tpch.git
