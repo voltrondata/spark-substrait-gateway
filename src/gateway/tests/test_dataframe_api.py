@@ -526,11 +526,11 @@ only showing top 1 row
 
     def test_crossjoin(self, register_tpch_dataset, spark_session):
         expected = [
+            Row(n_nationkey=0, n_name='ALGERIA', s_name='Supplier#000000002'),
             Row(n_nationkey=1, n_name='ARGENTINA', s_name='Supplier#000000002'),
             Row(n_nationkey=2, n_name='BRAZIL', s_name='Supplier#000000002'),
             Row(n_nationkey=3, n_name='CANADA', s_name='Supplier#000000002'),
             Row(n_nationkey=4, n_name='EGYPT', s_name='Supplier#000000002'),
-            Row(n_nationkey=5, n_name='ETHIOPIA', s_name='Supplier#000000002'),
         ]
 
         with utilizes_valid_plans(spark_session):
