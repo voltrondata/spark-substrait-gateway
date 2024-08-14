@@ -932,12 +932,12 @@ only showing top 1 row
                     'substr(user_id, 5, 9)', 'not paid_for_service').limit(1).collect()
 
     def test_data_source_schema(self, spark_session):
-        location_customer = str(find_tpch() / 'customer')
+        location_customer = str(find_tpch() / 'customer.parquet')
         schema = spark_session.read.parquet(location_customer).schema
         assert len(schema) == 8
 
     def test_data_source_filter(self, spark_session):
-        location_customer = str(find_tpch() / 'customer')
+        location_customer = str(find_tpch() / 'customer.parquet')
         customer_dataframe = spark_session.read.parquet(location_customer)
 
         with utilizes_valid_plans(spark_session):
@@ -946,7 +946,7 @@ only showing top 1 row
         assert len(outcome) == 29968
 
     def test_data_source_options(self, spark_session):
-        location_customer = str(find_tpch() / 'customer')
+        location_customer = str(find_tpch() / 'customer.parquet')
         spark_options = {"path": location_customer}
         customer_dataframe = spark_session.read.format('parquet').options(**spark_options).load()
 
@@ -974,7 +974,7 @@ only showing top 1 row
         assert len(outcome) == 29968
 
     def test_create_or_replace_temp_view(self, spark_session):
-        location_customer = str(find_tpch() / 'customer')
+        location_customer = str(find_tpch() / 'customer.parquet')
         df_customer = spark_session.read.parquet(location_customer)
         df_customer.createOrReplaceTempView("mytempview")
 
@@ -984,7 +984,7 @@ only showing top 1 row
         assert len(outcome) == 149999
 
     def test_create_or_replace_multiple_temp_views(self, spark_session):
-        location_customer = str(find_tpch() / 'customer')
+        location_customer = str(find_tpch() / 'customer.parquet')
         df_customer = spark_session.read.parquet(location_customer)
         df_customer.createOrReplaceTempView("mytempview1")
         df_customer.createOrReplaceTempView("mytempview2")
