@@ -35,7 +35,8 @@ class ArrowBackend(Backend):
         return reader.read_all()
 
     def register_table(self, name: str, path: Path, file_format: str = 'parquet',
-                       temporary: bool = False) -> None:
+                       temporary: bool = False,
+                       replace: bool = False) -> None:
         """Register the given table with Acero."""
         self._registered_tables[name] = path
 

@@ -68,7 +68,8 @@ class DatafusionBackend(Backend):
 
     def register_table(
             self, name: str, location: Path, file_format: str = 'parquet',
-            temporary: bool = False
+            temporary: bool = False,
+            replace: bool = False
     ) -> None:
         """Register the given table with the backend."""
         files = Backend._expand_location(location)
@@ -76,9 +77,20 @@ class DatafusionBackend(Backend):
             raise ValueError(f"No parquet files found at {location}")
         # TODO: Add options to skip table registration if it already exists instead
         # of deregistering it.
-        if self._connection.table_exist(name):
+        if replace and self._connection.table_exist(name):
             self._connection.deregister_table(name)
         self._connection.register_parquet(name, str(location))
+
+    # ruff: noqa: BLE001
+    def register_table_with_arrow_data(self, name: str, data: bytes,
+                                       temporary: bool = False,
+                                       replace: bool = False) -> None:
+        """Register the given arrow data as a table with the backend."""
+        if replace and self._connection.table_exist(name):
+            self._connection.deregister_table(name)
+
+        r = pa.ipc.open_stream(data).read_all()
+        self._connection.from_arrow_table(r, name)
 
     def describe_files(self, paths: list[str]):
         """Asks the backend to describe the given files."""
