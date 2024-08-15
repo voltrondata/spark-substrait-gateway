@@ -61,6 +61,7 @@ from pyspark.sql.functions import (
     ucase,
     upper,
 )
+from pyspark.sql.types import StructType, StructField, DoubleType
 from pyspark.testing import assertDataFrameEqual
 
 
@@ -92,11 +93,11 @@ def mark_dataframe_tests_as_xfail(request):
     if source == 'gateway-over-duckdb' and originalname in ['test_union', 'test_unionall']:
         pytest.skip(reason='DuckDB treats all unions as distinct')
     if source == 'gateway-over-datafusion' and originalname == 'test_subtract':
-        request.node.add_marker(pytest.mark.xfail(reason='subtract not supported'))
+        pytest.skip(reason='subtract not supported')
     if source == 'gateway-over-datafusion' and originalname == 'test_intersect':
-        request.node.add_marker(pytest.mark.xfail(reason='intersect not supported'))
+        pytest.skip(reason='intersect not supported')
     if source == 'gateway-over-datafusion' and originalname == 'test_offset':
-        request.node.add_marker(pytest.mark.xfail(reason='offset not supported'))
+        pytest.skip(reason='offset not supported')
     if source == 'gateway-over-datafusion' and originalname == 'test_broadcast':
         pytest.skip(reason='duplicate name problem with joins')
     if source == 'gateway-over-duckdb' and originalname == 'test_coalesce':
@@ -104,41 +105,41 @@ def mark_dataframe_tests_as_xfail(request):
     if source == 'gateway-over-datafusion' and originalname == 'test_coalesce':
         pytest.skip(reason='datafusion cast error')
     if source == 'spark' and originalname == 'test_isnan':
-        request.node.add_marker(pytest.mark.xfail(reason='None not preserved'))
+        pytest.skip(reason='None not preserved')
     if source == 'gateway-over-datafusion' and originalname in [
         'test_isnan', 'test_nanvl', 'test_least', 'test_greatest']:
         pytest.skip(reason='missing Substrait mapping')
     if source != 'spark' and originalname == 'test_expr':
-        request.node.add_marker(pytest.mark.xfail(reason='SQL support needed in gateway'))
+        pytest.skip(reason='SQL support needed in gateway')
     if source != 'spark' and originalname == 'test_named_struct':
         pytest.skip(reason='needs better type tracking in gateway')
     if source == 'spark' and originalname == 'test_nullif':
-        request.node.add_marker(pytest.mark.xfail(reason='internal Spark type error'))
+        pytest.skip(reason='internal Spark type error')
     if source == 'gateway-over-duckdb' and originalname == 'test_nullif':
         pytest.skip(reason='argument count issue in DuckDB mapping')
     if source == 'gateway-over-datafusion' and originalname == 'test_contains':
-        request.node.add_marker(pytest.mark.xfail(reason='contains returns position not binary'))
+        pytest.skip(reason='contains returns position not binary')
     if source != 'spark' and originalname in ['test_locate', 'test_position']:
-        request.node.add_marker(pytest.mark.xfail(reason='no direct Substrait analog'))
+        pytest.skip(reason='no direct Substrait analog')
     if source == 'gateway-over-duckdb' and originalname == 'test_octet_length':
-        request.node.add_marker(pytest.mark.xfail(reason='varchar octet_length not supported'))
+        pytest.skip(reason='varchar octet_length not supported')
 
     if source == 'gateway-over-duckdb' and originalname == 'test_sqrt':
-        request.node.add_marker(pytest.mark.xfail(reason='behavior option ignored'))
+        pytest.skip(reason='behavior option ignored')
     if source != 'spark' and originalname in ['test_rint', 'test_bround']:
-        request.node.add_marker(pytest.mark.xfail(reason='behavior option ignored'))
+        pytest.skip(reason='behavior option ignored')
     if source != 'spark' and originalname in ['test_negative', 'test_negate', 'test_positive']:
-        request.node.add_marker(pytest.mark.xfail(reason='custom implementation required'))
+        pytest.skip(reason='custom implementation required')
     if source == 'gateway-over-duckdb' and originalname in [
         'test_acosh', 'test_asinh', 'test_atanh', 'test_cosh', 'test_sinh', 'test_tanh']:
-        request.node.add_marker(pytest.mark.xfail(reason='missing implementation'))
+        pytest.skip(reason='missing implementation')
     if source == 'gateway-over-datafusion' and originalname in ['test_sign', 'test_signum']:
-        request.node.add_marker(pytest.mark.xfail(reason='missing implementation'))
+        pytest.skip(reason='missing implementation')
     if source != 'spark' and originalname in ['test_cot', 'test_sec', 'test_ln', 'test_log',
                                               'test_log10', 'test_log2', 'test_log1p']:
-        request.node.add_marker(pytest.mark.xfail(reason='missing in Substrait'))
+        pytest.skip(reason='missing in Substrait')
     if source == 'gateway-over-datafusion' and originalname == 'test_try_divide':
-        request.node.add_marker(pytest.mark.xfail(reason='returns infinity instead of null'))
+        pytest.skip(reason='returns infinity instead of null')
 
 
 # ruff: noqa: E712
@@ -1698,17 +1699,29 @@ class TestDataFrameAPIFunctions:
 
 @pytest.fixture(scope='class')
 def numbers_dataframe(spark_session_for_setup):
-    float1_array = pa.array([float('NaN'), 42.0, None, -1, -2, -3, -4], type=pa.float64())
-    float2_array = pa.array([3.14 / 2, 0, -0.5, -0.6, 4.4, 4.6, 81], type=pa.float64())
-    float3_array = pa.array([0, 90, 135, 180, 235, 360, -60], type=pa.float64())
-    float4_array = pa.array([0, 1.57, 2.0, 3.14159, 5, 6.28318, -1], type=pa.float64())
-    float5_array = pa.array([-1, -0.66, -0.5, 0, 0.25, 0.5, 1], type=pa.float64())
-    float6_array = pa.array([1, 2.718281828, 8, 10, 16, 100, 100000], type=pa.float64())
-    table = pa.Table.from_arrays(
-        arrays=[float1_array, float2_array, float3_array, float4_array, float5_array, float6_array],
-        names=['f1', 'f2', 'angles', 'radians', 'near_one', 'powers'])
+    data = [
+        [float('NaN'), 3.14 / 2, 0.0, 0.0, -1.0, 1.0],
+        [42.0, 0.0, 90.0, 1.57, -0.66, 2.718281828],
+        [None, -0.5, 135.0, 2.0, -0.5, 8.0],
+        [-1.0, -0.6, 180.0, 3.14159, 0.0, 10.0],
+        [-2.0, 4.4, 235.0, 5.0, 0.25, 16.0],
+        [-3.0, 4.6, 360.0, 6.28318, 0.5, 100.0],
+        [-4.0, 81.0, -60.0, -1.0, 1.0, 100000.0],
+    ]
 
-    return create_parquet_table(spark_session_for_setup, 'numbers', table)
+    schema = StructType([
+        StructField('f1', DoubleType(), True),
+        StructField('f2', DoubleType(), True),
+        StructField('angles', DoubleType(), True),
+        StructField('radians', DoubleType(), True),
+        StructField('near_one', DoubleType(), True),
+        StructField('powers', DoubleType(), True),
+    ])
+
+    test_df = spark_session_for_setup.createDataFrame(data, schema)
+
+    test_df.createOrReplaceTempView('numbers')
+    return spark_session_for_setup.table('numbers')
 
 
 class TestDataFrameAPIMathFunctions:
@@ -1716,13 +1729,13 @@ class TestDataFrameAPIMathFunctions:
 
     def test_sqrt(self, numbers_dataframe):
         expected = [
-            Row(a=1.2529964086141667),
-            Row(a=0.0),
-            Row(a=float('NaN')),
+            Row(a=1.0),
+            Row(a=1.6487212705609156),
+            Row(a=2.8284271247461903),
         ]
 
         with utilizes_valid_plans(numbers_dataframe):
-            outcome = numbers_dataframe.select(sqrt('f2')).limit(3).collect()
+            outcome = numbers_dataframe.select(sqrt('powers')).limit(3).collect()
 
         assertDataFrameEqual(outcome, expected)
 

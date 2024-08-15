@@ -21,6 +21,7 @@ class DuckDBBackend(Backend):
         """Initialize the DuckDB backend."""
         self._connection = None
         self._tables = {}
+        self._data_tables = {}
         super().__init__(options)
         self.create_connection()
         self._use_duckdb_python_api = options.use_duckdb_python_api
@@ -45,6 +46,8 @@ class DuckDBBackend(Backend):
         self.create_connection()
         for table in self._tables.values():
             self.register_table(*table)
+        for table in self._data_tables.values():
+            self.register_table_with_arrow_data(*table)
 
     @contextmanager
     def adjust_plan(self, plan: plan_pb2.Plan) -> Iterator[plan_pb2.Plan]:
@@ -84,10 +87,14 @@ class DuckDBBackend(Backend):
             replace: bool = False,
     ) -> None:
         """Register the given table with the backend."""
-        if not replace:
+        if replace:
             try:
                 self._connection.table(table_name)
-                raise ValueError(f"Table {table_name} already exists")
+                self._connection.execute(f"DROP TABLE {table_name}")
+                if table_name in self._tables:
+                    del self._tables[table_name]
+                if table_name in self._data_tables:
+                    del self._data_tables[table_name]
             except Exception:
                 pass
 
@@ -109,16 +116,19 @@ class DuckDBBackend(Backend):
                                        temporary: bool = False,
                                        replace: bool = False) -> None:
         """Register the given arrow data as a table with the backend."""
-        if not replace:
+        if replace:
             try:
                 self._connection.table(name)
-                raise ValueError(f"Table {name} already exists")
+                self._connection.execute(f"DROP TABLE {name}")
+                if name in self._tables:
+                    del self._tables[name]
+                if name in self._data_tables:
+                    del self._data_tables[name]
             except Exception:
                 pass
 
         if not temporary:
-            # TODO -- Find a way to make this data persist.
-            pass
+            self._data_tables[name] = (name, data)
         r = pa.ipc.open_stream(data)
         self._connection.register(name, self._connection.from_arrow(r.read_all()))
 

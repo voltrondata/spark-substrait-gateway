@@ -120,7 +120,8 @@ def create_dataframe_view(session_id: str, view: commands_pb2.CreateDataFrameVie
         case 'read':
             fmt = read_data_source_relation.format
             path = read_data_source_relation.paths[0]
-            backend.register_table(view.name, path, fmt, temporary=not view.is_global)
+            backend.register_table(view.name, path, fmt, temporary=False,
+                                   replace=view.replace)
         case 'to_df':
             if view.input.to_df.input.WhichOneof('rel_type') != 'local_relation':
                 raise NotImplementedError(
@@ -128,7 +129,13 @@ def create_dataframe_view(session_id: str, view: commands_pb2.CreateDataFrameVie
                     f'{view.input.to_df.input.WhichOneof("rel_type")}')
             backend.register_table_with_arrow_data(view.name,
                                                    view.input.to_df.input.local_relation.data,
-                                                   temporary=not view.is_global,
+                                                   temporary=False,
+                                                   replace=view.replace)
+            # TODO -- Set it up so that the table will be cleaned up after the session goes away.
+        case 'local_relation':
+            backend.register_table_with_arrow_data(view.name,
+                                                   view.input.local_relation.data,
+                                                   temporary=False,
                                                    replace=view.replace)
             # TODO -- Set it up so that the table will be cleaned up after the session goes away.
         case _:
