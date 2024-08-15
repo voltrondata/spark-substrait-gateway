@@ -2473,6 +2473,18 @@ class TestDataFrameAggregateBehavior:
 
         assertDataFrameEqual(outcome, expected)
 
+    def test_exterior_calculation_with_deep_aggregate(self, register_tpch_dataset, spark_session):
+        expected = [
+            Row(i=1, a=1377463738397.8188),
+        ]
+
+        with utilizes_valid_plans(spark_session):
+            lineitem = spark_session.table('lineitem')
+
+            outcome = lineitem.groupBy(lit(1)).agg(3 * (2 * try_sum('l_extendedprice'))).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
     def test_interior_calculation(self, register_tpch_dataset, spark_session):
         expected = [
             Row(i=1, a=229583290946.97),
@@ -2502,7 +2514,6 @@ class TestDataFrameAggregateBehavior:
 
         assertDataFrameEqual(outcome, expected)
 
-    @pytest.mark.interesting
     def test_computation_with_two_aggregations_and_internal_calculation(
             self, register_tpch_dataset, spark_session):
         expected = [
