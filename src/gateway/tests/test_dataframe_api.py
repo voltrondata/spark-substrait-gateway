@@ -61,7 +61,7 @@ from pyspark.sql.functions import (
     ucase,
     upper,
 )
-from pyspark.sql.types import StructType, StructField, DoubleType
+from pyspark.sql.types import DoubleType, StructField, StructType
 from pyspark.testing import assertDataFrameEqual
 
 
