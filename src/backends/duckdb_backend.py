@@ -20,7 +20,7 @@ class DuckDBBackend(Backend):
     def __init__(self, options):
         """Initialize the DuckDB backend."""
         self._connection = None
-        self._tables = {}
+        self._file_tables = {}
         self._data_tables = {}
         super().__init__(options)
         self.create_connection()
@@ -44,7 +44,7 @@ class DuckDBBackend(Backend):
         self._connection.close()
         self._connection = None
         self.create_connection()
-        for table in self._tables.values():
+        for table in self._file_tables.values():
             self.register_table(*table)
         for table in self._data_tables.values():
             self.register_table_with_arrow_data(*table)
@@ -91,8 +91,8 @@ class DuckDBBackend(Backend):
             try:
                 self._connection.table(table_name)
                 self._connection.execute(f"DROP TABLE {table_name}")
-                if table_name in self._tables:
-                    del self._tables[table_name]
+                if table_name in self._file_tables:
+                    del self._file_tables[table_name]
                 if table_name in self._data_tables:
                     del self._data_tables[table_name]
             except Exception:
@@ -103,7 +103,7 @@ class DuckDBBackend(Backend):
             raise ValueError(f"No parquet files found at {location}")
 
         if not temporary:
-            self._tables[table_name] = (table_name, location, file_format)
+            self._file_tables[table_name] = (table_name, location, file_format)
         if self._use_duckdb_python_api:
             self._connection.register(table_name, self._connection.read_parquet(files))
         else:
@@ -120,8 +120,8 @@ class DuckDBBackend(Backend):
             try:
                 self._connection.table(name)
                 self._connection.execute(f"DROP TABLE {name}")
-                if name in self._tables:
-                    del self._tables[name]
+                if name in self._file_tables:
+                    del self._file_tables[name]
                 if name in self._data_tables:
                     del self._data_tables[name]
             except Exception:
