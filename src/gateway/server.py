@@ -9,6 +9,7 @@ import grpc
 import pyarrow as pa
 import pyspark.sql.connect.proto.base_pb2 as pb2
 import pyspark.sql.connect.proto.base_pb2_grpc as pb2_grpc
+import pyspark.sql.connect.proto.commands_pb2 as commands_pb2
 from backends.backend import Backend
 from backends.backend_options import BackendEngine, BackendOptions
 from backends.backend_selector import find_backend
@@ -111,13 +112,35 @@ def convert_pyarrow_schema_to_spark(schema: pa.Schema) -> types_pb2.DataType:
     return types_pb2.DataType(struct=types_pb2.DataType.Struct(fields=fields))
 
 
-def create_dataframe_view(rel: pb2.Plan, backend) -> None:
+def create_dataframe_view(session_id: str, view: commands_pb2.CreateDataFrameViewCommand,
+                          backend) -> None:
     """Register the temporary dataframe."""
-    dataframe_view_name = rel.command.create_dataframe_view.name
-    read_data_source_relation = rel.command.create_dataframe_view.input.read.data_source
-    fmt = read_data_source_relation.format
-    path = read_data_source_relation.paths[0]
-    backend.register_table(dataframe_view_name, path, fmt)
+    read_data_source_relation = view.input.read.data_source
+    match view.input.WhichOneof('rel_type'):
+        case 'read':
+            fmt = read_data_source_relation.format
+            path = read_data_source_relation.paths[0]
+            backend.register_table(view.name, path, fmt, temporary=False,
+                                   replace=view.replace)
+        case 'to_df':
+            if view.input.to_df.input.WhichOneof('rel_type') != 'local_relation':
+                raise NotImplementedError(
+                    'Unsupported view to_df relation type: '
+                    f'{view.input.to_df.input.WhichOneof("rel_type")}')
+            backend.register_table_with_arrow_data(view.name,
+                                                   view.input.to_df.input.local_relation.data,
+                                                   temporary=False,
+                                                   replace=view.replace)
+            # TODO -- Set it up so that the table will be cleaned up after the session goes away.
+        case 'local_relation':
+            backend.register_table_with_arrow_data(view.name,
+                                                   view.input.local_relation.data,
+                                                   temporary=False,
+                                                   replace=view.replace)
+            # TODO -- Set it up so that the table will be cleaned up after the session goes away.
+        case _:
+            raise NotImplementedError(
+                f'Unsupported view relation type: {view.input.WhichOneof("rel_type")}')
 
 
 class Statistics:
@@ -221,8 +244,12 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
                             self._ReinitializeExecution()
                             raise err
                     case 'create_dataframe_view':
-                        create_dataframe_view(request.plan, self._backend)
-                        create_dataframe_view(request.plan, self._sql_backend)
+                        create_dataframe_view(request.session_id,
+                                              request.plan.command.create_dataframe_view,
+                                              self._backend)
+                        create_dataframe_view(request.session_id,
+                                              request.plan.command.create_dataframe_view,
+                                              self._sql_backend)
                         yield pb2.ExecutePlanResponse(
                             session_id=request.session_id,
                             result_complete=pb2.ExecutePlanResponse.ResultComplete())
