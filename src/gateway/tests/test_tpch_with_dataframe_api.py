@@ -353,15 +353,14 @@ class TestTpchWithDataFrameAPI:
 
     def test_query_10(self, register_tpch_dataset, spark_session):
         expected = [
-            Row(c_custkey=57040, c_name='Customer#000057040', revenue=734235.25,
-                c_acctbal=632.87, n_name='JAPAN', c_address='Eioyzjf4pp',
+            Row(c_custkey=57040, c_name='Customer#000057040', revenue=Decimal('734235.2455'),
+                c_acctbal=Decimal('632.87'), n_name='JAPAN', c_address='nICtsILWBB',
                 c_phone='22-895-641-3466',
-                c_comment='sits. slyly regular requests sleep alongside of the regular inst'),
-            Row(c_custkey=143347, c_name='Customer#000143347', revenue=721002.69,
-                c_acctbal=2557.47, n_name='EGYPT', c_address='1aReFYv,Kw4',
+                c_comment='ep. blithely regular foxes promise slyly furiously ironic depend'),
+            Row(c_custkey=143347, c_name='Customer#000143347', revenue=Decimal('721002.6948'),
+                c_acctbal=Decimal('2557.47'), n_name='EGYPT', c_address=',Q9Ml3w0gvX',
                 c_phone='14-742-935-3718',
-                c_comment='ggle carefully enticing requests. final deposits use bold, bold '
-                          'pinto beans. ironic, idle re'),
+                c_comment='endencies sleep. slyly express deposits nag carefully around the even tithes. slyly regular '),
         ]
 
         with utilizes_valid_plans(spark_session):
@@ -392,11 +391,11 @@ class TestTpchWithDataFrameAPI:
 
     def test_query_11(self, register_tpch_dataset, spark_session):
         expected = [
-            Row(ps_partkey=129760, part_value=17538456.86),
-            Row(ps_partkey=166726, part_value=16503353.92),
-            Row(ps_partkey=191287, part_value=16474801.97),
-            Row(ps_partkey=161758, part_value=16101755.54),
-            Row(ps_partkey=34452, part_value=15983844.72),
+            Row(ps_partkey=129760, part_value=Decimal('17538456.86')),
+            Row(ps_partkey=166726, part_value=Decimal('16503353.92')),
+            Row(ps_partkey=191287, part_value=Decimal('16474801.97')),
+            Row(ps_partkey=161758, part_value=Decimal('16101755.54')),
+            Row(ps_partkey=34452, part_value=Decimal('15983844.72')),
         ]
 
         with utilizes_valid_plans(spark_session):
@@ -492,8 +491,8 @@ class TestTpchWithDataFrameAPI:
 
     def test_query_15(self, register_tpch_dataset, spark_session):
         expected = [
-            Row(s_suppkey=8449, s_name='Supplier#000008449', s_address='Wp34zim9qYFbVctdW',
-                s_phone='20-469-856-8873', total=1772627.21),
+            Row(s_suppkey=8449, s_name='Supplier#000008449', s_address='5BXWsJERA2mP5OyO4',
+                s_phone='20-469-856-8873', total=Decimal('1772627.2087')),
         ]
 
         with utilizes_valid_plans(spark_session):
@@ -546,7 +545,7 @@ class TestTpchWithDataFrameAPI:
 
     def test_query_17(self, register_tpch_dataset, spark_session):
         expected = [
-            Row(avg_yearly=348406.02),
+            Row(avg_yearly=Decimal('348406.054286')),
         ]
 
         with utilizes_valid_plans(spark_session):
@@ -599,7 +598,7 @@ class TestTpchWithDataFrameAPI:
 
     def test_query_19(self, register_tpch_dataset, spark_session):
         expected = [
-            Row(revenue=3083843.06),
+            Row(revenue=Decimal('3083843.0578')),
         ]
 
         with utilizes_valid_plans(spark_session):
@@ -628,9 +627,9 @@ class TestTpchWithDataFrameAPI:
 
     def test_query_20(self, register_tpch_dataset, spark_session):
         expected = [
-            Row(s_name='Supplier#000000020', s_address='iybAE,RmTymrZVYaFZva2SH,j'),
-            Row(s_name='Supplier#000000091', s_address='YV45D7TkfdQanOOZ7q9QxkyGUapU1oOWU6q3'),
-            Row(s_name='Supplier#000000205', s_address='rF uV8d0JNEk'),
+            Row(s_name='Supplier#000000020', s_address='JtPqm19E7tF 152Rl1wQZ8j0H'),
+            Row(s_name='Supplier#000000091', s_address='35WVnU7GLNbQDcc2TARavGtk6RB6ZCd46UAY'),
+            Row(s_name='Supplier#000000205', s_address='Alrx5TN,hdnG'),
         ]
 
         with utilizes_valid_plans(spark_session):
