@@ -70,15 +70,15 @@ class TestSqlAPI:
             outcome = spark_session.sql(
                 'SELECT COUNT(*) FROM customer').collect()
 
-        assert_that(outcome[0][0], equal_to(149999))
+        assert_that(outcome[0][0], equal_to(150000))
 
     def test_limit(self, register_tpch_dataset, spark_session):
         expected = [
+            Row(c_custkey=1, c_phone='25-989-741-2988', c_mktsegment='BUILDING'),
             Row(c_custkey=2, c_phone='23-768-687-3665', c_mktsegment='AUTOMOBILE'),
             Row(c_custkey=3, c_phone='11-719-748-3364', c_mktsegment='AUTOMOBILE'),
             Row(c_custkey=4, c_phone='14-128-190-5944', c_mktsegment='MACHINERY'),
             Row(c_custkey=5, c_phone='13-750-942-6364', c_mktsegment='HOUSEHOLD'),
-            Row(c_custkey=6, c_phone='30-114-968-4951', c_mktsegment='AUTOMOBILE'),
         ]
 
         with utilizes_valid_plans(spark_session):

@@ -775,11 +775,11 @@ only showing top 1 row
 
     def test_between(self, register_tpch_dataset, spark_session):
         expected = [
+            Row(n_name='ALGERIA', is_between=False),
             Row(n_name='ARGENTINA', is_between=False),
             Row(n_name='BRAZIL', is_between=False),
             Row(n_name='CANADA', is_between=False),
             Row(n_name='EGYPT', is_between=True),
-            Row(n_name='ETHIOPIA', is_between=False),
         ]
 
         with utilizes_valid_plans(spark_session):
@@ -959,7 +959,7 @@ only showing top 1 row
         with utilizes_valid_plans(spark_session):
             outcome = spark_session.table('customer').collect()
 
-        assert len(outcome) == 149999
+        assert len(outcome) == 150000
 
     def test_table_schema(self, register_tpch_dataset, spark_session):
         schema = spark_session.table('customer').schema
@@ -981,7 +981,7 @@ only showing top 1 row
         with utilizes_valid_plans(spark_session):
             outcome = spark_session.table('mytempview').collect()
 
-        assert len(outcome) == 149999
+        assert len(outcome) == 150000
 
     def test_create_or_replace_multiple_temp_views(self, spark_session):
         location_customer = str(find_tpch() / 'customer.parquet')
@@ -993,7 +993,7 @@ only showing top 1 row
             outcome1 = spark_session.table('mytempview1').collect()
             outcome2 = spark_session.table('mytempview2').collect()
 
-        assert len(outcome1) == len(outcome2) == 149999
+        assert len(outcome1) == len(outcome2) == 150000
 
 
 class TestDataFrameAPIFunctions:
