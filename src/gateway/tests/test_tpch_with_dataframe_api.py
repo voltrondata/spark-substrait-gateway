@@ -360,7 +360,8 @@ class TestTpchWithDataFrameAPI:
             Row(c_custkey=143347, c_name='Customer#000143347', revenue=Decimal('721002.6948'),
                 c_acctbal=Decimal('2557.47'), n_name='EGYPT', c_address=',Q9Ml3w0gvX',
                 c_phone='14-742-935-3718',
-                c_comment='endencies sleep. slyly express deposits nag carefully around the even tithes. slyly regular '),
+                c_comment='endencies sleep. slyly express deposits nag carefully around the '
+                          'even tithes. slyly regular '),
         ]
 
         with utilizes_valid_plans(spark_session):

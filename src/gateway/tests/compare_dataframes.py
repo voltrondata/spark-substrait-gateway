@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """Routines for comparing dataframes."""
 import datetime
-from decimal import Decimal
 
 from pyspark import Row
 from pyspark.testing import assertDataFrameEqual
