@@ -86,7 +86,7 @@ def test_sql_conversion(request, path):
 
     options = duck_db()
     backend = find_backend(options.backend)
-    backend.register_table('customer', find_tpch() / 'customer')
+    backend.register_table('customer', find_tpch() / 'customer.parquet')
     substrait = backend.convert_sql(str(sql))
 
     if request.config.getoption('rebuild_goldens'):
