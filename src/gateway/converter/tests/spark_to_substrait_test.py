@@ -59,11 +59,17 @@ def test_plan_conversion(request, path):
 
 
 @pytest.fixture(autouse=True)
-def manage_database(prepare_tpch_parquet_data) -> None:
+def manage_database() -> None:
     """Creates the mystream database for use throughout all the tests."""
     create_mystream_database()
     yield
     delete_mystream_database()
+
+
+@pytest.fixture(autouse=True)
+def prepare_tpch_data(prepare_tpch_parquet_data) -> None:
+    """Prepare the TPCH data for the tests."""
+    pass
 
 
 # pylint: disable=E1101
