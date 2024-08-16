@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Routines for comparing dataframes."""
 import datetime
+from decimal import Decimal
 
 from pyspark import Row
 from pyspark.testing import assertDataFrameEqual
@@ -22,12 +23,19 @@ def align_schema(source_df: list[Row], schema_df: list[Row]):
     for row in source_df:
         new_row = {}
         for field_name, field_value in schema.asDict().items():
-            if (type(row[field_name] is not type(field_value)) and
-                    isinstance(field_value, datetime.date)):
-                if row[field_name] is None:
-                    new_row[field_name] = row[field_name]
+            if type(row[field_name]) is not type(field_value):
+                if isinstance(field_value, datetime.date):
+                    if row[field_name] is None:
+                        new_row[field_name] = None
+                    else:
+                        new_row[field_name] = row[field_name].date()
+                elif isinstance(field_value, float):
+                    if row[field_name] is None:
+                        new_row[field_name] = None
+                    else:
+                        new_row[field_name] = float(row[field_name])
                 else:
-                    new_row[field_name] = row[field_name].date()
+                    new_row[field_name] = row[field_name]
             else:
                 new_row[field_name] = row[field_name]
 
