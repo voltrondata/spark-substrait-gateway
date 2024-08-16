@@ -137,23 +137,17 @@ def users_dataframe(spark_session, register_users_dataset):
 
 def find_tpch() -> Path:
     """Find the location of the TPC-H dataset."""
-    current_location = Path('.').resolve()
-    while current_location != Path('/'):
-        location = current_location / 'data' / 'tpch' / 'parquet'
-        if location.exists():
-            return location.resolve()
-        current_location = current_location.parent
+    location = _get_project_root() / 'data' / 'tpch' / 'parquet'
+    if location.exists():
+        return location.resolve()
     raise ValueError('TPC-H dataset not found')
 
 
 def find_tpcds() -> Path:
     """Find the location of the TPC-DS dataset."""
-    current_location = Path('.').resolve()
-    while current_location != Path('/'):
-        location = current_location / 'data' / 'tpcds' / 'parquet'
-        if location.exists():
-            return location.resolve()
-        current_location = current_location.parent
+    location = _get_project_root() / 'data' / 'tpcds' / 'parquet'
+    if location.exists():
+        return location.resolve()
     raise ValueError('TPC-DS dataset not found')
 
 
