@@ -7,10 +7,10 @@ from pathlib import Path
 import duckdb
 import pyarrow as pa
 from substrait.gen.proto import plan_pb2
-from transforms.rename_functions import RenameFunctionsForDuckDB
-from transforms.replace_virtual_tables import ReplaceVirtualTablesWithNamedTable
 
 from backends.backend import Backend
+from transforms.rename_functions import RenameFunctionsForDuckDB
+from transforms.replace_virtual_tables import ReplaceVirtualTablesWithNamedTable
 
 
 # pylint: disable=fixme

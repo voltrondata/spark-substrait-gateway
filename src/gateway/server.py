@@ -10,14 +10,14 @@ import pyarrow as pa
 import pyspark.sql.connect.proto.base_pb2 as pb2
 import pyspark.sql.connect.proto.base_pb2_grpc as pb2_grpc
 import pyspark.sql.connect.proto.commands_pb2 as commands_pb2
-from backends.backend import Backend
-from backends.backend_options import BackendEngine, BackendOptions
-from backends.backend_selector import find_backend
 from google.protobuf.json_format import MessageToJson
 from grpc_channelz.v1 import channelz
 from pyspark.sql.connect.proto import types_pb2
 from substrait.gen.proto import plan_pb2
 
+from backends.backend import Backend
+from backends.backend_options import BackendEngine, BackendOptions
+from backends.backend_selector import find_backend
 from gateway.converter.conversion_options import arrow, datafusion, duck_db
 from gateway.converter.spark_to_substrait import SparkSubstraitConverter
 

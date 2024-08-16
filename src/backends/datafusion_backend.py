@@ -6,10 +6,10 @@ from pathlib import Path
 
 import pyarrow as pa
 from substrait.gen.proto import plan_pb2
-from transforms.rename_functions import RenameFunctionsForDatafusion
-from transforms.replace_local_files import ReplaceLocalFilesWithNamedTable
 
 from backends.backend import Backend
+from transforms.rename_functions import RenameFunctionsForDatafusion
+from transforms.replace_local_files import ReplaceLocalFilesWithNamedTable
 
 
 # pylint: disable=import-outside-toplevel
