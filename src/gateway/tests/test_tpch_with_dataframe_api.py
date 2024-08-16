@@ -40,10 +40,16 @@ class TestTpchWithDataFrameAPI:
     # pylint: disable=singleton-comparison
     def test_query_01(self, register_tpch_dataset, spark_session):
         expected = [
-            Row(l_returnflag='A', l_linestatus='F', sum_qty=Decimal(37734107.00),
-                sum_base_price=Decimal(56586554400.73), sum_disc_price=Decimal(53758257134.87),
-                sum_charge=Decimal(55909065222.83), avg_qty=Decimal(25.52),
-                avg_price=Decimal(38273.13), avg_disc=0.05, count_order=1478493),
+            Row(l_returnflag='A',
+                l_linestatus='F',
+                sum_qty=Decimal('37734107.00'),
+                sum_base_price=Decimal('56586554400.73'),
+                sum_disc_price=Decimal('53758257134.8700'),
+                sum_charge=Decimal('55909065222.827692'),
+                avg_qty=Decimal('25.522006'),
+                avg_price=Decimal('38273.129735'),
+                avg_disc=Decimal('0.049985'),
+                count_order=1478493),
         ]
 
         with utilizes_valid_plans(spark_session):
@@ -67,14 +73,14 @@ class TestTpchWithDataFrameAPI:
 
     def test_query_02(self, register_tpch_dataset, spark_session):
         expected = [
-            Row(s_acctbal=9938.53, s_name='Supplier#000005359', n_name='UNITED KINGDOM',
-                p_partkey=185358, p_mfgr='Manufacturer#4', s_address='QKuHYh,vZGiwu2FWEJoLDx04',
+            Row(s_acctbal=Decimal('9938.53'), s_name='Supplier#000005359', n_name='UNITED KINGDOM',
+                p_partkey=185358, p_mfgr='Manufacturer#4', s_address='bgxj2K0w1kJvxYl5mhCfou,W',
                 s_phone='33-429-790-6131',
-                s_comment='uriously regular requests hag'),
-            Row(s_acctbal=9937.84, s_name='Supplier#000005969', n_name='ROMANIA',
+                s_comment='l, ironic instructions cajole'),
+            Row(s_acctbal=Decimal('9937.84'), s_name='Supplier#000005969', n_name='ROMANIA',
                 p_partkey=108438, p_mfgr='Manufacturer#1',
-                s_address='ANDENSOSmk,miq23Xfb5RWt6dvUcvt6Qa', s_phone='29-520-692-3537',
-                s_comment='efully express instructions. regular requests against the slyly fin'),
+                s_address='rdnmd9c8EG1EIAYY3LPVa4yUNx6OwyVaQ', s_phone='29-520-692-3537',
+                s_comment='es. furiously silent deposits among the deposits haggle furiously a'),
         ]
 
         with utilizes_valid_plans(spark_session):
@@ -172,11 +178,11 @@ class TestTpchWithDataFrameAPI:
 
     def test_query_05(self, register_tpch_dataset, spark_session):
         expected = [
-            Row(n_name='INDONESIA', revenue=55502041.17),
-            Row(n_name='VIETNAM', revenue=55295087.00),
-            Row(n_name='CHINA', revenue=53724494.26),
-            Row(n_name='INDIA', revenue=52035512.00),
-            Row(n_name='JAPAN', revenue=45410175.70),
+            Row(n_name='JAPAN', revenue=Decimal('45410175.6954')),
+            Row(n_name='INDIA', revenue=Decimal('52035512.0002')),
+            Row(n_name='CHINA', revenue=Decimal('53724494.2566')),
+            Row(n_name='VIETNAM', revenue=Decimal('55295086.9967')),
+            Row(n_name='INDONESIA', revenue=Decimal('55502041.1697')),
         ]
 
         with utilizes_valid_plans(spark_session):
@@ -208,7 +214,7 @@ class TestTpchWithDataFrameAPI:
 
     def test_query_06(self, register_tpch_dataset, spark_session):
         expected = [
-            Row(revenue=123141078.23),
+            Row(revenue=Decimal('123141078.2283')),
         ]
 
         with utilizes_valid_plans(spark_session):
@@ -225,10 +231,14 @@ class TestTpchWithDataFrameAPI:
 
     def test_query_07(self, register_tpch_dataset, spark_session):
         expected = [
-            Row(supp_nation='FRANCE', cust_nation='GERMANY', l_year='1995', revenue=54639732.73),
-            Row(supp_nation='FRANCE', cust_nation='GERMANY', l_year='1996', revenue=54633083.31),
-            Row(supp_nation='GERMANY', cust_nation='FRANCE', l_year='1995', revenue=52531746.67),
-            Row(supp_nation='GERMANY', cust_nation='FRANCE', l_year='1996', revenue=52520549.02),
+            Row(supp_nation='FRANCE', cust_nation='GERMANY', l_year='1995',
+                revenue=Decimal('54639732.7336')),
+            Row(supp_nation='FRANCE', cust_nation='GERMANY', l_year='1996',
+                revenue=Decimal('54633083.3076')),
+            Row(supp_nation='GERMANY', cust_nation='FRANCE', l_year='1995',
+                revenue=Decimal('52531746.6697')),
+            Row(supp_nation='GERMANY', cust_nation='FRANCE', l_year='1996',
+                revenue=Decimal('52520549.0224')),
         ]
 
         with utilizes_valid_plans(spark_session):
@@ -264,8 +274,8 @@ class TestTpchWithDataFrameAPI:
 
     def test_query_08(self, register_tpch_dataset, spark_session):
         expected = [
-            Row(o_year='1995', mkt_share=0.03),
-            Row(o_year='1996', mkt_share=0.04),
+            Row(o_year='1995', mkt_share=Decimal('0.034436')),
+            Row(o_year='1996', mkt_share=Decimal('0.041486')),
         ]
 
         with utilizes_valid_plans(spark_session):
@@ -308,13 +318,12 @@ class TestTpchWithDataFrameAPI:
         assert_dataframes_equal(sorted_outcome, expected)
 
     def test_query_09(self, register_tpch_dataset, spark_session):
-        # TODO -- Verify the correctness of these results against another version of the dataset.
         expected = [
-            Row(n_name='ARGENTINA', o_year='1998', sum_profit=28341663.78),
-            Row(n_name='ARGENTINA', o_year='1997', sum_profit=47143964.12),
-            Row(n_name='ARGENTINA', o_year='1996', sum_profit=45255278.60),
-            Row(n_name='ARGENTINA', o_year='1995', sum_profit=45631769.21),
-            Row(n_name='ARGENTINA', o_year='1994', sum_profit=48268856.35),
+            Row(n_name='ALGERIA', o_year='1998', sum_profit=Decimal('27136900.1803')),
+            Row(n_name='ALGERIA', o_year='1997', sum_profit=Decimal('48611833.4962')),
+            Row(n_name='ALGERIA', o_year='1996', sum_profit=Decimal('48285482.6782')),
+            Row(n_name='ALGERIA', o_year='1995', sum_profit=Decimal('44402273.5999')),
+            Row(n_name='ALGERIA', o_year='1994', sum_profit=Decimal('48694008.0668')),
         ]
 
         with utilizes_valid_plans(spark_session):
@@ -443,11 +452,10 @@ class TestTpchWithDataFrameAPI:
         assert_dataframes_equal(sorted_outcome, expected)
 
     def test_query_13(self, register_tpch_dataset, spark_session):
-        # TODO -- Verify the corretness of these results against another version of the dataset.
         expected = [
-            Row(c_count=9, custdist=6641),
-            Row(c_count=10, custdist=6532),
-            Row(c_count=11, custdist=6014),
+            Row(c_count=10, custdist=6668),
+            Row(c_count=9, custdist=6563),
+            Row(c_count=11, custdist=6004),
         ]
 
         with utilizes_valid_plans(spark_session):

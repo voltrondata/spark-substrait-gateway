@@ -41,4 +41,4 @@ def assert_dataframes_equal(outcome: list[Row], expected: list[Row]):
     # Create a copy of the dataframes to avoid modifying the original ones
     modified_outcome = align_schema(outcome, expected)
 
-    assertDataFrameEqual(modified_outcome, expected, atol=1e-2)
+    assertDataFrameEqual(modified_outcome, expected, checkRowOrder=True, atol=1e-2)
