@@ -46,9 +46,9 @@ class TestTpchWithDataFrameAPI:
                 sum_base_price=Decimal('56586554400.73'),
                 sum_disc_price=Decimal('53758257134.8700'),
                 sum_charge=Decimal('55909065222.827692'),
-                avg_qty=Decimal('25.522006'),
-                avg_price=Decimal('38273.129735'),
-                avg_disc=Decimal('0.049985'),
+                avg_qty=25.522006,
+                avg_price=38273.129735,
+                avg_disc=0.049985,
                 count_order=1478493),
         ]
 
@@ -274,8 +274,8 @@ class TestTpchWithDataFrameAPI:
 
     def test_query_08(self, register_tpch_dataset, spark_session):
         expected = [
-            Row(o_year='1995', mkt_share=Decimal('0.034436')),
-            Row(o_year='1996', mkt_share=Decimal('0.041486')),
+            Row(o_year='1995', mkt_share=0.034436),
+            Row(o_year='1996', mkt_share=0.041486),
         ]
 
         with utilizes_valid_plans(spark_session):
@@ -484,8 +484,8 @@ class TestTpchWithDataFrameAPI:
                                 (col('l_shipdate') >= '1995-09-01') &
                                 (col('l_shipdate') < '1995-10-01')).select(
                 'p_type', (col('l_extendedprice') * (1 - col('l_discount'))).alias('value')).agg(
-                try_sum(when(col('p_type').contains('PROMO'), col('value'))) * 100 / try_sum(
-                    col('value')).alias('promo_revenue')).collect()
+                (try_sum(when(col('p_type').contains('PROMO'), col('value'))) * 100 / try_sum(
+                    col('value'))).alias('promo_revenue')).collect()
 
         assert_dataframes_equal(outcome, expected)
 
@@ -545,7 +545,7 @@ class TestTpchWithDataFrameAPI:
 
     def test_query_17(self, register_tpch_dataset, spark_session):
         expected = [
-            Row(avg_yearly=Decimal('348406.054286')),
+            Row(avg_yearly=348406.054286),
         ]
 
         with utilizes_valid_plans(spark_session):
@@ -738,7 +738,7 @@ class TestTpchWithDataFrameAPI:
                 fcustomer, col('o_custkey') == fcustomer.c_custkey, 'right_outer').filter(
                 col('o_custkey').isNull()).join(avg_customer).filter(
                 col('c_acctbal') > col('avg_acctbal')).groupBy('cntrycode').agg(
-                count('c_custkey').alias('numcust'), try_sum('c_acctbal'))
+                count('c_custkey').alias('numcust'), try_sum('c_acctbal').alias('totacctbal'))
 
             sorted_outcome = outcome.sort('cntrycode').collect()
 
