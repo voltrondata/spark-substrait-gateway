@@ -57,9 +57,13 @@ from gateway.converter.symbol_table import SymbolTable
 class ExpressionProcessingMode(Enum):
     """The mode of processing expressions."""
 
+    # Processing of an expression outside of an aggregate relation.
     NORMAL = 0
+    # Processing of a measure at depth 0.
     AGGR_TOP_LEVEL = 1
+    # Processing of a measure =at depth > 0.  No aggregate function has yet been encountered.
     AGGR_NOT_TOP_LEVEL = 2
+    # Processing of a measure after encountering an aggregate function.
     AGGR_UNDER_AGGREGATE = 3
 
 
