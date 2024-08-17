@@ -4,8 +4,6 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pyspark
 import pytest
-from gateway.tests.conftest import find_tpch
-from gateway.tests.plan_validator import utilizes_valid_plans
 from hamcrest import assert_that, equal_to
 from pyspark import Row
 from pyspark.errors.exceptions.connect import SparkConnectGrpcException
@@ -58,11 +56,15 @@ from pyspark.sql.functions import (
     substr,
     substring,
     trim,
+    try_sum,
     ucase,
     upper,
 )
 from pyspark.sql.types import DoubleType, StructField, StructType
 from pyspark.testing import assertDataFrameEqual
+
+from gateway.tests.conftest import find_tpch
+from gateway.tests.plan_validator import utilizes_valid_plans
 
 
 def create_parquet_table(spark_session, table_name: str, table: pa.Table):
@@ -2429,5 +2431,138 @@ class TestDataFrameAPIMathFunctions:
             # TODO -- Also test with the incorrect behavior of select instead of agg.
             outcome = numbers_dataframe.agg(
                 pyspark.sql.functions.try_sum('near_one')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+
+class TestDataFrameAggregateBehavior:
+    """Tests aggregation behavior using the dataframe side of SparkConnect."""
+
+    def test_literal(self, register_tpch_dataset, spark_session):
+        expected = [
+            Row(i=1, a=42),
+        ]
+
+        with utilizes_valid_plans(spark_session):
+            lineitem = spark_session.table('lineitem')
+
+            outcome = lineitem.groupBy(lit(1)).agg(lit(42)).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_simple(self, register_tpch_dataset, spark_session):
+        expected = [
+            Row(i=1, a=229577289732.97),
+        ]
+
+        with utilizes_valid_plans(spark_session):
+            lineitem = spark_session.table('lineitem')
+
+            outcome = lineitem.groupBy(lit(1)).agg(try_sum('l_extendedprice')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_exterior_calculation(self, register_tpch_dataset, spark_session):
+        expected = [
+            Row(i=1, a=459154579465.94),
+        ]
+
+        with utilizes_valid_plans(spark_session):
+            lineitem = spark_session.table('lineitem')
+
+            outcome = lineitem.groupBy(lit(1)).agg(2 * try_sum('l_extendedprice')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_exterior_calculation_with_deep_aggregate(self, register_tpch_dataset, spark_session):
+        expected = [
+            Row(i=1, a=1377463738397.8188),
+        ]
+
+        with utilizes_valid_plans(spark_session):
+            lineitem = spark_session.table('lineitem')
+
+            outcome = lineitem.groupBy(lit(1)).agg(3 * (2 * try_sum('l_extendedprice'))).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_interior_calculation(self, register_tpch_dataset, spark_session):
+        expected = [
+            Row(i=1, a=229583290946.97),
+        ]
+
+        with utilizes_valid_plans(spark_session):
+            lineitem = spark_session.table('lineitem')
+
+            outcome = lineitem.groupBy(lit(1)).agg(try_sum(col('l_extendedprice') + 1)).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_computation_with_two_aggregations(self, register_tpch_dataset, spark_session):
+        expected = [
+            Row(l_suppkey=1, a=390311321186.43),
+            Row(l_suppkey=2, a=288371456352.72),
+            Row(l_suppkey=3, a=306540435762.96),
+        ]
+
+        with utilizes_valid_plans(spark_session):
+            lineitem = spark_session.table('lineitem')
+
+            outcome = lineitem.groupBy('l_suppkey').agg(
+                try_sum(col('l_extendedprice')) *
+                try_sum(col('l_quantity'))
+            ).orderBy('l_suppkey').limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_computation_with_two_aggregations_and_internal_calculation(
+            self, register_tpch_dataset, spark_session):
+        expected = [
+            Row(l_suppkey=1, a=3903113211864.30),
+            Row(l_suppkey=2, a=2883714563527.20),
+            Row(l_suppkey=3, a=3065404357629.60),
+        ]
+
+        with utilizes_valid_plans(spark_session):
+            lineitem = spark_session.table('lineitem')
+
+            outcome = lineitem.groupBy('l_suppkey').agg(
+                try_sum(col('l_extendedprice') * 10) *
+                try_sum(col('l_quantity'))
+            ).orderBy('l_suppkey').limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_multiple_measures(self, register_tpch_dataset, spark_session):
+        expected = [
+            Row(i=1, a=229583290946.9698, b=229589292160.9698, c=229595293374.96982),
+        ]
+
+        with utilizes_valid_plans(spark_session):
+            lineitem = spark_session.table('lineitem')
+
+            outcome = lineitem.groupBy(lit(1)).agg(
+                try_sum(col('l_extendedprice') + 1),
+                try_sum(col('l_extendedprice') + 2),
+                try_sum(col('l_extendedprice') + 3),
+            ).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_multiple_measures_and_calculations(self, register_tpch_dataset, spark_session):
+        expected = [
+            Row(l_suppkey=1, a=48255093.18, b=72383889.77, c=24129421.59),
+            Row(l_suppkey=2, a=40764978.28, b=61148581.42, c=20384160.14),
+            Row(l_suppkey=3, a=42380815.12, b=63572396.68, c=21192168.56),
+        ]
+
+        with utilizes_valid_plans(spark_session):
+            lineitem = spark_session.table('lineitem')
+
+            outcome = lineitem.groupBy('l_suppkey').agg(
+                try_sum(2 * col('l_extendedprice')),
+                try_sum((3 * col('l_extendedprice') + 2).alias('b')),
+                try_sum(col('l_extendedprice') + 3),
+            ).orderBy('l_suppkey').limit(3).collect()
 
         assertDataFrameEqual(outcome, expected)

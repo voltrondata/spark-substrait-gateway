@@ -57,13 +57,15 @@ relations {
               }
             }
             input {
-              aggregate {
+              project {
                 common {
-                  direct {
+                  emit {
+                    output_mapping: 0
+                    output_mapping: 1
                   }
                 }
                 input {
-                  filter {
+                  aggregate {
                     common {
                       direct {
                       }
@@ -75,19 +77,9 @@ relations {
                           }
                         }
                         input {
-                          project {
+                          filter {
                             common {
-                              emit {
-                                output_mapping: 10
-                                output_mapping: 11
-                                output_mapping: 12
-                                output_mapping: 13
-                                output_mapping: 14
-                                output_mapping: 15
-                                output_mapping: 16
-                                output_mapping: 17
-                                output_mapping: 18
-                                output_mapping: 19
+                              direct {
                               }
                             }
                             input {
@@ -123,80 +115,226 @@ relations {
                                       }
                                     }
                                     input {
-                                      read {
+                                      project {
                                         common {
-                                          direct {
+                                          emit {
+                                            output_mapping: 10
+                                            output_mapping: 11
+                                            output_mapping: 12
+                                            output_mapping: 13
+                                            output_mapping: 14
+                                            output_mapping: 15
+                                            output_mapping: 16
+                                            output_mapping: 17
+                                            output_mapping: 18
+                                            output_mapping: 19
                                           }
                                         }
-                                        base_schema {
-                                          names: "mbid"
-                                          names: "artist_mb"
-                                          names: "artist_lastfm"
-                                          names: "country_mb"
-                                          names: "country_lastfm"
-                                          names: "tags_mb"
-                                          names: "tags_lastfm"
-                                          names: "listeners_lastfm"
-                                          names: "scrobbles_lastfm"
-                                          names: "ambiguous_artist"
-                                          struct {
-                                            types {
+                                        input {
+                                          read {
+                                            common {
+                                              direct {
+                                              }
+                                            }
+                                            base_schema {
+                                              names: "mbid"
+                                              names: "artist_mb"
+                                              names: "artist_lastfm"
+                                              names: "country_mb"
+                                              names: "country_lastfm"
+                                              names: "tags_mb"
+                                              names: "tags_lastfm"
+                                              names: "listeners_lastfm"
+                                              names: "scrobbles_lastfm"
+                                              names: "ambiguous_artist"
+                                              struct {
+                                                types {
+                                                  string {
+                                                    nullability: NULLABILITY_REQUIRED
+                                                  }
+                                                }
+                                                types {
+                                                  string {
+                                                    nullability: NULLABILITY_NULLABLE
+                                                  }
+                                                }
+                                                types {
+                                                  string {
+                                                    nullability: NULLABILITY_NULLABLE
+                                                  }
+                                                }
+                                                types {
+                                                  string {
+                                                    nullability: NULLABILITY_NULLABLE
+                                                  }
+                                                }
+                                                types {
+                                                  string {
+                                                    nullability: NULLABILITY_NULLABLE
+                                                  }
+                                                }
+                                                types {
+                                                  string {
+                                                    nullability: NULLABILITY_NULLABLE
+                                                  }
+                                                }
+                                                types {
+                                                  string {
+                                                    nullability: NULLABILITY_NULLABLE
+                                                  }
+                                                }
+                                                types {
+                                                  i32 {
+                                                    nullability: NULLABILITY_NULLABLE
+                                                  }
+                                                }
+                                                types {
+                                                  i32 {
+                                                    nullability: NULLABILITY_NULLABLE
+                                                  }
+                                                }
+                                                types {
+                                                  bool {
+                                                    nullability: NULLABILITY_NULLABLE
+                                                  }
+                                                }
+                                                nullability: NULLABILITY_REQUIRED
+                                              }
+                                            }
+                                            local_files {
+                                              items {
+                                                uri_file: "/Users/davids/Desktop/artists.parquet"
+                                                parquet {
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                        expressions {
+                                          selection {
+                                            direct_reference {
+                                              struct_field {
+                                              }
+                                            }
+                                            root_reference {
+                                            }
+                                          }
+                                        }
+                                        expressions {
+                                          selection {
+                                            direct_reference {
+                                              struct_field {
+                                                field: 1
+                                              }
+                                            }
+                                            root_reference {
+                                            }
+                                          }
+                                        }
+                                        expressions {
+                                          selection {
+                                            direct_reference {
+                                              struct_field {
+                                                field: 2
+                                              }
+                                            }
+                                            root_reference {
+                                            }
+                                          }
+                                        }
+                                        expressions {
+                                          selection {
+                                            direct_reference {
+                                              struct_field {
+                                                field: 3
+                                              }
+                                            }
+                                            root_reference {
+                                            }
+                                          }
+                                        }
+                                        expressions {
+                                          selection {
+                                            direct_reference {
+                                              struct_field {
+                                                field: 4
+                                              }
+                                            }
+                                            root_reference {
+                                            }
+                                          }
+                                        }
+                                        expressions {
+                                          selection {
+                                            direct_reference {
+                                              struct_field {
+                                                field: 5
+                                              }
+                                            }
+                                            root_reference {
+                                            }
+                                          }
+                                        }
+                                        expressions {
+                                          scalar_function {
+                                            function_reference: 1
+                                            output_type {
                                               string {
                                                 nullability: NULLABILITY_REQUIRED
                                               }
                                             }
-                                            types {
-                                              string {
-                                                nullability: NULLABILITY_NULLABLE
+                                            arguments {
+                                              value {
+                                                selection {
+                                                  direct_reference {
+                                                    struct_field {
+                                                      field: 6
+                                                    }
+                                                  }
+                                                  root_reference {
+                                                  }
+                                                }
                                               }
                                             }
-                                            types {
-                                              string {
-                                                nullability: NULLABILITY_NULLABLE
+                                            arguments {
+                                              value {
+                                                literal {
+                                                  string: "; "
+                                                }
                                               }
                                             }
-                                            types {
-                                              string {
-                                                nullability: NULLABILITY_NULLABLE
-                                              }
-                                            }
-                                            types {
-                                              string {
-                                                nullability: NULLABILITY_NULLABLE
-                                              }
-                                            }
-                                            types {
-                                              string {
-                                                nullability: NULLABILITY_NULLABLE
-                                              }
-                                            }
-                                            types {
-                                              string {
-                                                nullability: NULLABILITY_NULLABLE
-                                              }
-                                            }
-                                            types {
-                                              i32 {
-                                                nullability: NULLABILITY_NULLABLE
-                                              }
-                                            }
-                                            types {
-                                              i32 {
-                                                nullability: NULLABILITY_NULLABLE
-                                              }
-                                            }
-                                            types {
-                                              bool {
-                                                nullability: NULLABILITY_NULLABLE
-                                              }
-                                            }
-                                            nullability: NULLABILITY_REQUIRED
                                           }
                                         }
-                                        local_files {
-                                          items {
-                                            uri_file: "/Users/davids/Desktop/artists.parquet"
-                                            parquet {
+                                        expressions {
+                                          selection {
+                                            direct_reference {
+                                              struct_field {
+                                                field: 7
+                                              }
+                                            }
+                                            root_reference {
+                                            }
+                                          }
+                                        }
+                                        expressions {
+                                          selection {
+                                            direct_reference {
+                                              struct_field {
+                                                field: 8
+                                              }
+                                            }
+                                            root_reference {
+                                            }
+                                          }
+                                        }
+                                        expressions {
+                                          selection {
+                                            direct_reference {
+                                              struct_field {
+                                                field: 9
+                                              }
+                                            }
+                                            root_reference {
                                             }
                                           }
                                         }
@@ -268,44 +406,35 @@ relations {
                                       }
                                     }
                                     expressions {
-                                      scalar_function {
-                                        function_reference: 1
-                                        output_type {
-                                          string {
-                                            nullability: NULLABILITY_REQUIRED
-                                          }
-                                        }
-                                        arguments {
-                                          value {
-                                            selection {
-                                              direct_reference {
-                                                struct_field {
-                                                  field: 6
-                                                }
-                                              }
-                                              root_reference {
-                                              }
-                                            }
-                                          }
-                                        }
-                                        arguments {
-                                          value {
-                                            literal {
-                                              string: "; "
-                                            }
-                                          }
-                                        }
-                                      }
-                                    }
-                                    expressions {
                                       selection {
                                         direct_reference {
                                           struct_field {
-                                            field: 7
+                                            field: 6
                                           }
                                         }
                                         root_reference {
                                         }
+                                      }
+                                    }
+                                    expressions {
+                                      cast {
+                                        type {
+                                          i32 {
+                                            nullability: NULLABILITY_REQUIRED
+                                          }
+                                        }
+                                        input {
+                                          selection {
+                                            direct_reference {
+                                              struct_field {
+                                                field: 7
+                                              }
+                                            }
+                                            root_reference {
+                                            }
+                                          }
+                                        }
+                                        failure_behavior: FAILURE_BEHAVIOR_THROW_EXCEPTION
                                       }
                                     }
                                     expressions {
@@ -409,24 +538,14 @@ relations {
                                   }
                                 }
                                 expressions {
-                                  cast {
-                                    type {
-                                      i32 {
-                                        nullability: NULLABILITY_REQUIRED
+                                  selection {
+                                    direct_reference {
+                                      struct_field {
+                                        field: 7
                                       }
                                     }
-                                    input {
-                                      selection {
-                                        direct_reference {
-                                          struct_field {
-                                            field: 7
-                                          }
-                                        }
-                                        root_reference {
-                                        }
-                                      }
+                                    root_reference {
                                     }
-                                    failure_behavior: FAILURE_BEHAVIOR_THROW_EXCEPTION
                                   }
                                 }
                                 expressions {
@@ -441,142 +560,63 @@ relations {
                                   }
                                 }
                                 expressions {
-                                  selection {
-                                    direct_reference {
-                                      struct_field {
-                                        field: 9
+                                  cast {
+                                    type {
+                                      bool {
+                                        nullability: NULLABILITY_REQUIRED
                                       }
                                     }
-                                    root_reference {
+                                    input {
+                                      selection {
+                                        direct_reference {
+                                          struct_field {
+                                            field: 9
+                                          }
+                                        }
+                                        root_reference {
+                                        }
+                                      }
                                     }
+                                    failure_behavior: FAILURE_BEHAVIOR_THROW_EXCEPTION
                                   }
                                 }
                               }
                             }
-                            expressions {
-                              selection {
-                                direct_reference {
-                                  struct_field {
-                                  }
-                                }
-                                root_reference {
-                                }
-                              }
-                            }
-                            expressions {
-                              selection {
-                                direct_reference {
-                                  struct_field {
-                                    field: 1
-                                  }
-                                }
-                                root_reference {
-                                }
-                              }
-                            }
-                            expressions {
-                              selection {
-                                direct_reference {
-                                  struct_field {
-                                    field: 2
-                                  }
-                                }
-                                root_reference {
-                                }
-                              }
-                            }
-                            expressions {
-                              selection {
-                                direct_reference {
-                                  struct_field {
-                                    field: 3
-                                  }
-                                }
-                                root_reference {
-                                }
-                              }
-                            }
-                            expressions {
-                              selection {
-                                direct_reference {
-                                  struct_field {
-                                    field: 4
-                                  }
-                                }
-                                root_reference {
-                                }
-                              }
-                            }
-                            expressions {
-                              selection {
-                                direct_reference {
-                                  struct_field {
-                                    field: 5
-                                  }
-                                }
-                                root_reference {
-                                }
-                              }
-                            }
-                            expressions {
-                              selection {
-                                direct_reference {
-                                  struct_field {
-                                    field: 6
-                                  }
-                                }
-                                root_reference {
-                                }
-                              }
-                            }
-                            expressions {
-                              selection {
-                                direct_reference {
-                                  struct_field {
-                                    field: 7
-                                  }
-                                }
-                                root_reference {
-                                }
-                              }
-                            }
-                            expressions {
-                              selection {
-                                direct_reference {
-                                  struct_field {
-                                    field: 8
-                                  }
-                                }
-                                root_reference {
-                                }
-                              }
-                            }
-                            expressions {
-                              cast {
-                                type {
+                            condition {
+                              scalar_function {
+                                function_reference: 2
+                                output_type {
                                   bool {
                                     nullability: NULLABILITY_REQUIRED
                                   }
                                 }
-                                input {
-                                  selection {
-                                    direct_reference {
-                                      struct_field {
-                                        field: 9
+                                arguments {
+                                  value {
+                                    selection {
+                                      direct_reference {
+                                        struct_field {
+                                          field: 9
+                                        }
                                       }
-                                    }
-                                    root_reference {
+                                      root_reference {
+                                      }
                                     }
                                   }
                                 }
-                                failure_behavior: FAILURE_BEHAVIOR_THROW_EXCEPTION
+                                arguments {
+                                  value {
+                                    literal {
+                                      boolean: false
+                                    }
+                                  }
+                                }
                               }
                             }
                           }
                         }
                         condition {
                           scalar_function {
-                            function_reference: 2
+                            function_reference: 3
                             output_type {
                               bool {
                                 nullability: NULLABILITY_REQUIRED
@@ -587,7 +627,7 @@ relations {
                                 selection {
                                   direct_reference {
                                     struct_field {
-                                      field: 9
+                                      field: 6
                                     }
                                   }
                                   root_reference {
@@ -598,7 +638,7 @@ relations {
                             arguments {
                               value {
                                 literal {
-                                  boolean: false
+                                  string: "pop"
                                 }
                               }
                             }
@@ -606,11 +646,25 @@ relations {
                         }
                       }
                     }
-                    condition {
-                      scalar_function {
-                        function_reference: 3
+                    groupings {
+                      grouping_expressions {
+                        selection {
+                          direct_reference {
+                            struct_field {
+                              field: 2
+                            }
+                          }
+                          root_reference {
+                          }
+                        }
+                      }
+                    }
+                    measures {
+                      measure {
+                        function_reference: 4
+                        phase: AGGREGATION_PHASE_INITIAL_TO_RESULT
                         output_type {
-                          bool {
+                          i32 {
                             nullability: NULLABILITY_REQUIRED
                           }
                         }
@@ -619,7 +673,7 @@ relations {
                             selection {
                               direct_reference {
                                 struct_field {
-                                  field: 6
+                                  field: 7
                                 }
                               }
                               root_reference {
@@ -627,51 +681,28 @@ relations {
                             }
                           }
                         }
-                        arguments {
-                          value {
-                            literal {
-                              string: "pop"
-                            }
-                          }
-                        }
                       }
                     }
                   }
                 }
-                groupings {
-                  grouping_expressions {
-                    selection {
-                      direct_reference {
-                        struct_field {
-                          field: 2
-                        }
+                expressions {
+                  selection {
+                    direct_reference {
+                      struct_field {
                       }
-                      root_reference {
-                      }
+                    }
+                    root_reference {
                     }
                   }
                 }
-                measures {
-                  measure {
-                    function_reference: 4
-                    phase: AGGREGATION_PHASE_INITIAL_TO_RESULT
-                    output_type {
-                      i32 {
-                        nullability: NULLABILITY_REQUIRED
+                expressions {
+                  selection {
+                    direct_reference {
+                      struct_field {
+                        field: 1
                       }
                     }
-                    arguments {
-                      value {
-                        selection {
-                          direct_reference {
-                            struct_field {
-                              field: 7
-                            }
-                          }
-                          root_reference {
-                          }
-                        }
-                      }
+                    root_reference {
                     }
                   }
                 }

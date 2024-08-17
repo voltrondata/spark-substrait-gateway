@@ -4,6 +4,7 @@ import sys
 
 from google.protobuf import json_format
 from substrait.gen.proto import plan_pb2
+
 from transforms.label_relations import LabelRelations, UnlabelRelations
 from transforms.output_field_tracking_visitor import OutputFieldTrackingVisitor
 from transforms.simplify_casts import SimplifyCasts
