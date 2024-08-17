@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for the Spark to Substrait plan conversion routines."""
+# ruff: noqa: F401
 from pathlib import Path
 
 import pytest
@@ -11,7 +12,7 @@ from backends.backend_selector import find_backend
 from gateway.converter.conversion_options import duck_db
 from gateway.converter.spark_to_substrait import SparkSubstraitConverter
 from gateway.demo.mystream_database import create_mystream_database, delete_mystream_database
-from gateway.tests.conftest import find_tpch
+from gateway.tests.conftest import find_tpch, prepare_tpch_parquet_data
 
 test_case_directory = Path(__file__).resolve().parent / 'data'
 
@@ -67,7 +68,7 @@ def manage_database() -> None:
 
 
 @pytest.fixture(autouse=True)
-@pytest.mark.usefixtures('gateway.tests.conftest.prepare_tpch_parquet_data')
+@pytest.mark.usefixtures('prepare_tpch_parquet_data')
 def prepare_tpch_data() -> None:
     """Prepare the TPCH data for the tests."""
     pass
