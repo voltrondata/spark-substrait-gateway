@@ -68,7 +68,7 @@ class ExpressionProcessingMode(Enum):
 
 
 def _extract_decimal_parameters(type_name: str) -> tuple[int, int, int]:
-    """Extract the precision and scale from a decimal type name."""
+    """Extract the bytes used, precision, and scale from a decimal type name."""
     match = re.match(r'decimal(\d*)?\((\d+), *(\d+)\)', type_name)
     if not match:
         raise ValueError(f'Invalid decimal type name: {type_name}')

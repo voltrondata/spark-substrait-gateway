@@ -16,7 +16,6 @@ class FunctionType(Enum):
     AGGREGATE = 3
 
 
-
 # pylint: disable=E1101
 @dataclasses.dataclass
 class ExtensionFunction:
