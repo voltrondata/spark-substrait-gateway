@@ -1514,6 +1514,14 @@ class SparkSubstraitConverter:
 
                 # Avoid emitting the join column twice.
                 symbol = self._symbol_table.get_symbol(self._current_plan_id)
+                if self._conversion_options.join_not_honoring_emit_workaround:
+                    project = algebra_pb2.ProjectRel(input=algebra_pb2.Rel(join=join))
+                    for column_number in range(len(symbol.output_fields)):
+                        if column_number != right_column_reference + left_column_count:
+                            project.expressions.append(field_reference(column_number))
+                    del symbol.output_fields[right_column_reference + left_column_count]
+                    project.common.emit.output_mapping.extend(range(len(symbol.output_fields)))
+                    return algebra_pb2.Rel(project=project)
                 for column_number in range(len(symbol.output_fields)):
                     if column_number != right_column_reference + left_column_count:
                         join.common.emit.output_mapping.append(column_number)
