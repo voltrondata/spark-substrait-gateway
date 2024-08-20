@@ -1494,10 +1494,30 @@ class SparkSubstraitConverter:
                                    right=self.convert_relation(rel.right))
         self.update_field_references(rel.left.common.plan_id)
         self.update_field_references(rel.right.common.plan_id)
-        if rel.HasField('join_condition'):
-            join.expression.CopyFrom(self.convert_expression(rel.join_condition))
         join.type = self.convert_spark_join_type(rel.join_type)
         join.common.CopyFrom(self.create_common_relation())
+        if rel.HasField('join_condition'):
+            join.expression.CopyFrom(self.convert_expression(rel.join_condition))
+        else:
+            equal_func = self.lookup_function_by_name('==')
+            if rel.using_columns:
+                column = rel.using_columns[0]
+                left_fields = self._symbol_table.get_symbol(rel.left.common.plan_id).output_fields
+                left_column_count = len(left_fields)
+                left_column_reference = left_fields.index(column)
+                right_fields = self._symbol_table.get_symbol(rel.right.common.plan_id).output_fields
+                right_column_reference = right_fields.index(column)
+                join.expression.CopyFrom(
+                    equal_function(equal_func,
+                                   field_reference(left_column_reference),
+                                   field_reference(right_column_reference + left_column_count)))
+
+                # Avoid emitting the join column twice.
+                symbol = self._symbol_table.get_symbol(self._current_plan_id)
+                for column_number in range(len(symbol.output_fields)):
+                    if column_number != right_column_reference + left_column_count:
+                        join.common.emit.output_mapping.append(column_number)
+                del symbol.output_fields[right_column_reference + left_column_count]
         return algebra_pb2.Rel(join=join)
 
     def convert_project_relation(

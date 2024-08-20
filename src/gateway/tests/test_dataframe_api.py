@@ -202,8 +202,7 @@ class TestDataFrameAPI:
             customer_df = spark_session.table('customer')
             test_df = spark_session.createDataFrame([(131074, 'Alice'), (131075, 'Bob')],
                                                     ['c_custkey', 'name'])
-            outcome = test_df.join(customer_df, on='c_custkey').select('c_custkey', 'name',
-                                                                       'c_name').collect()
+            outcome = test_df.join(customer_df, on='c_custkey').collect()
 
         assertDataFrameEqual(outcome, expected)
 
