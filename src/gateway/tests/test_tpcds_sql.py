@@ -52,7 +52,6 @@ def mark_tests_as_xfail(request):
         pytest.skip(reason='not yet ready to run SQL tests regularly')
 
 
-@pytest.mark.usefixtures("prepare_tpcds_parquet_data")
 class TestTpcds:
 
     @pytest.mark.timeout(60)

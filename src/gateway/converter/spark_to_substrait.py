@@ -67,6 +67,14 @@ class ExpressionProcessingMode(Enum):
     AGGR_UNDER_AGGREGATE = 3
 
 
+def _extract_decimal_parameters(type_name: str) -> tuple[int, int, int]:
+    """Extract the bytes used, precision, and scale from a decimal type name."""
+    match = re.match(r'decimal(\d*)?\((\d+), *(\d+)\)', type_name)
+    if not match:
+        raise ValueError(f'Invalid decimal type name: {type_name}')
+    return int(match.group(1)), int(match.group(2)), int(match.group(3))
+
+
 # ruff: noqa: RUF005
 class SparkSubstraitConverter:
     """Converts SparkConnect plans to Substrait plans."""
@@ -812,7 +820,7 @@ class SparkSubstraitConverter:
                         more_names.extend(y.name)
                         field_type.struct.types.extend(sub_type.struct.types)
                     return field_type
-                raise NotImplementedError(f'Unexpected field type: {arrow_type}')
+                raise NotImplementedError(f'Unexpected arrow datatype: {arrow_type}')
 
         return field_type, more_names
 
@@ -875,8 +883,15 @@ class SparkSubstraitConverter:
                         field_type = type_pb2.Type(
                             map=type_pb2.Type.Map(nullability=nullability, key=key_type,
                                                   value=value_type))
+                    elif str(field.type).startswith('decimal'):
+                        _, precision, scale = _extract_decimal_parameters(str(field.type))
+                        field_type = type_pb2.Type(
+                            decimal=type_pb2.Type.Decimal(nullability=nullability,
+                                                          precision=precision,
+                                                          scale=scale))
                     else:
-                        raise NotImplementedError(f'Unexpected field type: {field.type}')
+                        raise NotImplementedError(
+                            f'Unexpected arrow schema field type: {field.type}')
 
             schema.struct.types.append(field_type)
         return schema
