@@ -30,8 +30,6 @@ def mark_tests_as_xfail(request):
                 reason='Cannot create filter with non-boolean predicate - substr function'))
         elif originalname in ['test_query_11']:
             request.node.add_marker(pytest.mark.xfail(reason='Duplicate field in schema'))
-        elif originalname in ['test_query_15']:
-            request.node.add_marker(pytest.mark.xfail(reason='No results (float vs decimal)'))
 
 
 class TestTpchWithDataFrameAPI:

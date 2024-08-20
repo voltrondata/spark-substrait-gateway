@@ -144,10 +144,6 @@ def mark_dataframe_tests_as_xfail(request):
         pytest.skip(reason='missing in Substrait')
     if source == 'gateway-over-datafusion' and originalname == 'test_try_divide':
         pytest.skip(reason='returns infinity instead of null')
-    if source == 'gateway-over-datafusion' and originalname in ['test_data_source_schema',
-                                                                'test_data_source_filter',
-                                                                'test_data_source_options']:
-        pytest.skip(reason='list index out of range')
 
 
 # ruff: noqa: E712
