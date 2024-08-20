@@ -33,9 +33,12 @@ class DatafusionBackend(Backend):
         """Modify the given Substrait plan for use with Datafusion."""
         file_groups = ReplaceLocalFilesWithNamedTable().visit_plan(plan)
         registered_tables = set()
-        for files in file_groups:
-            table_name = files[0]
-            location = Path(files[1][0]).parent
+        for table_name, files in file_groups:
+            if len(files) == 1:
+                location = Path(files[0])
+            else:
+                # We can only register one location, so hope with the parent directory.
+                location = Path(files[0]).parent
             self.register_table(table_name, location)
             registered_tables.add(table_name)
 
@@ -59,6 +62,12 @@ class DatafusionBackend(Backend):
 
         # Create a DataFrame from a deserialized logical plan.
         df_result = self._connection.create_dataframe_from_logical_plan(logical_plan)
+        # Rename the output columns to match the original plan.
+        if len(df_result.schema().names) != len(plan.relations[0].root.names):
+            raise ValueError(
+                f"Expected {len(plan.relations[0].root.names)} columns, "
+                f"but got {len(df_result.schema().names)}."
+            )
         for column_number, column_name in enumerate(df_result.schema().names):
             df_result = df_result.with_column_renamed(
                 column_name,

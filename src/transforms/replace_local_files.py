@@ -11,6 +11,8 @@ from substrait_visitors.substrait_plan_visitor import SubstraitPlanVisitor
 class ReplaceLocalFilesWithNamedTable(SubstraitPlanVisitor):
     """Replaces all the local file instances with named tables."""
 
+    _TABLES_FOUND: int = 0
+
     def __init__(self):
         """Initialize the visitor."""
         self._file_groups: list[tuple[str, list[str]]] = []
@@ -23,7 +25,9 @@ class ReplaceLocalFilesWithNamedTable(SubstraitPlanVisitor):
         for item in local_files.items:
             files.append(item.uri_file)
         super().visit_local_files(local_files)
-        self._file_groups.append(('possible_table_name', files))
+        ReplaceLocalFilesWithNamedTable._TABLES_FOUND += 1
+        table_name = f'local_files_table{ReplaceLocalFilesWithNamedTable._TABLES_FOUND}'
+        self._file_groups.append((table_name, files))
 
     def visit_read_relation(self, rel: algebra_pb2.ReadRel) -> Any:
         """Visit a read relation node."""
