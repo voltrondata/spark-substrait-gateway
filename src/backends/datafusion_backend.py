@@ -34,11 +34,8 @@ class DatafusionBackend(Backend):
         file_groups = ReplaceLocalFilesWithNamedTable().visit_plan(plan)
         registered_tables = set()
         for table_name, files in file_groups:
-            if len(files) == 1:
-                location = Path(files[0])
-            else:
-                # We can only register one location, so hope with the parent directory.
-                location = Path(files[0]).parent
+            # We can only register one location, so hope with the parent directory.
+            location = Path(files[0]) if len(files) == 1 else Path(files[0]).parent
             self.register_table(table_name, location)
             registered_tables.add(table_name)
 
