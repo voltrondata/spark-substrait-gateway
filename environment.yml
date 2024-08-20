@@ -24,7 +24,7 @@ dependencies:
     - pyspark
     - pandas >= 1.0.5
     - pyhamcrest
-    - substrait >= 0.21.0
+    - substrait == 0.21.0
     - substrait-validator
     - pytest-timeout
     - protobuf >= 4.25.3, < 5.0.0

@@ -43,7 +43,7 @@ relations {
                       }
                     }
                     types {
-                      i64 {
+                      i32 {
                         nullability: NULLABILITY_NULLABLE
                       }
                     }
@@ -53,7 +53,9 @@ relations {
                       }
                     }
                     types {
-                      fp64 {
+                      decimal {
+                        scale: 2
+                        precision: 15
                         nullability: NULLABILITY_NULLABLE
                       }
                     }

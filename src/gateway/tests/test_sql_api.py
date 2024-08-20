@@ -3,12 +3,13 @@
 from pathlib import Path
 
 import pytest
-from gateway.tests.plan_validator import utilizes_valid_plans
 from hamcrest import assert_that, equal_to
 from pyspark import Row
 from pyspark.testing import assertDataFrameEqual
 
-test_case_directory = Path(__file__).resolve().parent / 'data'
+from gateway.tests.plan_validator import utilizes_valid_plans
+
+test_case_directory = Path(__file__).resolve().parent / 'data' / 'tpc-h'
 
 sql_test_case_paths = [f for f in sorted(test_case_directory.iterdir()) if f.suffix == '.sql']
 
@@ -24,8 +25,6 @@ def mark_tests_as_xfail(request):
             path = request.getfixturevalue('path')
             if path.stem in ['02', '04', '16', '17', '20', '21', '22']:
                 pytest.skip(reason='DuckDB needs Delim join')
-            elif path.stem in ['15']:
-                pytest.skip(reason='Rounding inconsistency')
             elif path.stem in ['01', '06', '13', '14']:
                 pytest.skip(reason='Too few names returned')
             elif path.stem in ['19']:
@@ -49,8 +48,6 @@ def mark_tests_as_xfail(request):
                 request.node.add_marker(pytest.mark.xfail(reason='first not implemented'))
             elif path.stem in ['13']:
                 request.node.add_marker(pytest.mark.xfail(reason='not rlike not implemented'))
-            elif path.stem in ['15']:
-                request.node.add_marker(pytest.mark.xfail(reason='empty table error'))
             elif path.stem in ['16']:
                 request.node.add_marker(pytest.mark.xfail(reason='mark join not implemented'))
             elif path.stem in ['18']:
@@ -73,15 +70,15 @@ class TestSqlAPI:
             outcome = spark_session.sql(
                 'SELECT COUNT(*) FROM customer').collect()
 
-        assert_that(outcome[0][0], equal_to(149999))
+        assert_that(outcome[0][0], equal_to(150000))
 
     def test_limit(self, register_tpch_dataset, spark_session):
         expected = [
+            Row(c_custkey=1, c_phone='25-989-741-2988', c_mktsegment='BUILDING'),
             Row(c_custkey=2, c_phone='23-768-687-3665', c_mktsegment='AUTOMOBILE'),
             Row(c_custkey=3, c_phone='11-719-748-3364', c_mktsegment='AUTOMOBILE'),
             Row(c_custkey=4, c_phone='14-128-190-5944', c_mktsegment='MACHINERY'),
             Row(c_custkey=5, c_phone='13-750-942-6364', c_mktsegment='HOUSEHOLD'),
-            Row(c_custkey=6, c_phone='30-114-968-4951', c_mktsegment='AUTOMOBILE'),
         ]
 
         with utilizes_valid_plans(spark_session):

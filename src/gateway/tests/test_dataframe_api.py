@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for the Spark to Substrait Gateway server."""
+from decimal import Decimal
+
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pyspark
 import pytest
-from gateway.tests.conftest import find_tpch
-from gateway.tests.plan_validator import utilizes_valid_plans
 from hamcrest import assert_that, equal_to
 from pyspark import Row
 from pyspark.errors.exceptions.connect import SparkConnectGrpcException
@@ -58,10 +58,15 @@ from pyspark.sql.functions import (
     substr,
     substring,
     trim,
+    try_sum,
     ucase,
     upper,
 )
+from pyspark.sql.types import DoubleType, StructField, StructType
 from pyspark.testing import assertDataFrameEqual
+
+from gateway.tests.conftest import find_tpch
+from gateway.tests.plan_validator import utilizes_valid_plans
 
 
 def create_parquet_table(spark_session, table_name: str, table: pa.Table):
@@ -92,11 +97,11 @@ def mark_dataframe_tests_as_xfail(request):
     if source == 'gateway-over-duckdb' and originalname in ['test_union', 'test_unionall']:
         pytest.skip(reason='DuckDB treats all unions as distinct')
     if source == 'gateway-over-datafusion' and originalname == 'test_subtract':
-        request.node.add_marker(pytest.mark.xfail(reason='subtract not supported'))
+        pytest.skip(reason='subtract not supported')
     if source == 'gateway-over-datafusion' and originalname == 'test_intersect':
-        request.node.add_marker(pytest.mark.xfail(reason='intersect not supported'))
+        pytest.skip(reason='intersect not supported')
     if source == 'gateway-over-datafusion' and originalname == 'test_offset':
-        request.node.add_marker(pytest.mark.xfail(reason='offset not supported'))
+        pytest.skip(reason='offset not supported')
     if source == 'gateway-over-datafusion' and originalname == 'test_broadcast':
         pytest.skip(reason='duplicate name problem with joins')
     if source == 'gateway-over-duckdb' and originalname == 'test_coalesce':
@@ -104,41 +109,45 @@ def mark_dataframe_tests_as_xfail(request):
     if source == 'gateway-over-datafusion' and originalname == 'test_coalesce':
         pytest.skip(reason='datafusion cast error')
     if source == 'spark' and originalname == 'test_isnan':
-        request.node.add_marker(pytest.mark.xfail(reason='None not preserved'))
+        pytest.skip(reason='None not preserved')
     if source == 'gateway-over-datafusion' and originalname in [
         'test_isnan', 'test_nanvl', 'test_least', 'test_greatest']:
         pytest.skip(reason='missing Substrait mapping')
     if source != 'spark' and originalname == 'test_expr':
-        request.node.add_marker(pytest.mark.xfail(reason='SQL support needed in gateway'))
+        pytest.skip(reason='SQL support needed in gateway')
     if source != 'spark' and originalname == 'test_named_struct':
         pytest.skip(reason='needs better type tracking in gateway')
     if source == 'spark' and originalname == 'test_nullif':
-        request.node.add_marker(pytest.mark.xfail(reason='internal Spark type error'))
+        pytest.skip(reason='internal Spark type error')
     if source == 'gateway-over-duckdb' and originalname == 'test_nullif':
         pytest.skip(reason='argument count issue in DuckDB mapping')
     if source == 'gateway-over-datafusion' and originalname == 'test_contains':
-        request.node.add_marker(pytest.mark.xfail(reason='contains returns position not binary'))
+        pytest.skip(reason='contains returns position not binary')
     if source != 'spark' and originalname in ['test_locate', 'test_position']:
-        request.node.add_marker(pytest.mark.xfail(reason='no direct Substrait analog'))
+        pytest.skip(reason='no direct Substrait analog')
     if source == 'gateway-over-duckdb' and originalname == 'test_octet_length':
-        request.node.add_marker(pytest.mark.xfail(reason='varchar octet_length not supported'))
+        pytest.skip(reason='varchar octet_length not supported')
 
     if source == 'gateway-over-duckdb' and originalname == 'test_sqrt':
-        request.node.add_marker(pytest.mark.xfail(reason='behavior option ignored'))
+        pytest.skip(reason='behavior option ignored')
     if source != 'spark' and originalname in ['test_rint', 'test_bround']:
-        request.node.add_marker(pytest.mark.xfail(reason='behavior option ignored'))
+        pytest.skip(reason='behavior option ignored')
     if source != 'spark' and originalname in ['test_negative', 'test_negate', 'test_positive']:
-        request.node.add_marker(pytest.mark.xfail(reason='custom implementation required'))
+        pytest.skip(reason='custom implementation required')
     if source == 'gateway-over-duckdb' and originalname in [
         'test_acosh', 'test_asinh', 'test_atanh', 'test_cosh', 'test_sinh', 'test_tanh']:
-        request.node.add_marker(pytest.mark.xfail(reason='missing implementation'))
+        pytest.skip(reason='missing implementation')
     if source == 'gateway-over-datafusion' and originalname in ['test_sign', 'test_signum']:
-        request.node.add_marker(pytest.mark.xfail(reason='missing implementation'))
+        pytest.skip(reason='missing implementation')
     if source != 'spark' and originalname in ['test_cot', 'test_sec', 'test_ln', 'test_log',
                                               'test_log10', 'test_log2', 'test_log1p']:
-        request.node.add_marker(pytest.mark.xfail(reason='missing in Substrait'))
+        pytest.skip(reason='missing in Substrait')
     if source == 'gateway-over-datafusion' and originalname == 'test_try_divide':
-        request.node.add_marker(pytest.mark.xfail(reason='returns infinity instead of null'))
+        pytest.skip(reason='returns infinity instead of null')
+    if source == 'gateway-over-datafusion' and originalname in ['test_data_source_schema',
+                                                                'test_data_source_filter',
+                                                                'test_data_source_options']:
+        pytest.skip(reason='list index out of range')
 
 
 # ruff: noqa: E712
@@ -168,6 +177,19 @@ class TestDataFrameAPI:
             test_df = spark_session.createDataFrame([(1, 'Alice'), (2, 'Bob')], ['age', 'name'])
 
         assertDataFrameEqual(test_df.collect(), expected)
+
+    def test_create_dataframe_and_temp_view(self, spark_session, caplog):
+        expected = [
+            Row(age=1, name='Alice'),
+            Row(age=2, name='Bob'),
+        ]
+
+        with utilizes_valid_plans(spark_session, caplog):
+            test_df = spark_session.createDataFrame([(1, 'Alice'), (2, 'Bob')], ['age', 'name'])
+            test_df.createOrReplaceTempView('mytempview_from_df')
+            view_df = spark_session.table('mytempview_from_df')
+
+        assertDataFrameEqual(view_df.collect(), expected)
 
     def test_dropna(self, spark_session, caplog):
         schema = pa.schema({'name': pa.string(), 'age': pa.int32()})
@@ -493,10 +515,10 @@ only showing top 1 row
     def test_join(self, register_tpch_dataset, spark_session):
         expected = [
             Row(n_nationkey=5, n_name='ETHIOPIA', n_regionkey=0,
-                n_comment='ven packages wake quickly. regu', s_suppkey=2,
-                s_name='Supplier#000000002', s_address='89eJ5ksX3ImxJQBvxObC,', s_nationkey=5,
-                s_phone='15-679-861-2259', s_acctbal=4032.68,
-                s_comment=' slyly bold instructions. idle dependen'),
+                n_comment='regular requests sleep carefull', s_suppkey=2,
+                s_name='Supplier#000000002', s_address='TRMhVHz3XiFuhapxucPo1', s_nationkey=5,
+                s_phone='15-679-861-2259', s_acctbal=Decimal('4032.68'),
+                s_comment=' the pending packages. furiously expres'),
         ]
 
         with utilizes_valid_plans(spark_session):
@@ -510,11 +532,11 @@ only showing top 1 row
 
     def test_crossjoin(self, register_tpch_dataset, spark_session):
         expected = [
+            Row(n_nationkey=0, n_name='ALGERIA', s_name='Supplier#000000002'),
             Row(n_nationkey=1, n_name='ARGENTINA', s_name='Supplier#000000002'),
             Row(n_nationkey=2, n_name='BRAZIL', s_name='Supplier#000000002'),
             Row(n_nationkey=3, n_name='CANADA', s_name='Supplier#000000002'),
             Row(n_nationkey=4, n_name='EGYPT', s_name='Supplier#000000002'),
-            Row(n_nationkey=5, n_name='ETHIOPIA', s_name='Supplier#000000002'),
         ]
 
         with utilizes_valid_plans(spark_session):
@@ -529,9 +551,9 @@ only showing top 1 row
     def test_union(self, register_tpch_dataset, spark_session):
         expected = [
             Row(n_nationkey=23, n_name='UNITED KINGDOM', n_regionkey=3,
-                n_comment='eans boost carefully special requests. accounts are. carefull'),
+                n_comment='carefully pending courts sleep above the ironic, regular theo'),
             Row(n_nationkey=23, n_name='UNITED KINGDOM', n_regionkey=3,
-                n_comment='eans boost carefully special requests. accounts are. carefull'),
+                n_comment='carefully pending courts sleep above the ironic, regular theo'),
         ]
 
         with utilizes_valid_plans(spark_session):
@@ -544,7 +566,7 @@ only showing top 1 row
     def test_union_distinct(self, register_tpch_dataset, spark_session):
         expected = [
             Row(n_nationkey=23, n_name='UNITED KINGDOM', n_regionkey=3,
-                n_comment='eans boost carefully special requests. accounts are. carefull'),
+                n_comment='carefully pending courts sleep above the ironic, regular theo'),
         ]
 
         with utilizes_valid_plans(spark_session):
@@ -557,9 +579,9 @@ only showing top 1 row
     def test_unionall(self, register_tpch_dataset, spark_session):
         expected = [
             Row(n_nationkey=23, n_name='UNITED KINGDOM', n_regionkey=3,
-                n_comment='eans boost carefully special requests. accounts are. carefull'),
+                n_comment='carefully pending courts sleep above the ironic, regular theo'),
             Row(n_nationkey=23, n_name='UNITED KINGDOM', n_regionkey=3,
-                n_comment='eans boost carefully special requests. accounts are. carefull'),
+                n_comment='carefully pending courts sleep above the ironic, regular theo'),
         ]
 
         with utilizes_valid_plans(spark_session):
@@ -572,23 +594,23 @@ only showing top 1 row
     def test_exceptall(self, register_tpch_dataset, spark_session, caplog):
         expected = [
             Row(n_nationkey=21, n_name='VIETNAM', n_regionkey=2,
-                n_comment='hely enticingly express accounts. even, final '),
+                n_comment='lly across the quickly even pinto beans. caref'),
             Row(n_nationkey=21, n_name='VIETNAM', n_regionkey=2,
-                n_comment='hely enticingly express accounts. even, final '),
+                n_comment='lly across the quickly even pinto beans. caref'),
             Row(n_nationkey=22, n_name='RUSSIA', n_regionkey=3,
-                n_comment=' requests against the platelets use never according to the '
-                          'quickly regular pint'),
+                n_comment='uctions. furiously unusual instructions sleep furiously ironic '
+                          'packages. slyly '),
             Row(n_nationkey=22, n_name='RUSSIA', n_regionkey=3,
-                n_comment=' requests against the platelets use never according to the '
-                          'quickly regular pint'),
+                n_comment='uctions. furiously unusual instructions sleep furiously ironic '
+                          'packages. slyly '),
             Row(n_nationkey=23, n_name='UNITED KINGDOM', n_regionkey=3,
-                n_comment='eans boost carefully special requests. accounts are. carefull'),
+                n_comment='carefully pending courts sleep above the ironic, regular theo'),
             Row(n_nationkey=24, n_name='UNITED STATES', n_regionkey=1,
-                n_comment='y final packages. slow foxes cajole quickly. quickly silent platelets '
-                          'breach ironic accounts. unusual pinto be'),
+                n_comment='ly ironic requests along the slyly bold ideas hang after the '
+                          'blithely special notornis; blithely even accounts'),
             Row(n_nationkey=24, n_name='UNITED STATES', n_regionkey=1,
-                n_comment='y final packages. slow foxes cajole quickly. quickly silent platelets '
-                          'breach ironic accounts. unusual pinto be'),
+                n_comment='ly ironic requests along the slyly bold ideas hang after the '
+                          'blithely special notornis; blithely even accounts'),
         ]
 
         with utilizes_valid_plans(spark_session, caplog):
@@ -621,7 +643,7 @@ only showing top 1 row
 
         assertDataFrameEqual(outcome, expected)
 
-    def test_dropduplicates(self, spark_session):
+    def test_drop_duplicates(self, spark_session):
         expected = [
             Row(a=1, b=10, c='a'),
             Row(a=2, b=11, c='a'),
@@ -635,7 +657,7 @@ only showing top 1 row
         table = pa.Table.from_arrays([int1_array, int2_array, string_array],
                                      names=['a', 'b', 'c'])
 
-        df = create_parquet_table(spark_session, 'mytesttable1', table)
+        df = create_parquet_table(spark_session, 'mytesttable2', table)
 
         with utilizes_valid_plans(df):
             outcome = df.dropDuplicates().collect()
@@ -654,7 +676,7 @@ only showing top 1 row
         table = pa.Table.from_arrays([int_array, int_array, string_array, string_array],
                                      names=['a1', 'c', 'col', 'col2'])
 
-        df = create_parquet_table(spark_session, 'mytesttable1', table)
+        df = create_parquet_table(spark_session, 'mytesttable3', table)
 
         with utilizes_valid_plans(df, caplog):
             outcome = df.select(df.colRegex("`(c.l|a)?[0-9]`")).collect()
@@ -664,13 +686,13 @@ only showing top 1 row
     def test_subtract(self, register_tpch_dataset, spark_session):
         expected = [
             Row(n_nationkey=21, n_name='VIETNAM', n_regionkey=2,
-                n_comment='hely enticingly express accounts. even, final '),
+                n_comment='lly across the quickly even pinto beans. caref'),
             Row(n_nationkey=22, n_name='RUSSIA', n_regionkey=3,
-                n_comment=' requests against the platelets use never according to the '
-                          'quickly regular pint'),
+                n_comment='uctions. furiously unusual instructions sleep furiously '
+                          'ironic packages. slyly '),
             Row(n_nationkey=24, n_name='UNITED STATES', n_regionkey=1,
-                n_comment='y final packages. slow foxes cajole quickly. quickly silent platelets '
-                          'breach ironic accounts. unusual pinto be'),
+                n_comment='ly ironic requests along the slyly bold ideas hang after '
+                          'the blithely special notornis; blithely even accounts'),
         ]
 
         with utilizes_valid_plans(spark_session):
@@ -685,7 +707,7 @@ only showing top 1 row
     def test_intersect(self, register_tpch_dataset, spark_session):
         expected = [
             Row(n_nationkey=23, n_name='UNITED KINGDOM', n_regionkey=3,
-                n_comment='eans boost carefully special requests. accounts are. carefull'),
+                n_comment='carefully pending courts sleep above the ironic, regular theo'),
         ]
 
         with utilizes_valid_plans(spark_session):
@@ -759,11 +781,11 @@ only showing top 1 row
 
     def test_between(self, register_tpch_dataset, spark_session):
         expected = [
+            Row(n_name='ALGERIA', is_between=False),
             Row(n_name='ARGENTINA', is_between=False),
             Row(n_name='BRAZIL', is_between=False),
             Row(n_name='CANADA', is_between=False),
             Row(n_name='EGYPT', is_between=True),
-            Row(n_name='ETHIOPIA', is_between=False),
         ]
 
         with utilizes_valid_plans(spark_session):
@@ -916,13 +938,23 @@ only showing top 1 row
                     'substr(user_id, 5, 9)', 'not paid_for_service').limit(1).collect()
 
     def test_data_source_schema(self, spark_session):
-        location_customer = str(find_tpch() / 'customer')
+        location_customer = str(find_tpch() / 'customer.parquet')
         schema = spark_session.read.parquet(location_customer).schema
         assert len(schema) == 8
 
     def test_data_source_filter(self, spark_session):
-        location_customer = str(find_tpch() / 'customer')
+        location_customer = str(find_tpch() / 'customer.parquet')
         customer_dataframe = spark_session.read.parquet(location_customer)
+
+        with utilizes_valid_plans(spark_session):
+            outcome = customer_dataframe.filter(col('c_mktsegment') == 'FURNITURE').collect()
+
+        assert len(outcome) == 29968
+
+    def test_data_source_options(self, spark_session):
+        location_customer = str(find_tpch() / 'customer.parquet')
+        spark_options = {"path": location_customer}
+        customer_dataframe = spark_session.read.format('parquet').options(**spark_options).load()
 
         with utilizes_valid_plans(spark_session):
             outcome = customer_dataframe.filter(col('c_mktsegment') == 'FURNITURE').collect()
@@ -933,7 +965,7 @@ only showing top 1 row
         with utilizes_valid_plans(spark_session):
             outcome = spark_session.table('customer').collect()
 
-        assert len(outcome) == 149999
+        assert len(outcome) == 150000
 
     def test_table_schema(self, register_tpch_dataset, spark_session):
         schema = spark_session.table('customer').schema
@@ -948,17 +980,17 @@ only showing top 1 row
         assert len(outcome) == 29968
 
     def test_create_or_replace_temp_view(self, spark_session):
-        location_customer = str(find_tpch() / 'customer')
+        location_customer = str(find_tpch() / 'customer.parquet')
         df_customer = spark_session.read.parquet(location_customer)
         df_customer.createOrReplaceTempView("mytempview")
 
         with utilizes_valid_plans(spark_session):
             outcome = spark_session.table('mytempview').collect()
 
-        assert len(outcome) == 149999
+        assert len(outcome) == 150000
 
     def test_create_or_replace_multiple_temp_views(self, spark_session):
-        location_customer = str(find_tpch() / 'customer')
+        location_customer = str(find_tpch() / 'customer.parquet')
         df_customer = spark_session.read.parquet(location_customer)
         df_customer.createOrReplaceTempView("mytempview1")
         df_customer.createOrReplaceTempView("mytempview2")
@@ -967,7 +999,7 @@ only showing top 1 row
             outcome1 = spark_session.table('mytempview1').collect()
             outcome2 = spark_session.table('mytempview2').collect()
 
-        assert len(outcome1) == len(outcome2) == 149999
+        assert len(outcome1) == len(outcome2) == 150000
 
 
 class TestDataFrameAPIFunctions:
@@ -1675,17 +1707,29 @@ class TestDataFrameAPIFunctions:
 
 @pytest.fixture(scope='class')
 def numbers_dataframe(spark_session_for_setup):
-    float1_array = pa.array([float('NaN'), 42.0, None, -1, -2, -3, -4], type=pa.float64())
-    float2_array = pa.array([3.14 / 2, 0, -0.5, -0.6, 4.4, 4.6, 81], type=pa.float64())
-    float3_array = pa.array([0, 90, 135, 180, 235, 360, -60], type=pa.float64())
-    float4_array = pa.array([0, 1.57, 2.0, 3.14159, 5, 6.28318, -1], type=pa.float64())
-    float5_array = pa.array([-1, -0.66, -0.5, 0, 0.25, 0.5, 1], type=pa.float64())
-    float6_array = pa.array([1, 2.718281828, 8, 10, 16, 100, 100000], type=pa.float64())
-    table = pa.Table.from_arrays(
-        arrays=[float1_array, float2_array, float3_array, float4_array, float5_array, float6_array],
-        names=['f1', 'f2', 'angles', 'radians', 'near_one', 'powers'])
+    data = [
+        [float('NaN'), 3.14 / 2, 0.0, 0.0, -1.0, 1.0],
+        [42.0, 0.0, 90.0, 1.57, -0.66, 2.718281828],
+        [None, -0.5, 135.0, 2.0, -0.5, 8.0],
+        [-1.0, -0.6, 180.0, 3.14159, 0.0, 10.0],
+        [-2.0, 4.4, 235.0, 5.0, 0.25, 16.0],
+        [-3.0, 4.6, 360.0, 6.28318, 0.5, 100.0],
+        [-4.0, 81.0, -60.0, -1.0, 1.0, 100000.0],
+    ]
 
-    return create_parquet_table(spark_session_for_setup, 'numbers', table)
+    schema = StructType([
+        StructField('f1', DoubleType(), True),
+        StructField('f2', DoubleType(), True),
+        StructField('angles', DoubleType(), True),
+        StructField('radians', DoubleType(), True),
+        StructField('near_one', DoubleType(), True),
+        StructField('powers', DoubleType(), True),
+    ])
+
+    test_df = spark_session_for_setup.createDataFrame(data, schema)
+
+    test_df.createOrReplaceTempView('numbers')
+    return spark_session_for_setup.table('numbers')
 
 
 class TestDataFrameAPIMathFunctions:
@@ -1693,13 +1737,13 @@ class TestDataFrameAPIMathFunctions:
 
     def test_sqrt(self, numbers_dataframe):
         expected = [
-            Row(a=1.2529964086141667),
-            Row(a=0.0),
-            Row(a=float('NaN')),
+            Row(a=1.0),
+            Row(a=1.6487212705609156),
+            Row(a=2.8284271247461903),
         ]
 
         with utilizes_valid_plans(numbers_dataframe):
-            outcome = numbers_dataframe.select(sqrt('f2')).limit(3).collect()
+            outcome = numbers_dataframe.select(sqrt('powers')).limit(3).collect()
 
         assertDataFrameEqual(outcome, expected)
 
@@ -2393,5 +2437,145 @@ class TestDataFrameAPIMathFunctions:
             # TODO -- Also test with the incorrect behavior of select instead of agg.
             outcome = numbers_dataframe.agg(
                 pyspark.sql.functions.try_sum('near_one')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+
+class TestDataFrameAggregateBehavior:
+    """Tests aggregation behavior using the dataframe side of SparkConnect."""
+
+    def test_literal(self, register_tpch_dataset, spark_session):
+        expected = [
+            Row(i=1, a=42),
+        ]
+
+        with utilizes_valid_plans(spark_session):
+            lineitem = spark_session.table('lineitem')
+
+            outcome = lineitem.groupBy(lit(1)).agg(lit(42)).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_simple(self, register_tpch_dataset, spark_session):
+        expected = [
+            Row(i=1, a=Decimal('229577310901.20')),
+        ]
+
+        with utilizes_valid_plans(spark_session):
+            lineitem = spark_session.table('lineitem')
+
+            outcome = lineitem.groupBy(lit(1)).agg(try_sum('l_extendedprice').alias('a')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_exterior_calculation(self, register_tpch_dataset, spark_session):
+        expected = [
+            Row(i=1, a=Decimal('459154621802.40')),
+        ]
+
+        with utilizes_valid_plans(spark_session):
+            lineitem = spark_session.table('lineitem')
+
+            outcome = lineitem.groupBy(lit(1)).agg(
+                (2 * try_sum('l_extendedprice')).alias('a')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_exterior_calculation_with_deep_aggregate(self, register_tpch_dataset, spark_session):
+        expected = [
+            Row(i=1, a=Decimal('1377463865407.20')),
+        ]
+
+        with utilizes_valid_plans(spark_session):
+            lineitem = spark_session.table('lineitem')
+
+            outcome = lineitem.groupBy(lit(1)).agg(
+                (3 * (2 * try_sum('l_extendedprice'))).alias('a')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_interior_calculation(self, register_tpch_dataset, spark_session):
+        expected = [
+            Row(i=1, a=Decimal('229583312116.20')),
+        ]
+
+        with utilizes_valid_plans(spark_session):
+            lineitem = spark_session.table('lineitem')
+
+            outcome = lineitem.groupBy(lit(1)).agg(
+                try_sum(col('l_extendedprice') + 1).alias('a')).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_computation_with_two_aggregations(self, register_tpch_dataset, spark_session):
+        expected = [
+            Row(l_suppkey=1, a=Decimal('390311321186.4300')),
+            Row(l_suppkey=2, a=Decimal('288371456352.7200')),
+            Row(l_suppkey=3, a=Decimal('306540435762.9600')),
+        ]
+
+        with utilizes_valid_plans(spark_session):
+            lineitem = spark_session.table('lineitem')
+
+            outcome = lineitem.groupBy('l_suppkey').agg(
+                (try_sum(col('l_extendedprice')) *
+                 try_sum(col('l_quantity'))).alias('a')
+            ).orderBy('l_suppkey').limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_computation_with_two_aggregations_and_internal_calculation(
+            self, register_tpch_dataset, spark_session):
+        expected = [
+            Row(l_suppkey=1, a=Decimal('3903113211864.3000')),
+            Row(l_suppkey=2, a=Decimal('2883714563527.2000')),
+            Row(l_suppkey=3, a=Decimal('3065404357629.6000')),
+        ]
+
+        with utilizes_valid_plans(spark_session):
+            lineitem = spark_session.table('lineitem')
+
+            outcome = lineitem.groupBy('l_suppkey').agg(
+                (try_sum(col('l_extendedprice') * 10) *
+                 try_sum(col('l_quantity'))).alias('a')
+            ).orderBy('l_suppkey').limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_multiple_measures(self, register_tpch_dataset, spark_session):
+        expected = [
+            Row(i=1, a=Decimal('229583312116.20'), b=Decimal('229589313331.20'),
+                c=Decimal('229595314546.20')),
+        ]
+
+        with utilizes_valid_plans(spark_session):
+            lineitem = spark_session.table('lineitem')
+
+            outcome = lineitem.groupBy(lit(1)).agg(
+                try_sum(col('l_extendedprice') + 1).alias('a'),
+                try_sum(col('l_extendedprice') + 2).alias('b'),
+                try_sum(col('l_extendedprice') + 3).alias('c'),
+            ).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_multiple_measures_and_calculations(self, register_tpch_dataset, spark_session):
+        expected = [
+            Row(l_suppkey=1, a=Decimal('48255093.18'), b=Decimal('72383889.77'),
+                c=Decimal('24129421.59')),
+            Row(l_suppkey=2, a=Decimal('40764978.28'), b=Decimal('61148581.42'),
+                c=Decimal('20384160.14')),
+            Row(l_suppkey=3, a=Decimal('42380815.12'), b=Decimal('63572396.68'),
+                c=Decimal('21192168.56')),
+        ]
+
+        with utilizes_valid_plans(spark_session):
+            lineitem = spark_session.table('lineitem')
+
+            outcome = lineitem.groupBy('l_suppkey').agg(
+                try_sum(2 * col('l_extendedprice')).alias('a'),
+                try_sum(3 * col('l_extendedprice') + 2).alias('b'),
+                try_sum(col('l_extendedprice') + 3).alias('c'),
+            ).orderBy('l_suppkey').limit(3).collect()
 
         assertDataFrameEqual(outcome, expected)

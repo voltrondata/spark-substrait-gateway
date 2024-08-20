@@ -7,9 +7,9 @@ from typing import ClassVar
 import pyarrow as pa
 import pyarrow.substrait
 from substrait.gen.proto import plan_pb2
-from transforms.rename_functions import RenameFunctionsForArrow
 
 from backends.backend import Backend
+from transforms.rename_functions import RenameFunctionsForArrow
 
 
 class ArrowBackend(Backend):
@@ -35,7 +35,8 @@ class ArrowBackend(Backend):
         return reader.read_all()
 
     def register_table(self, name: str, path: Path, file_format: str = 'parquet',
-                       temporary: bool = False) -> None:
+                       temporary: bool = False,
+                       replace: bool = False) -> None:
         """Register the given table with Acero."""
         self._registered_tables[name] = path
 

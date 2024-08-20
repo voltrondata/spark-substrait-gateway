@@ -1,16 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for the Spark to Substrait plan conversion routines."""
+# ruff: noqa: F401
 from pathlib import Path
 
 import pytest
+from google.protobuf import text_format
+from pyspark.sql.connect.proto import base_pb2 as spark_base_pb2
+from substrait.gen.proto import plan_pb2
+
 from backends.backend_selector import find_backend
 from gateway.converter.conversion_options import duck_db
 from gateway.converter.spark_to_substrait import SparkSubstraitConverter
 from gateway.demo.mystream_database import create_mystream_database, delete_mystream_database
-from gateway.tests.conftest import find_tpch
-from google.protobuf import text_format
-from pyspark.sql.connect.proto import base_pb2 as spark_base_pb2
-from substrait.gen.proto import plan_pb2
+from gateway.tests.conftest import find_tpch, prepare_tpch_parquet_data
 
 test_case_directory = Path(__file__).resolve().parent / 'data'
 
@@ -57,8 +59,9 @@ def test_plan_conversion(request, path):
     assert substrait == substrait_plan
 
 
+# ruff: noqa: F811
 @pytest.fixture(autouse=True)
-def manage_database() -> None:
+def manage_database(prepare_tpch_parquet_data) -> None:
     """Creates the mystream database for use throughout all the tests."""
     create_mystream_database()
     yield
@@ -85,7 +88,7 @@ def test_sql_conversion(request, path):
 
     options = duck_db()
     backend = find_backend(options.backend)
-    backend.register_table('customer', find_tpch() / 'customer')
+    backend.register_table('customer', find_tpch() / 'customer.parquet')
     substrait = backend.convert_sql(str(sql))
 
     if request.config.getoption('rebuild_goldens'):

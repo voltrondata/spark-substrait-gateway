@@ -7,10 +7,10 @@ from pathlib import Path
 import duckdb
 import pyarrow as pa
 from substrait.gen.proto import plan_pb2
-from transforms.rename_functions import RenameFunctionsForDuckDB
-from transforms.replace_virtual_tables import ReplaceVirtualTablesWithNamedTable
 
 from backends.backend import Backend
+from transforms.rename_functions import RenameFunctionsForDuckDB
+from transforms.replace_virtual_tables import ReplaceVirtualTablesWithNamedTable
 
 
 # pylint: disable=fixme
@@ -20,7 +20,8 @@ class DuckDBBackend(Backend):
     def __init__(self, options):
         """Initialize the DuckDB backend."""
         self._connection = None
-        self._tables = {}
+        self._file_tables = {}
+        self._data_tables = {}
         super().__init__(options)
         self.create_connection()
         self._use_duckdb_python_api = options.use_duckdb_python_api
@@ -43,8 +44,10 @@ class DuckDBBackend(Backend):
         self._connection.close()
         self._connection = None
         self.create_connection()
-        for table in self._tables.values():
+        for table in self._file_tables.values():
             self.register_table(*table)
+        for table in self._data_tables.values():
+            self.register_table_with_arrow_data(*table)
 
     @contextmanager
     def adjust_plan(self, plan: plan_pb2.Plan) -> Iterator[plan_pb2.Plan]:
@@ -81,20 +84,53 @@ class DuckDBBackend(Backend):
             location: Path,
             file_format: str = "parquet",
             temporary: bool = False,
+            replace: bool = False,
     ) -> None:
         """Register the given table with the backend."""
+        if replace:
+            try:
+                self._connection.table(table_name)
+                self._connection.execute(f"DROP TABLE {table_name}")
+                if table_name in self._file_tables:
+                    del self._file_tables[table_name]
+                if table_name in self._data_tables:
+                    del self._data_tables[table_name]
+            except Exception:
+                pass
+
         files = Backend._expand_location(location)
         if not files:
             raise ValueError(f"No parquet files found at {location}")
 
         if not temporary:
-            self._tables[table_name] = (table_name, location, file_format)
+            self._file_tables[table_name] = (table_name, location, file_format)
         if self._use_duckdb_python_api:
             self._connection.register(table_name, self._connection.read_parquet(files))
         else:
             files_str = ', '.join([f"'{f}'" for f in files])
             files_sql = f"CREATE OR REPLACE TABLE {table_name} AS FROM read_parquet([{files_str}])"
             self._connection.execute(files_sql)
+
+    # ruff: noqa: BLE001
+    def register_table_with_arrow_data(self, name: str, data: bytes,
+                                       temporary: bool = False,
+                                       replace: bool = False) -> None:
+        """Register the given arrow data as a table with the backend."""
+        if replace:
+            try:
+                self._connection.table(name)
+                self._connection.execute(f"DROP TABLE {name}")
+                if name in self._file_tables:
+                    del self._file_tables[name]
+                if name in self._data_tables:
+                    del self._data_tables[name]
+            except Exception:
+                pass
+
+        if not temporary:
+            self._data_tables[name] = (name, data)
+        r = pa.ipc.open_stream(data)
+        self._connection.register(name, self._connection.from_arrow(r.read_all()))
 
     def describe_files(self, paths: list[str]):
         """Asks the backend to describe the given files."""
@@ -104,6 +140,7 @@ class DuckDBBackend(Backend):
         # TODO -- Handle resolution of a combined schema.
         df = self._connection.read_parquet(files)
         schema = df.fetch_arrow_reader().schema
+        # TODO -- Figure out if we still need this check.
         if 'aggr' in schema.names:
             raise ValueError("Aggr column found in schema")
         return schema
@@ -119,6 +156,6 @@ class DuckDBBackend(Backend):
     def convert_sql(self, sql: str) -> plan_pb2.Plan:
         """Convert SQL into a Substrait plan."""
         plan = plan_pb2.Plan()
-        proto_bytes = self._connection.get_substrait(query=sql).fetchone()[0]
+        proto_bytes = self._connection.get_substrait(query=sql.replace("`", "'")).fetchone()[0]
         plan.ParseFromString(proto_bytes)
         return plan

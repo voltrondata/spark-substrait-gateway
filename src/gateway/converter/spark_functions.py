@@ -1,9 +1,19 @@
 # SPDX-License-Identifier: Apache-2.0
 """Provides the mapping of Spark functions to Substrait."""
 import dataclasses
+from enum import Enum
+
+from substrait.gen.proto import algebra_pb2, type_pb2
 
 from gateway.converter.conversion_options import ConversionOptions
-from substrait.gen.proto import algebra_pb2, type_pb2
+
+
+class FunctionType(Enum):
+    """Represents a Substrait function type."""
+
+    SCALAR = 1
+    WINDOW = 2
+    AGGREGATE = 3
 
 
 # pylint: disable=E1101
@@ -16,16 +26,19 @@ class ExtensionFunction:
     output_type: type_pb2.Type
     anchor: int
     max_args: int | None
+    function_type: FunctionType
     options: list[algebra_pb2.FunctionOption] | None
 
     def __init__(self, uri: str, name: str, output_type: type_pb2.Type,
                  max_args: int | None = None,
+                 function_type: FunctionType = FunctionType.SCALAR,
                  options: list[algebra_pb2.FunctionOption] | None = None):
         """Create the ExtensionFunction structure."""
         self.uri = uri
         self.name = name
         self.output_type = output_type
         self.max_args = max_args
+        self.function_type = function_type
         self.options = options
 
     def __lt__(self, obj) -> bool:
@@ -135,21 +148,25 @@ SPARK_SUBSTRAIT_MAPPING = {
     'sum': ExtensionFunction(
         '/functions_arithmetic.yaml', 'sum:int', type_pb2.Type(
             i32=type_pb2.Type.I32(
-                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED)),
+        function_type=FunctionType.AGGREGATE),
     'try_sum': ExtensionFunction(
         '/functions_arithmetic.yaml', 'sum:int', type_pb2.Type(
             i32=type_pb2.Type.I32(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED)),
-        options=[algebra_pb2.FunctionOption(name='overflow', preference=['SILENT'])]),
+        options=[algebra_pb2.FunctionOption(name='overflow', preference=['SILENT'])],
+        function_type=FunctionType.AGGREGATE),
     'avg': ExtensionFunction(
         '/functions_arithmetic.yaml', 'avg:int', type_pb2.Type(
             i32=type_pb2.Type.I32(
-                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED)),
+        function_type=FunctionType.AGGREGATE),
     'try_avg': ExtensionFunction(
         '/functions_arithmetic.yaml', 'avg:int', type_pb2.Type(
             i32=type_pb2.Type.I32(
                 nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED)),
-        options=[algebra_pb2.FunctionOption(name='overflow', preference=['SILENT'])]),
+        options=[algebra_pb2.FunctionOption(name='overflow', preference=['SILENT'])],
+        function_type=FunctionType.AGGREGATE),
     'sqrt': ExtensionFunction(
         '/functions_arithmetic.yaml', 'sqrt:fp64', type_pb2.Type(
             fp64=type_pb2.Type.FP64(
@@ -306,15 +323,18 @@ SPARK_SUBSTRAIT_MAPPING = {
     'max': ExtensionFunction(
         '/unknown.yaml', 'max:i64', type_pb2.Type(
             i64=type_pb2.Type.I64(
-                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED)),
+        function_type=FunctionType.AGGREGATE),
     'min': ExtensionFunction(
         '/unknown.yaml', 'min:i64', type_pb2.Type(
             i64=type_pb2.Type.I64(
-                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED)),
+        function_type=FunctionType.AGGREGATE),
     'string_agg': ExtensionFunction(
         '/functions_string.yaml', 'string_agg:str', type_pb2.Type(
             string=type_pb2.Type.String(
-                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED)),
+        function_type=FunctionType.AGGREGATE),
     'btrim': ExtensionFunction(
         '/functions_string.yaml', 'trim:str', type_pb2.Type(
             string=type_pb2.Type.String(
@@ -430,19 +450,23 @@ SPARK_SUBSTRAIT_MAPPING = {
     'count': ExtensionFunction(
         '/functions_aggregate_generic.yaml', 'count:any', type_pb2.Type(
             i64=type_pb2.Type.I64(
-                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED)),
+        function_type=FunctionType.AGGREGATE),
     'approx_count_distinct': ExtensionFunction(
         '/functions_aggregate_approx.yaml', 'approx_count_distinct:any',
         type_pb2.Type(i64=type_pb2.Type.I64(
-            nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+            nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED)),
+        function_type=FunctionType.AGGREGATE),
     'any_value': ExtensionFunction(
         '/functions_aggregate_generic.yaml', 'any_value:any', type_pb2.Type(
             i64=type_pb2.Type.I64(
-                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED)),
+        function_type=FunctionType.AGGREGATE),
     'first_value': ExtensionFunction(
         '/functions_aggregate_generic.yaml', 'first_value:any', type_pb2.Type(
             i64=type_pb2.Type.I64(
-                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED))),
+                nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED)),
+        function_type=FunctionType.AGGREGATE),
     'and': ExtensionFunction(
         '/functions_boolean.yaml', 'and:bool_bool', type_pb2.Type(
             bool=type_pb2.Type.Boolean(

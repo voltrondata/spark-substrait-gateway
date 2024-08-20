@@ -5,14 +5,20 @@ import json
 import operator
 import pathlib
 import re
+from enum import Enum
 
 import pyarrow as pa
 import pyspark.sql.connect.proto.base_pb2 as spark_pb2
 import pyspark.sql.connect.proto.expressions_pb2 as spark_exprs_pb2
 import pyspark.sql.connect.proto.relations_pb2 as spark_relations_pb2
 import pyspark.sql.connect.proto.types_pb2 as spark_types_pb2
+from google.protobuf.internal.wire_format import INT64_MAX
+from pyspark.sql.connect.proto import types_pb2
+from substrait.gen.proto import algebra_pb2, plan_pb2, type_pb2
+from substrait.gen.proto.extensions import extensions_pb2
+
 from gateway.converter.conversion_options import ConversionOptions
-from gateway.converter.spark_functions import ExtensionFunction, lookup_spark_function
+from gateway.converter.spark_functions import ExtensionFunction, FunctionType, lookup_spark_function
 from gateway.converter.substrait_builder import (
     add_function,
     aggregate_relation,
@@ -46,10 +52,27 @@ from gateway.converter.substrait_builder import (
     strlen,
 )
 from gateway.converter.symbol_table import SymbolTable
-from google.protobuf.internal.wire_format import INT64_MAX
-from pyspark.sql.connect.proto import types_pb2
-from substrait.gen.proto import algebra_pb2, plan_pb2, type_pb2
-from substrait.gen.proto.extensions import extensions_pb2
+
+
+class ExpressionProcessingMode(Enum):
+    """The mode of processing expressions."""
+
+    # Processing of an expression outside of an aggregate relation.
+    NORMAL = 0
+    # Processing of a measure at depth 0.
+    AGGR_TOP_LEVEL = 1
+    # Processing of a measure =at depth > 0.  No aggregate function has yet been encountered.
+    AGGR_NOT_TOP_LEVEL = 2
+    # Processing of a measure after encountering an aggregate function.
+    AGGR_UNDER_AGGREGATE = 3
+
+
+def _extract_decimal_parameters(type_name: str) -> tuple[int, int, int]:
+    """Extract the bytes used, precision, and scale from a decimal type name."""
+    match = re.match(r'decimal(\d*)?\((\d+), *(\d+)\)', type_name)
+    if not match:
+        raise ValueError(f'Invalid decimal type name: {type_name}')
+    return int(match.group(1)), int(match.group(2)), int(match.group(3))
 
 
 # ruff: noqa: RUF005
@@ -68,6 +91,15 @@ class SparkSubstraitConverter:
         self._saved_extensions = {}
         self._backend = None
         self._sql_backend = None
+
+        # These are used when processing expressions inside aggregate relations.
+        self._expression_processing_mode = ExpressionProcessingMode.NORMAL
+        self._top_level_projects: list[algebra_pb2.Rel] = []
+        self._next_aggregation_reference_id = None
+        self._aggregations: list[algebra_pb2.AggregateFunction] = []
+        self._next_under_aggregation_reference_id = 0
+        self._under_aggregation_projects: list[algebra_pb2.Rel] = []
+        self._aggregation_arguments_use_computation = False
 
     def set_backends(self, backend, sql_backend) -> None:
         """Save the backends being used to resolve tables and convert to SQL."""
@@ -410,44 +442,73 @@ class SparkSubstraitConverter:
     def convert_unresolved_function(
             self,
             unresolved_function: spark_exprs_pb2.Expression.UnresolvedFunction
-    ) -> algebra_pb2.Expression:
+    ) -> algebra_pb2.Expression | algebra_pb2.AggregateFunction:
         """Convert a Spark unresolved function into a Substrait scalar function."""
-        if unresolved_function.function_name == 'when':
-            return self.convert_when_function(unresolved_function)
-        if unresolved_function.function_name == 'in':
-            return self.convert_in_function(unresolved_function)
-        if unresolved_function.function_name in ['rlike', 'regexp', 'regexp_like']:
-            return self.convert_rlike_function(unresolved_function)
-        if unresolved_function.function_name == 'nanvl':
-            return self.convert_nanvl_function(unresolved_function)
-        if unresolved_function.function_name == 'nvl':
-            return self.convert_nvl_function(unresolved_function)
-        if unresolved_function.function_name == 'nvl2':
-            return self.convert_nvl2_function(unresolved_function)
-        if unresolved_function.function_name == 'ifnull':
-            return self.convert_ifnull_function(unresolved_function)
-        func = algebra_pb2.Expression.ScalarFunction()
-        function_def = self.lookup_function_by_name(unresolved_function.function_name)
-        func.function_reference = function_def.anchor
-        for idx, arg in enumerate(unresolved_function.arguments):
-            if function_def.max_args is not None and idx >= function_def.max_args:
-                break
-            if unresolved_function.function_name == 'count' and arg.WhichOneof(
-                    'expr_type') == 'unresolved_star':
-                # Ignore all the rest of the arguments.
+        parent_processing_mode = self._expression_processing_mode
+        if parent_processing_mode == ExpressionProcessingMode.AGGR_TOP_LEVEL:
+            self._expression_processing_mode = ExpressionProcessingMode.AGGR_NOT_TOP_LEVEL
+        try:
+            if unresolved_function.function_name == 'when':
+                return self.convert_when_function(unresolved_function)
+            if unresolved_function.function_name == 'in':
+                return self.convert_in_function(unresolved_function)
+            if unresolved_function.function_name in ['rlike', 'regexp', 'regexp_like']:
+                return self.convert_rlike_function(unresolved_function)
+            if unresolved_function.function_name == 'nanvl':
+                return self.convert_nanvl_function(unresolved_function)
+            if unresolved_function.function_name == 'nvl':
+                return self.convert_nvl_function(unresolved_function)
+            if unresolved_function.function_name == 'nvl2':
+                return self.convert_nvl2_function(unresolved_function)
+            if unresolved_function.function_name == 'ifnull':
+                return self.convert_ifnull_function(unresolved_function)
+            func = algebra_pb2.Expression.ScalarFunction()
+            function_def = self.lookup_function_by_name(unresolved_function.function_name)
+            if (parent_processing_mode == ExpressionProcessingMode.AGGR_NOT_TOP_LEVEL and
+                    function_def.function_type == FunctionType.AGGREGATE):
+                self._expression_processing_mode = ExpressionProcessingMode.AGGR_UNDER_AGGREGATE
+            func.function_reference = function_def.anchor
+            for idx, arg in enumerate(unresolved_function.arguments):
+                if function_def.max_args is not None and idx >= function_def.max_args:
+                    break
+                if unresolved_function.function_name == 'count' and arg.WhichOneof(
+                        'expr_type') == 'unresolved_star':
+                    # Ignore all the rest of the arguments.
+                    func.arguments.append(
+                        algebra_pb2.FunctionArgument(value=bigint_literal(1)))
+                    break
                 func.arguments.append(
-                    algebra_pb2.FunctionArgument(value=bigint_literal(1)))
-                break
-            func.arguments.append(
-                algebra_pb2.FunctionArgument(value=self.convert_expression(arg)))
-        func.output_type.CopyFrom(function_def.output_type)
-        if unresolved_function.function_name == 'substring':
-            original_argument = func.arguments[0]
-            func.arguments[0].CopyFrom(algebra_pb2.FunctionArgument(
-                value=cast_operation(original_argument.value, string_type())))
-        if function_def.options:
-            func.options.extend(function_def.options)
-        return algebra_pb2.Expression(scalar_function=func)
+                    algebra_pb2.FunctionArgument(value=self.convert_expression(arg)))
+            func.output_type.CopyFrom(function_def.output_type)
+            if unresolved_function.function_name == 'substring':
+                original_argument = func.arguments[0]
+                func.arguments[0].CopyFrom(algebra_pb2.FunctionArgument(
+                    value=cast_operation(original_argument.value, string_type())))
+            if function_def.options:
+                func.options.extend(function_def.options)
+            match function_def.function_type:
+                case FunctionType.SCALAR:
+                    return algebra_pb2.Expression(scalar_function=func)
+                case FunctionType.WINDOW:
+                    return algebra_pb2.Expression(window_function=func)
+                case FunctionType.AGGREGATE:
+                    if self._expression_processing_mode == ExpressionProcessingMode.NORMAL:
+                        raise ValueError(
+                            f'Aggregate function {unresolved_function.function_name} used in a '
+                            'non-aggregate context.')
+                    aggr = algebra_pb2.AggregateFunction(
+                        phase=algebra_pb2.AggregationPhase.AGGREGATION_PHASE_INITIAL_TO_RESULT,
+                        function_reference=function_def.anchor,
+                        output_type=function_def.output_type)
+                    if unresolved_function.is_distinct:
+                        aggr.invocation = (
+                            algebra_pb2.AggregateFunction.AGGREGATION_INVOCATION_DISTINCT)
+                    aggr.arguments.extend(func.arguments)
+                    if function_def.options:
+                        aggr.options.extend(function_def.options)
+                    return aggr
+        finally:
+            self._expression_processing_mode = parent_processing_mode
 
     def convert_alias_expression(
             self, alias: spark_exprs_pb2.Expression.Alias) -> algebra_pb2.Expression:
@@ -509,90 +570,78 @@ class SparkSubstraitConverter:
                 value=string_literal(extract.extraction.literal.string)))
         return algebra_pb2.Expression(scalar_function=func)
 
-    def convert_expression(self, expr: spark_exprs_pb2.Expression) -> algebra_pb2.Expression:
+    def convert_expression(self, expr: spark_exprs_pb2.Expression) -> algebra_pb2.Expression | None:
         """Convert a SparkConnect expression to a Substrait expression."""
-        match expr.WhichOneof('expr_type'):
-            case 'literal':
-                result = self.convert_literal_expression(expr.literal)
-            case 'unresolved_attribute':
-                result = self.convert_unresolved_attribute(expr.unresolved_attribute)
-            case 'unresolved_function':
-                result = self.convert_unresolved_function(expr.unresolved_function)
-            case 'expression_string':
-                raise NotImplementedError(
-                    'SQL expressions through selectExpr is not supported')
-            case 'unresolved_star':
-                raise NotImplementedError(
-                    '* expressions are only supported within count aggregations')
-            case 'alias':
-                result = self.convert_alias_expression(expr.alias)
-            case 'cast':
-                result = self.convert_cast_expression(expr.cast)
-            case 'unresolved_regex':
-                raise NotImplementedError(
-                    'colRegex is only supported at the top level of an expression')
-            case 'sort_order':
-                raise NotImplementedError(
-                    'sort_order expression type not supported')
-            case 'lambda_function':
-                raise NotImplementedError(
-                    'lambda_function expression type not supported')
-            case 'window':
-                raise NotImplementedError(
-                    'window expression type not supported')
-            case 'unresolved_extract_value':
-                result = self.convert_extract_value(expr.unresolved_extract_value)
-            case 'update_fields':
-                raise NotImplementedError(
-                    'update_fields expression type not supported')
-            case 'unresolved_named_lambda_variable':
-                raise NotImplementedError(
-                    'unresolved_named_lambda_variable expression type not supported')
-            case 'common_inline_user_defined_function':
-                raise NotImplementedError(
-                    'common_inline_user_defined_function expression type not supported')
-            case _:
-                raise NotImplementedError(
-                    f'Unexpected expression type: {expr.WhichOneof("expr_type")}')
+        parent_processing_mode = self._expression_processing_mode
+        try:
+            match expr.WhichOneof('expr_type'):
+                case 'literal':
+                    result = self.convert_literal_expression(expr.literal)
+                    if parent_processing_mode == ExpressionProcessingMode.AGGR_TOP_LEVEL:
+                        self._top_level_projects.append(result)
+                        return None
+                case 'unresolved_attribute':
+                    result = self.convert_unresolved_attribute(expr.unresolved_attribute)
+                case 'unresolved_function':
+                    result = self.convert_unresolved_function(expr.unresolved_function)
+                    if isinstance(result, algebra_pb2.AggregateFunction):
+                        match parent_processing_mode:
+                            case ExpressionProcessingMode.AGGR_TOP_LEVEL:
+                                self._aggregations.append(result)
+                                self._top_level_projects.append(
+                                    field_reference(self._next_aggregation_reference_id))
+                                self._next_aggregation_reference_id += 1
+                                return None
+                            case ExpressionProcessingMode.AGGR_NOT_TOP_LEVEL:
+                                self._aggregations.append(result)
+                                result = field_reference(self._next_aggregation_reference_id)
+                                self._next_aggregation_reference_id += 1
+                            case _:
+                                raise ValueError('Unexpected aggregate function nesting.')
+                case 'expression_string':
+                    raise NotImplementedError(
+                        'SQL expressions through selectExpr is not supported')
+                case 'unresolved_star':
+                    raise NotImplementedError(
+                        '* expressions are only supported within count aggregations')
+                case 'alias':
+                    result = self.convert_alias_expression(expr.alias)
+                case 'cast':
+                    result = self.convert_cast_expression(expr.cast)
+                case 'unresolved_regex':
+                    raise NotImplementedError(
+                        'colRegex is only supported at the top level of an expression')
+                case 'sort_order':
+                    raise NotImplementedError(
+                        'sort_order expression type not supported')
+                case 'lambda_function':
+                    raise NotImplementedError(
+                        'lambda_function expression type not supported')
+                case 'window':
+                    raise NotImplementedError(
+                        'window expression type not supported')
+                case 'unresolved_extract_value':
+                    result = self.convert_extract_value(expr.unresolved_extract_value)
+                case 'update_fields':
+                    raise NotImplementedError(
+                        'update_fields expression type not supported')
+                case 'unresolved_named_lambda_variable':
+                    raise NotImplementedError(
+                        'unresolved_named_lambda_variable expression type not supported')
+                case 'common_inline_user_defined_function':
+                    raise NotImplementedError(
+                        'common_inline_user_defined_function expression type not supported')
+                case _:
+                    raise NotImplementedError(
+                        f'Unexpected expression type: {expr.WhichOneof("expr_type")}')
+        finally:
+            self._expression_processing_mode = parent_processing_mode
         return result
 
-    def is_distinct(self, expr: spark_exprs_pb2.Expression) -> bool:
-        """Determine if the expression is distinct."""
-        if expr.WhichOneof(
-                'expr_type') == 'unresolved_function' and expr.unresolved_function.is_distinct:
-            return True
-        if expr.WhichOneof('expr_type') == 'alias':
-            return self.is_distinct(expr.alias.expr)
-        return False
-
-    def convert_expression_to_aggregate_function(
-            self,
-            expr: spark_exprs_pb2.Expression) -> algebra_pb2.AggregateFunction:
-        """Convert a SparkConnect expression to a Substrait expression."""
-        func = algebra_pb2.AggregateFunction(
-            phase=algebra_pb2.AggregationPhase.AGGREGATION_PHASE_INITIAL_TO_RESULT)
-        if self.is_distinct(expr):
-            func.invocation = algebra_pb2.AggregateFunction.AGGREGATION_INVOCATION_DISTINCT
-        expression = self.convert_expression(expr)
-        match expression.WhichOneof('rex_type'):
-            case 'scalar_function':
-                function = expression.scalar_function
-            case 'window_function':
-                function = expression.window_function
-            case _:
-                raise NotImplementedError(
-                    'only functions of type unresolved function are supported in aggregate '
-                    'relations')
-        func.function_reference = function.function_reference
-        func.arguments.extend(function.arguments)
-        func.options.extend(function.options)
-        func.output_type.CopyFrom(function.output_type)
-        return func
-
-    def get_number_of_names(self, type: type_pb2.Type) -> int:
+    def get_number_of_names(self, substrait_type: type_pb2.Type) -> int:
         """Get the number of names consumed used in a Substrait type."""
-        if type.WhichOneof('kind') == 'struct':
-            return sum([self.get_number_of_names(t) for t in type.struct.types]) + 1
+        if substrait_type.WhichOneof('kind') == 'struct':
+            return sum([self.get_number_of_names(t) for t in substrait_type.struct.types]) + 1
         return 1
 
     def get_primary_names(self, schema: type_pb2.NamedStruct) -> list[str]:
@@ -771,7 +820,7 @@ class SparkSubstraitConverter:
                         more_names.extend(y.name)
                         field_type.struct.types.extend(sub_type.struct.types)
                     return field_type
-                raise NotImplementedError(f'Unexpected field type: {arrow_type}')
+                raise NotImplementedError(f'Unexpected arrow datatype: {arrow_type}')
 
         return field_type, more_names
 
@@ -791,6 +840,8 @@ class SparkSubstraitConverter:
             match str(field.type):
                 case 'bool':
                     field_type = type_pb2.Type(bool=type_pb2.Type.Boolean(nullability=nullability))
+                case 'int8':
+                    field_type = type_pb2.Type(i8=type_pb2.Type.I8(nullability=nullability))
                 case 'int16':
                     field_type = type_pb2.Type(i16=type_pb2.Type.I16(nullability=nullability))
                 case 'int32':
@@ -832,8 +883,15 @@ class SparkSubstraitConverter:
                         field_type = type_pb2.Type(
                             map=type_pb2.Type.Map(nullability=nullability, key=key_type,
                                                   value=value_type))
+                    elif str(field.type).startswith('decimal'):
+                        _, precision, scale = _extract_decimal_parameters(str(field.type))
+                        field_type = type_pb2.Type(
+                            decimal=type_pb2.Type.Decimal(nullability=nullability,
+                                                          precision=precision,
+                                                          scale=scale))
                     else:
-                        raise NotImplementedError(f'Unexpected field type: {field.type}')
+                        raise NotImplementedError(
+                            f'Unexpected arrow schema field type: {field.type}')
 
             schema.struct.types.append(field_type)
         return schema
@@ -842,8 +900,10 @@ class SparkSubstraitConverter:
         """Convert a read data source relation into a Substrait relation."""
         local = algebra_pb2.ReadRel.LocalFiles()
         schema = self.convert_schema(rel.schema)
+        paths = ([str(path) for path in rel.paths] if rel.paths
+                 else list(rel.options.values()))
         if not schema:
-            arrow_schema = self._backend.describe_files([str(path) for path in rel.paths])
+            arrow_schema = self._backend.describe_files(paths)
             schema = self.convert_arrow_schema(arrow_schema)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         for field_name in schema.names:
@@ -854,10 +914,10 @@ class SparkSubstraitConverter:
                                          named_table=algebra_pb2.ReadRel.NamedTable(
                                              names=['demotable']),
                                          common=self.create_common_relation()))
-        if pathlib.Path(rel.paths[0]).is_dir():
-            file_paths = glob.glob(f'{rel.paths[0]}/*{rel.format}')
+        if pathlib.Path(paths[0]).is_dir():
+            file_paths = glob.glob(f'{paths[0]}/*{rel.format}')
         else:
-            file_paths = rel.paths
+            file_paths = paths
         for path in file_paths:
             uri_path = path
             if self._conversion_options.needs_scheme_in_path_uris and uri_path.startswith('/'):
@@ -986,18 +1046,30 @@ class SparkSubstraitConverter:
         self.update_field_references(rel.input.common.plan_id)
         aggregate.common.CopyFrom(self.create_common_relation())
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
+
+        # Start tracking the parts of the expressions we are interested in.
+        self._top_level_projects = []
+        self._next_aggregation_reference_id = len(rel.grouping_expressions)
+        self._aggregations = []
+        self._next_under_aggregation_reference_id = 0
+        self._under_aggregation_projects = []
+
+        # TODO -- Deal with mixed groupings and measures.
         grouping_expression_list = []
-        for grouping in rel.grouping_expressions:
+        for idx, grouping in enumerate(rel.grouping_expressions):
             grouping_expression_list.append(self.convert_expression(grouping))
             symbol.generated_fields.append(self.determine_name_for_grouping(grouping))
+            self._top_level_projects.append(field_reference(idx))
         aggregate.groupings.append(
             algebra_pb2.AggregateRel.Grouping(
                 grouping_expressions=grouping_expression_list))
+
+        self._expression_processing_mode = ExpressionProcessingMode.AGGR_TOP_LEVEL
+
         for expr in rel.aggregate_expressions:
-            aggregate.measures.append(
-                algebra_pb2.AggregateRel.Measure(
-                    measure=self.convert_expression_to_aggregate_function(expr))
-            )
+            result = self.convert_expression(expr)
+            if result:
+                self._top_level_projects.append(result)
             symbol.generated_fields.append(self.determine_expression_name(expr))
         symbol.output_fields.clear()
         symbol.output_fields.extend(symbol.generated_fields)
@@ -1005,6 +1077,31 @@ class SparkSubstraitConverter:
             # Hide the grouping source from the downstream relations.
             for i in range(len(rel.grouping_expressions) + len(rel.aggregate_expressions)):
                 aggregate.common.emit.output_mapping.append(i)
+
+        self._expression_processing_mode = ExpressionProcessingMode.NORMAL
+
+        # Now put all the pieces together.
+        if self._aggregation_arguments_use_computation:
+            project = algebra_pb2.ProjectRel(
+                input=aggregate.input,
+                common=algebra_pb2.RelCommon(direct=algebra_pb2.RelCommon.Direct()))
+            for expr in self._under_aggregation_projects:
+                project.expressions.append(expr)
+            aggregate.input.CopyFrom(project)
+        if self._aggregations:
+            for aggr in self._aggregations:
+                aggregate.measures.append(algebra_pb2.AggregateRel.Measure(measure=aggr))
+        if self._top_level_projects:
+            # TODO -- If all top level projects are field references, we don't need a project.
+            top_project = algebra_pb2.ProjectRel(
+                input=algebra_pb2.Rel(aggregate=aggregate),
+                common=algebra_pb2.RelCommon(direct=algebra_pb2.RelCommon.Direct()))
+            for expr in self._top_level_projects:
+                top_project.expressions.append(expr)
+            for i in range(len(self._top_level_projects)):
+                top_project.common.emit.output_mapping.append(i)
+            return algebra_pb2.Rel(project=top_project)
+
         return algebra_pb2.Rel(aggregate=aggregate)
 
     # pylint: disable=too-many-locals,pointless-string-statement
