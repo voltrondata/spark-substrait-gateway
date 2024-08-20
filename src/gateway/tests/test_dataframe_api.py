@@ -191,6 +191,22 @@ class TestDataFrameAPI:
 
         assertDataFrameEqual(view_df.collect(), expected)
 
+    @pytest.mark.interesting
+    def test_create_dataframe_then_join(self, register_tpch_dataset, spark_session, caplog):
+        expected = [
+            Row(c_custkey=131074, name='Alice', c_name='Customer#000131074'),
+            Row(c_custkey=131075, name='Bob', c_name='Customer#000131075'),
+        ]
+
+        with utilizes_valid_plans(spark_session, caplog):
+            customer_df = spark_session.table('customer')
+            test_df = spark_session.createDataFrame([(131074, 'Alice'), (131075, 'Bob')],
+                                                    ['c_custkey', 'name'])
+            outcome = test_df.join(customer_df, on='c_custkey').select('c_custkey', 'name',
+                                                                       'c_name').collect()
+
+        assertDataFrameEqual(outcome, expected)
+
     def test_dropna(self, spark_session, caplog):
         schema = pa.schema({'name': pa.string(), 'age': pa.int32()})
         table = pa.Table.from_pydict(
