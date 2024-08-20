@@ -191,7 +191,6 @@ class TestDataFrameAPI:
 
         assertDataFrameEqual(view_df.collect(), expected)
 
-    @pytest.mark.interesting
     def test_create_dataframe_then_join(self, register_tpch_dataset, spark_session, caplog):
         expected = [
             Row(c_custkey=131074, name='Alice', c_name='Customer#000131074'),
