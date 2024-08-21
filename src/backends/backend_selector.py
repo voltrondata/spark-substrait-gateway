@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """Given a backend enum, returns an instance of the correct Backend descendant."""
+
 from backends import backend
 from backends.adbc_backend import AdbcBackend
 from backends.arrow_backend import ArrowBackend
@@ -20,4 +21,4 @@ def find_backend(options: BackendOptions) -> backend.Backend:
                 return AdbcBackend(options)
             return DuckDBBackend(options)
         case _:
-            raise ValueError(f'Unknown backend {options.backend} requested.')
+            raise ValueError(f"Unknown backend {options.backend} requested.")

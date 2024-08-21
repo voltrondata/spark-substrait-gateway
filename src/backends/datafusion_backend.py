@@ -1,15 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 """Provides access to Datafusion."""
+
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
 import pyarrow as pa
 from substrait.gen.proto import plan_pb2
-from transforms.rename_functions import RenameFunctionsForDatafusion
-from transforms.replace_local_files import ReplaceLocalFilesWithNamedTable
 
 from backends.backend import Backend
+from transforms.rename_functions import RenameFunctionsForDatafusion
+from transforms.replace_local_files import ReplaceLocalFilesWithNamedTable
 
 
 # pylint: disable=import-outside-toplevel
@@ -67,15 +68,17 @@ class DatafusionBackend(Backend):
             )
         for column_number, column_name in enumerate(df_result.schema().names):
             df_result = df_result.with_column_renamed(
-                column_name,
-                plan.relations[0].root.names[column_number]
+                column_name, plan.relations[0].root.names[column_number]
             )
         return df_result.to_arrow_table()
 
     def register_table(
-            self, name: str, location: Path, file_format: str = 'parquet',
-            temporary: bool = False,
-            replace: bool = False
+        self,
+        name: str,
+        location: Path,
+        file_format: str = "parquet",
+        temporary: bool = False,
+        replace: bool = False,
     ) -> None:
         """Register the given table with the backend."""
         files = Backend._expand_location(location)
@@ -88,9 +91,9 @@ class DatafusionBackend(Backend):
         self._connection.register_parquet(name, str(location))
 
     # ruff: noqa: BLE001
-    def register_table_with_arrow_data(self, name: str, data: bytes,
-                                       temporary: bool = False,
-                                       replace: bool = False) -> None:
+    def register_table_with_arrow_data(
+        self, name: str, data: bytes, temporary: bool = False, replace: bool = False
+    ) -> None:
         """Register the given arrow data as a table with the backend."""
         if replace and self._connection.table_exist(name):
             self._connection.deregister_table(name)

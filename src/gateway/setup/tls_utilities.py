@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """Utilities for generating self-signed TLS certificates."""
+
 import logging
 import random
 import socket
@@ -11,6 +12,7 @@ from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
+
 from gateway.config import DEFAULT_CERT_FILE, DEFAULT_KEY_FILE
 
 _LOGGER = logging.getLogger(__name__)
@@ -20,39 +22,37 @@ def _gen_cryptography():
     """Generate a self-signed certificate using the cryptography library."""
     # Generate RSA private key
     private_key = rsa.generate_private_key(
-        public_exponent=65537,
-        key_size=2048,
-        backend=default_backend()
+        public_exponent=65537, key_size=2048, backend=default_backend()
     )
 
     # Generate X.509 certificate
-    subject = x509.Name([
-        x509.NameAttribute(oid=x509.NameOID.COMMON_NAME, value=socket.gethostname())
-    ])
+    subject = x509.Name(
+        [x509.NameAttribute(oid=x509.NameOID.COMMON_NAME, value=socket.gethostname())]
+    )
 
-    builder = x509.CertificateBuilder().subject_name(
-        name=subject
-    ).issuer_name(
-        name=subject
-    ).public_key(
-        key=private_key.public_key()
-    ).serial_number(
-        number=random.getrandbits(64)
-    ).not_valid_before(
-        time=datetime.now(tz=timezone.utc)
-    ).not_valid_after(
-        time=datetime.now(tz=timezone.utc) + timedelta(days=5 * 365)
-    ).add_extension(
-        extval=x509.SubjectAlternativeName([
-            x509.DNSName(value=socket.gethostname()),
-            x509.DNSName(value=f"*.{socket.gethostname()}"),
-            x509.DNSName(value="localhost"),
-            x509.DNSName(value="*.localhost"),
-        ]),
-        critical=False
-    ).add_extension(
-        extval=x509.BasicConstraints(ca=False, path_length=None),
-        critical=True,
+    builder = (
+        x509.CertificateBuilder()
+        .subject_name(name=subject)
+        .issuer_name(name=subject)
+        .public_key(key=private_key.public_key())
+        .serial_number(number=random.getrandbits(64))
+        .not_valid_before(time=datetime.now(tz=timezone.utc))
+        .not_valid_after(time=datetime.now(tz=timezone.utc) + timedelta(days=5 * 365))
+        .add_extension(
+            extval=x509.SubjectAlternativeName(
+                [
+                    x509.DNSName(value=socket.gethostname()),
+                    x509.DNSName(value=f"*.{socket.gethostname()}"),
+                    x509.DNSName(value="localhost"),
+                    x509.DNSName(value="*.localhost"),
+                ]
+            ),
+            critical=False,
+        )
+        .add_extension(
+            extval=x509.BasicConstraints(ca=False, path_length=None),
+            critical=True,
+        )
     )
 
     certificate = builder.sign(
@@ -64,7 +64,7 @@ def _gen_cryptography():
     private_key_pem = private_key.private_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.TraditionalOpenSSL,
-        encryption_algorithm=serialization.NoEncryption()
+        encryption_algorithm=serialization.NoEncryption(),
     )
 
     return cert_pem, private_key_pem
@@ -75,10 +75,9 @@ def gen_self_signed_cert():
     return _gen_cryptography()
 
 
-def create_tls_keypair(cert_file: str = DEFAULT_CERT_FILE,
-                       key_file: str = DEFAULT_KEY_FILE,
-                       overwrite: bool = False
-                       ):
+def create_tls_keypair(
+    cert_file: str = DEFAULT_CERT_FILE, key_file: str = DEFAULT_KEY_FILE, overwrite: bool = False
+):
     """Create a self-signed TLS key pair and write to disk."""
     cert_file_path = Path(cert_file)
     key_file_path = Path(key_file)
@@ -114,14 +113,14 @@ def create_tls_keypair(cert_file: str = DEFAULT_CERT_FILE,
     type=str,
     default=DEFAULT_CERT_FILE,
     required=True,
-    help="The TLS certificate file to create."
+    help="The TLS certificate file to create.",
 )
 @click.option(
     "--key-file",
     type=str,
     default=DEFAULT_KEY_FILE,
     required=True,
-    help="The TLS key file to create."
+    help="The TLS key file to create.",
 )
 @click.option(
     "--overwrite/--no-overwrite",
@@ -129,15 +128,12 @@ def create_tls_keypair(cert_file: str = DEFAULT_CERT_FILE,
     default=False,
     show_default=True,
     required=True,
-    help="Can we overwrite the cert/key if they exist?"
+    help="Can we overwrite the cert/key if they exist?",
 )
-def click_create_tls_keypair(cert_file: str,
-                             key_file: str,
-                             overwrite: bool
-                             ):
+def click_create_tls_keypair(cert_file: str, key_file: str, overwrite: bool):
     """Provide a click interface to create a self-signed TLS key pair."""
     create_tls_keypair(**locals())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     click_create_tls_keypair()

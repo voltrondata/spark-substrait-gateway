@@ -1,9 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 """Converts the provided plans from the DuckDB Substrait dialect to Acero's."""
+
 import sys
 
 from google.protobuf import json_format
 from substrait.gen.proto import plan_pb2
+
 from transforms.label_relations import LabelRelations, UnlabelRelations
 from transforms.output_field_tracking_visitor import OutputFieldTrackingVisitor
 from transforms.simplify_casts import SimplifyCasts
@@ -40,9 +42,9 @@ def main():
 
     arrow_plan = simplify_substrait_dialect(duckdb_plan)
 
-    with open(args[1], "w", encoding='utf-8') as file:
+    with open(args[1], "w", encoding="utf-8") as file:
         file.write(json_format.MessageToJson(arrow_plan))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

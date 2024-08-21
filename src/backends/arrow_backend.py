@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """Provides access to Acero."""
+
 from contextlib import contextmanager
 from pathlib import Path
 from typing import ClassVar
@@ -7,9 +8,9 @@ from typing import ClassVar
 import pyarrow as pa
 import pyarrow.substrait
 from substrait.gen.proto import plan_pb2
-from transforms.rename_functions import RenameFunctionsForArrow
 
 from backends.backend import Backend
+from transforms.rename_functions import RenameFunctionsForArrow
 
 
 class ArrowBackend(Backend):
@@ -34,9 +35,14 @@ class ArrowBackend(Backend):
         reader = pa.substrait.run_query(plan_data, table_provider=self._provide_tables)
         return reader.read_all()
 
-    def register_table(self, name: str, path: Path, file_format: str = 'parquet',
-                       temporary: bool = False,
-                       replace: bool = False) -> None:
+    def register_table(
+        self,
+        name: str,
+        path: Path,
+        file_format: str = "parquet",
+        temporary: bool = False,
+        replace: bool = False,
+    ) -> None:
         """Register the given table with Acero."""
         self._registered_tables[name] = path
 
@@ -54,4 +60,4 @@ class ArrowBackend(Backend):
         for name in names:
             if name in self._registered_tables:
                 return pa.parquet.read_table(self._registered_tables[name])
-        raise ValueError(f'Table {names} not found in {self._registered_tables}')
+        raise ValueError(f"Table {names} not found in {self._registered_tables}")

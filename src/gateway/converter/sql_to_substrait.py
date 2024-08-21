@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """Routines to convert SparkConnect plans to Substrait plans."""
-from backends.backend import Backend
+
 from substrait.gen.proto import plan_pb2
+
+from backends.backend import Backend
 from transforms.add_extension_uris import AddExtensionUris
 
 

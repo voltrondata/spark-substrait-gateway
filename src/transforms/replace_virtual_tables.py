@@ -1,11 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 """A library to search Substrait plan for virtual tables."""
+
 from pathlib import Path
 from typing import Any
 
 import pyarrow as pa
 import pyarrow.parquet as pq
 from substrait.gen.proto import algebra_pb2, plan_pb2, type_pb2
+
 from substrait_visitors.substrait_plan_visitor import SubstraitPlanVisitor
 
 
@@ -25,33 +27,33 @@ class ReplaceVirtualTablesWithNamedTable(SubstraitPlanVisitor):
     def get_arrow_value_from_literal(self, literal: algebra_pb2.Expression.Literal) -> Any:
         """Return the value from a Substrait literal."""
         # TODO -- Handle the rest of the types including maps, lists, and structs.
-        match literal.WhichOneof('literal_type'):
-            case 'boolean':
+        match literal.WhichOneof("literal_type"):
+            case "boolean":
                 return literal.boolean
-            case 'i8':
+            case "i8":
                 return literal.i8
-            case 'i16':
+            case "i16":
                 return literal.i16
-            case 'i32':
+            case "i32":
                 return literal.i32
-            case 'i64':
+            case "i64":
                 return literal.i64
-            case 'fp32':
+            case "fp32":
                 return literal.fp32
-            case 'fp64':
+            case "fp64":
                 return literal.fp64
-            case 'string':
+            case "string":
                 return literal.string
-            case 'binary':
+            case "binary":
                 return literal.binary
-            case 'fixed_char':
+            case "fixed_char":
                 return literal.fixed_char
-            case 'var_char':
+            case "var_char":
                 return literal.var_char
-            case 'null':
+            case "null":
                 return None
             case _:
-                raise ValueError(f'Unknown literal type in virtual table: {literal}')
+                raise ValueError(f"Unknown literal type in virtual table: {literal}")
 
     def create_arrow_table(self, virtual_table: algebra_pb2.ReadRel.VirtualTable) -> pa.Table:
         """Create an Arrow Table from the given Substrait virtual table."""
@@ -70,8 +72,8 @@ class ReplaceVirtualTablesWithNamedTable(SubstraitPlanVisitor):
         table = self.create_arrow_table(virtual_table)
 
         ReplaceVirtualTablesWithNamedTable._TABLES_FOUND += 1
-        table_name = f'virtual_table{ReplaceVirtualTablesWithNamedTable._TABLES_FOUND}'
-        location = Path(f'./{table_name}.parquet').absolute()
+        table_name = f"virtual_table{ReplaceVirtualTablesWithNamedTable._TABLES_FOUND}"
+        location = Path(f"./{table_name}.parquet").absolute()
         self._table_definitions.append((table_name, location))
         pq.write_table(table, location)
 
@@ -79,8 +81,8 @@ class ReplaceVirtualTablesWithNamedTable(SubstraitPlanVisitor):
         """Visit a read relation node."""
         self._schema = rel.base_schema
         super().visit_read_relation(rel)
-        if rel.HasField('virtual_table'):
-            rel.ClearField('virtual_table')
+        if rel.HasField("virtual_table"):
+            rel.ClearField("virtual_table")
             rel.named_table.names.append(self._table_definitions[-1][0])
         self._schema = None
 
