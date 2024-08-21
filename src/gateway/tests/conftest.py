@@ -6,13 +6,12 @@ from pathlib import Path
 import duckdb
 import pytest
 from filelock import FileLock
-from pyspark.sql.session import SparkSession
-
 from gateway.demo.mystream_database import (
     create_mystream_database,
     delete_mystream_database,
 )
 from gateway.server import serve
+from pyspark.sql.session import SparkSession
 
 
 def pytest_collection_modifyitems(items):

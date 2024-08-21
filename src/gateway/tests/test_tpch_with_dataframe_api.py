@@ -5,11 +5,10 @@ from decimal import Decimal
 
 import pyspark
 import pytest
-from pyspark import Row
-from pyspark.sql.functions import avg, col, count, countDistinct, desc, try_sum, when
-
 from gateway.tests.compare_dataframes import assert_dataframes_equal
 from gateway.tests.plan_validator import utilizes_valid_plans
+from pyspark import Row
+from pyspark.sql.functions import avg, col, count, countDistinct, desc, try_sum, when
 
 
 @pytest.fixture(autouse=True)

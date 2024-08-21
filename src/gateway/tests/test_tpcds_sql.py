@@ -3,7 +3,6 @@
 from pathlib import Path
 
 import pytest
-
 from gateway.tests.plan_validator import utilizes_valid_plans
 
 test_case_directory = Path(__file__).resolve().parent / 'data' / 'tpc-ds'

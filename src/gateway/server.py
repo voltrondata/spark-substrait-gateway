@@ -12,6 +12,7 @@ import grpc
 import pyarrow as pa
 import pyspark.sql.connect.proto.base_pb2 as pb2
 import pyspark.sql.connect.proto.base_pb2_grpc as pb2_grpc
+import pyspark.sql.connect.proto.commands_pb2 as commands_pb2
 from backends.backend import Backend
 from backends.backend_options import BackendEngine, BackendOptions
 from backends.backend_selector import find_backend
