@@ -11,7 +11,7 @@ sparkSubstraitGateway:
     LOG_LEVEL: DEBUG
 
   image:
-    repository: prmoorevoltron/spark-substrait-gateway
+    repository: voltrondata/spark-substrait-gateway
     pullPolicy: Always
     # Overrides the image tag whose default is the chart appVersion.
     tag: latest
