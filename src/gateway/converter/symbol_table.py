@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """Routines to convert SparkConnect plans to Substrait plans."""
+
 import dataclasses
 
 

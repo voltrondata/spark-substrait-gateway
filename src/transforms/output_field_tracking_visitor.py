@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """A library to search Substrait plan for local files."""
+
 from typing import Any
 
 from substrait.gen.proto import algebra_pb2, plan_pb2
@@ -65,9 +66,9 @@ class OutputFieldTrackingVisitor(SubstraitPlanVisitor):
         super().visit_aggregate_relation(rel)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         for _ in rel.groupings:
-            symbol.generated_fields.append('grouping')
+            symbol.generated_fields.append("grouping")
         for _ in rel.measures:
-            symbol.generated_fields.append('measure')
+            symbol.generated_fields.append("measure")
         self.update_field_references(get_plan_id(rel.input))
 
     def visit_sort_relation(self, rel: algebra_pb2.SortRel) -> Any:
@@ -80,7 +81,7 @@ class OutputFieldTrackingVisitor(SubstraitPlanVisitor):
         super().visit_project_relation(rel)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         for _ in rel.expressions:
-            symbol.generated_fields.append('intermediate')
+            symbol.generated_fields.append("intermediate")
         self.update_field_references(get_plan_id(rel.input))
 
     def visit_extension_single_relation(self, rel: algebra_pb2.ExtensionSingleRel) -> Any:
@@ -93,9 +94,9 @@ class OutputFieldTrackingVisitor(SubstraitPlanVisitor):
     def visit_relation(self, rel: algebra_pb2.Rel) -> Any:
         """Visit a relation node."""
         new_plan_id = get_plan_id(rel)
-        self._symbol_table.add_symbol(new_plan_id,
-                                      parent=self._current_plan_id,
-                                      symbol_type=rel.WhichOneof('rel_type'))
+        self._symbol_table.add_symbol(
+            new_plan_id, parent=self._current_plan_id, symbol_type=rel.WhichOneof("rel_type")
+        )
         old_plan_id = self._current_plan_id
         self._current_plan_id = new_plan_id
 
@@ -103,7 +104,7 @@ class OutputFieldTrackingVisitor(SubstraitPlanVisitor):
 
         self._current_plan_id = old_plan_id
 
-    def visit_plan(self, plan: plan_pb2 .Plan) -> Any:
+    def visit_plan(self, plan: plan_pb2.Plan) -> Any:
         """Visit a plan node."""
         super().visit_plan(plan)
         return self._symbol_table

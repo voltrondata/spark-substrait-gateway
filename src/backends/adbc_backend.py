@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """Provides access to a generic ADBC backend."""
+
 from pathlib import Path
 
 import duckdb
@@ -23,7 +24,7 @@ def _get_backend_driver(options: BackendOptions) -> tuple[str, str]:
             driver = duckdb.duckdb.__file__
             entry_point = "duckdb_adbc_init"
         case _:
-            raise ValueError(f'Unknown backend type: {options.backend}')
+            raise ValueError(f"Unknown backend type: {options.backend}")
 
     return driver, entry_point
 
@@ -52,17 +53,22 @@ class AdbcBackend(Backend):
             res = cur.adbc_statement.execute_query()
             return _import(res[0]).read_all()
 
-    def register_table(self, name: str, path: Path, file_format: str = 'parquet',
-                       temporary: bool = False,
-                       replace: bool = False) -> None:
+    def register_table(
+        self,
+        name: str,
+        path: Path,
+        file_format: str = "parquet",
+        temporary: bool = False,
+        replace: bool = False,
+    ) -> None:
         """Register the given table with the backend."""
-        file_paths = sorted(Path(path).glob(f'*.{file_format}'))
+        file_paths = sorted(Path(path).glob(f"*.{file_format}"))
         if len(file_paths) > 0:
             # Sort the files because the later ones don't have enough data to construct a schema.
             file_paths = sorted([str(fp) for fp in file_paths])
             # TODO: Support multiple paths.
             reader = pq.ParquetFile(file_paths[0])
-            self._connection.cursor().adbc_ingest(name, reader.iter_batches(), mode='create')
+            self._connection.cursor().adbc_ingest(name, reader.iter_batches(), mode="create")
 
     def describe_table(self, table_name: str):
         """Asks the backend to describe the given table."""
@@ -72,4 +78,4 @@ class AdbcBackend(Backend):
         """Asks the backend to drop the given table."""
         with self._connection.cursor() as cur:
             # TODO -- Use an explicit ADBC call here.
-            cur.execute(f'DROP TABLE {table_name}')
+            cur.execute(f"DROP TABLE {table_name}")

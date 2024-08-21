@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """Provides access to DuckDB."""
+
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -31,11 +32,15 @@ class DuckDBBackend(Backend):
         if self._connection is not None:
             return self._connection
 
-        self._connection = duckdb.connect(config={'max_memory': '100GB',
-                                                  "allow_unsigned_extensions": "true",
-                                                  'temp_directory': str(Path('.').resolve())})
-        self._connection.install_extension('substrait')
-        self._connection.load_extension('substrait')
+        self._connection = duckdb.connect(
+            config={
+                "max_memory": "100GB",
+                "allow_unsigned_extensions": "true",
+                "temp_directory": str(Path(".").resolve()),
+            }
+        )
+        self._connection.install_extension("substrait")
+        self._connection.load_extension("substrait")
 
         return self._connection
 
@@ -75,16 +80,16 @@ class DuckDBBackend(Backend):
         try:
             query_result = self._connection.from_substrait(proto=plan_data)
         except Exception as err:
-            raise ValueError(f'DuckDB Execution Error: {err}') from err
+            raise ValueError(f"DuckDB Execution Error: {err}") from err
         return query_result.arrow()
 
     def register_table(
-            self,
-            table_name: str,
-            location: Path,
-            file_format: str = "parquet",
-            temporary: bool = False,
-            replace: bool = False,
+        self,
+        table_name: str,
+        location: Path,
+        file_format: str = "parquet",
+        temporary: bool = False,
+        replace: bool = False,
     ) -> None:
         """Register the given table with the backend."""
         if replace:
@@ -107,14 +112,14 @@ class DuckDBBackend(Backend):
         if self._use_duckdb_python_api:
             self._connection.register(table_name, self._connection.read_parquet(files))
         else:
-            files_str = ', '.join([f"'{f}'" for f in files])
+            files_str = ", ".join([f"'{f}'" for f in files])
             files_sql = f"CREATE OR REPLACE TABLE {table_name} AS FROM read_parquet([{files_str}])"
             self._connection.execute(files_sql)
 
     # ruff: noqa: BLE001
-    def register_table_with_arrow_data(self, name: str, data: bytes,
-                                       temporary: bool = False,
-                                       replace: bool = False) -> None:
+    def register_table_with_arrow_data(
+        self, name: str, data: bytes, temporary: bool = False, replace: bool = False
+    ) -> None:
         """Register the given arrow data as a table with the backend."""
         if replace:
             try:
@@ -141,7 +146,7 @@ class DuckDBBackend(Backend):
         df = self._connection.read_parquet(files)
         schema = df.fetch_arrow_reader().schema
         # TODO -- Figure out if we still need this check.
-        if 'aggr' in schema.names:
+        if "aggr" in schema.names:
             raise ValueError("Aggr column found in schema")
         return schema
 
@@ -149,7 +154,7 @@ class DuckDBBackend(Backend):
         """Asks the backend to describe the given table."""
         table = self._connection.table(name)
         schema = table.to_arrow_table().schema
-        if 'aggr' in schema.names:
+        if "aggr" in schema.names:
             raise ValueError("Aggr column found in schema")
         return schema
 

@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """The base class for all Substrait backends."""
+
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -46,14 +47,20 @@ class Backend:
         with self.adjust_plan(plan) as modified_plan:
             return self._execute_plan(modified_plan)
 
-    def register_table(self, name: str, path: Path, file_format: str = 'parquet',
-                       temporary: bool = False,
-                       replace: bool = False) -> None:
+    def register_table(
+        self,
+        name: str,
+        path: Path,
+        file_format: str = "parquet",
+        temporary: bool = False,
+        replace: bool = False,
+    ) -> None:
         """Register the given table with the backend."""
         raise NotImplementedError()
 
-    def register_table_with_arrow_data(self, name: str, data: bytes, temporary: bool = False,
-                                       replace: bool = False) -> None:
+    def register_table_with_arrow_data(
+        self, name: str, data: bytes, temporary: bool = False, replace: bool = False
+    ) -> None:
         """Register the given arrow data as a table with the backend."""
         raise NotImplementedError()
 
@@ -79,5 +86,5 @@ class Backend:
         """Expand the location of a file or directory into a list of files."""
         # TODO -- Handle more than just Parquet files.
         path = Path(location)
-        files = Path(location).resolve().glob('*.parquet') if path.is_dir() else [path]
+        files = Path(location).resolve().glob("*.parquet") if path.is_dir() else [path]
         return sorted(str(f) for f in files)

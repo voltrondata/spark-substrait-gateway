@@ -1,0 +1,50 @@
+# SPDX-License-Identifier: Apache-2.0
+sparkSubstraitGateway:
+  hostName: spark-substrait-gateway.example.com
+  replicaCount: 1
+
+  config:
+    TLS: "tls/server.crt tls/server.key"
+    VERIFY_CLIENT: "False"
+    ENABLE_AUTH: "True"
+    JWT_AUDIENCE: "spark-client"
+    LOG_LEVEL: DEBUG
+
+  image:
+    repository: voltrondata/spark-substrait-gateway
+    pullPolicy: Always
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: latest
+
+  imagePullSecrets: []
+  nameOverride: ""
+  fullnameOverride: ""
+
+  podAnnotations: {}
+
+  podSecurityContext:
+    fsGroup: 1000
+
+  securityContext: {}
+
+  service:
+    type: LoadBalancer
+    port: 50051
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 6Gi
+    requests:
+      cpu: 500m
+      memory: 6Gi
+
+  nodeSelector: {}
+
+#  tolerations:
+#    - key: sidewinder
+#      operator: Equal
+#      value: "true"
+#      effect: NoSchedule
+
+  affinity: {}

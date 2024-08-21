@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: Apache-2.0
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "spark-substrait-gateway.fullname" . }}
+  labels:
+    {{- include "spark-substrait-gateway.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.sparkSubstraitGateway.service.type }}
+  ports:
+    - port: {{ .Values.sparkSubstraitGateway.service.port }}
+      targetPort: gateway-port
+      protocol: TCP
+      name: gateway-port
+  selector:
+    {{- include "spark-substrait-gateway.selectorLabels" . | nindent 4 }}
+    app: spark-substrait-gateway-server
