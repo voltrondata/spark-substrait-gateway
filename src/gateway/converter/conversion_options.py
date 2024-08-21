@@ -24,6 +24,7 @@ class ConversionOptions:
         self.safety_project_read_relations = False
         self.use_duckdb_struct_name_behavior = False
         self.fetch_return_all_workaround = True
+        self.join_not_honoring_emit_workaround = False
 
         self.return_names_with_types = False
 
@@ -48,6 +49,7 @@ def datafusion():
     options.use_switch_expressions_where_possible = False
     options.use_regexp_like_function = True
     options.use_first_value_as_any_value = True
+    options.join_not_honoring_emit_workaround = True
     return options
 
 
@@ -60,4 +62,5 @@ def duck_db():
     options.duckdb_project_emit_workaround = True
     options.backend.use_duckdb_python_api = False
     options.use_duckdb_struct_name_behavior = True
+    options.join_not_honoring_emit_workaround = True
     return options
