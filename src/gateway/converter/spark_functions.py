@@ -3,9 +3,8 @@
 import dataclasses
 from enum import Enum
 
-from substrait.gen.proto import algebra_pb2, type_pb2
-
 from gateway.converter.conversion_options import ConversionOptions
+from substrait.gen.proto import algebra_pb2, type_pb2
 
 
 class FunctionType(Enum):

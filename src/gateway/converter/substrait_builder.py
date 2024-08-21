@@ -3,9 +3,8 @@
 import itertools
 from typing import Any
 
-from substrait.gen.proto import algebra_pb2, type_pb2
-
 from gateway.converter.spark_functions import ExtensionFunction
+from substrait.gen.proto import algebra_pb2, type_pb2
 
 
 def flatten(list_of_lists: list[list[Any]]) -> list[Any]:

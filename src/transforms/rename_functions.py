@@ -2,7 +2,6 @@
 """A library to search Substrait plan for local files."""
 from substrait.gen.proto import plan_pb2
 from substrait.gen.proto.extensions import extensions_pb2
-
 from substrait_visitors.substrait_plan_visitor import SubstraitPlanVisitor
 
 

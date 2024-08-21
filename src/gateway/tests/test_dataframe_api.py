@@ -6,6 +6,8 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pyspark
 import pytest
+from gateway.tests.conftest import find_tpch
+from gateway.tests.plan_validator import utilizes_valid_plans
 from hamcrest import assert_that, equal_to
 from pyspark import Row
 from pyspark.errors.exceptions.connect import SparkConnectGrpcException
@@ -64,9 +66,6 @@ from pyspark.sql.functions import (
 )
 from pyspark.sql.types import DoubleType, StructField, StructType
 from pyspark.testing import assertDataFrameEqual
-
-from gateway.tests.conftest import find_tpch
-from gateway.tests.plan_validator import utilizes_valid_plans
 
 
 def create_parquet_table(spark_session, table_name: str, table: pa.Table):
