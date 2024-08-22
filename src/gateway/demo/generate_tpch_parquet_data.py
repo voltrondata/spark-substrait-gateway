@@ -78,7 +78,7 @@ def generate_tpch_parquet_data(
     # Restructure the contents of the directory so that each file is in its own directory
     for filename in target_directory.glob(pattern="*.parquet"):
         file = Path(filename)
-        table_name = file.name.split(".")[0]
+        table_name = file.stem
         table_directory = target_directory / table_name
         table_directory.mkdir(parents=True, exist_ok=True)
 
