@@ -47,4 +47,6 @@ RUN pip install .
 # Expose the gRPC port
 EXPOSE 50051
 
-ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "spark-substrait-gateway-env", "python", "src/gateway/server.py"]
+ENV GENERATE_CLIENT_DEMO_DATA="true"
+
+ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "spark-substrait-gateway-env", "scripts/start_demo_server.sh"]
