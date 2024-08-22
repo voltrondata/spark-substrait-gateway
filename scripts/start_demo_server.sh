@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: Apache-2.0
+
 # This script starts the Spark Substrait Gateway demo server.
 # It will create demo TPC-H (Scale Factor 1GB) data, and start the server.
 
