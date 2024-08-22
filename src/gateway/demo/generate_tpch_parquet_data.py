@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+"""A utility module for generating TPC-H parquet data for the client demo."""
+
 import logging
 import os
 import shutil
@@ -20,17 +23,20 @@ _LOGGER = logging.getLogger()
 
 
 def execute_query(conn: duckdb.DuckDBPyConnection, query: str):
+    """Execute and log a query with a DuckDB connection."""
     _LOGGER.info(msg=f"Executing SQL: '{query}'")
     conn.execute(query=query)
 
 
 def get_printable_number(num: float):
-    return "{:.9g}".format(num)
+    """Return a number in a printable format."""
+    return f"{num:.9g}"
 
 
 def generate_tpch_parquet_data(
     tpch_scale_factor: int, data_directory: str, overwrite: bool
 ) -> Path:
+    """Generate a TPC-H parquet dataset."""
     _LOGGER.info(
         msg=(
             "Creating a TPC-H parquet dataset - with parameters: "
@@ -114,6 +120,7 @@ def generate_tpch_parquet_data(
     help="Can we overwrite the target directory if it already exists...",
 )
 def click_generate_tpch_parquet_data(tpch_scale_factor: int, data_directory: str, overwrite: bool):
+    """Provide a click interface for generating TPC-H parquet data."""
     generate_tpch_parquet_data(**locals())
 
 

@@ -7,9 +7,10 @@ import sys
 from pathlib import Path
 
 import click
-from gateway.config import SERVER_PORT
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.functions import col
+
+from gateway.config import SERVER_PORT
 
 # Setup logging
 logging.basicConfig(
@@ -29,8 +30,7 @@ def find_tpch(raise_error_if_not_exists: bool) -> Path:
     location = CLIENT_DEMO_DATA_LOCATION
     if raise_error_if_not_exists and not location.exists():
         raise ValueError("TPCH dataset not found")
-    else:
-        return location
+    return location
 
 
 # pylint: disable=fixme
