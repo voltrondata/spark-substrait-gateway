@@ -10,35 +10,35 @@ import duckdb
 from .client_demo import CLIENT_DEMO_DATA_LOCATION
 
 # Setup logging
-logging.basicConfig(format='%(asctime)s - %(levelname)-8s %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S %Z',
-                    level=getattr(logging, os.getenv("LOG_LEVEL", "INFO")),
-                    stream=sys.stdout
-                    )
+logging.basicConfig(
+    format="%(asctime)s - %(levelname)-8s %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S %Z",
+    level=getattr(logging, os.getenv("LOG_LEVEL", "INFO")),
+    stream=sys.stdout,
+)
 _LOGGER = logging.getLogger()
 
 
-def execute_query(conn: duckdb.DuckDBPyConnection,
-                  query: str
-                  ):
+def execute_query(conn: duckdb.DuckDBPyConnection, query: str):
     _LOGGER.info(msg=f"Executing SQL: '{query}'")
     conn.execute(query=query)
 
 
 def get_printable_number(num: float):
-    return '{:.9g}'.format(num)
+    return "{:.9g}".format(num)
 
 
-def generate_tpch_parquet_data(tpch_scale_factor: int,
-                               data_directory: str,
-                               overwrite: bool
-                               ) -> Path:
-    _LOGGER.info(msg=("Creating a TPC-H parquet dataset - with parameters: "
-                      f"--tpch-scale-factor={tpch_scale_factor} "
-                      f"--data-directory='{data_directory}' "
-                      f"--overwrite={overwrite}"
-                      )
-                 )
+def generate_tpch_parquet_data(
+    tpch_scale_factor: int, data_directory: str, overwrite: bool
+) -> Path:
+    _LOGGER.info(
+        msg=(
+            "Creating a TPC-H parquet dataset - with parameters: "
+            f"--tpch-scale-factor={tpch_scale_factor} "
+            f"--data-directory='{data_directory}' "
+            f"--overwrite={overwrite}"
+        )
+    )
 
     # Output the database version
     _LOGGER.info(msg=f"Using DuckDB Version: {duckdb.__version__}")
@@ -63,7 +63,9 @@ def generate_tpch_parquet_data(tpch_scale_factor: int,
             raise RuntimeError(f"Directory: {target_directory.as_posix()} exists, aborting.")
 
     target_directory.mkdir(parents=True, exist_ok=True)
-    execute_query(conn=conn, query=f"EXPORT DATABASE '{target_directory.as_posix()}' (FORMAT PARQUET)")
+    execute_query(
+        conn=conn, query=f"EXPORT DATABASE '{target_directory.as_posix()}' (FORMAT PARQUET)"
+    )
 
     _LOGGER.info(msg=f"Wrote out parquet data to path: '{target_directory.as_posix()}'")
 
@@ -93,7 +95,7 @@ def generate_tpch_parquet_data(tpch_scale_factor: int,
     default=1,
     show_default=True,
     required=True,
-    help="The TPC-H scale factor to generate."
+    help="The TPC-H scale factor to generate.",
 )
 @click.option(
     "--data-directory",
@@ -101,7 +103,7 @@ def generate_tpch_parquet_data(tpch_scale_factor: int,
     default=CLIENT_DEMO_DATA_LOCATION.as_posix(),
     show_default=True,
     required=True,
-    help="The target output data directory to put the files into"
+    help="The target output data directory to put the files into",
 )
 @click.option(
     "--overwrite/--no-overwrite",
@@ -109,12 +111,9 @@ def generate_tpch_parquet_data(tpch_scale_factor: int,
     default=False,
     show_default=True,
     required=True,
-    help="Can we overwrite the target directory if it already exists..."
+    help="Can we overwrite the target directory if it already exists...",
 )
-def click_generate_tpch_parquet_data(tpch_scale_factor: int,
-                                     data_directory: str,
-                                     overwrite: bool
-                                     ):
+def click_generate_tpch_parquet_data(tpch_scale_factor: int, data_directory: str, overwrite: bool):
     generate_tpch_parquet_data(**locals())
 
 

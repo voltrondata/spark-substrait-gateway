@@ -12,11 +12,12 @@ from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.functions import col
 
 # Setup logging
-logging.basicConfig(format='%(asctime)s - %(levelname)-8s %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S %Z',
-                    level=getattr(logging, os.getenv("LOG_LEVEL", "INFO")),
-                    stream=sys.stdout
-                    )
+logging.basicConfig(
+    format="%(asctime)s - %(levelname)-8s %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S %Z",
+    level=getattr(logging, os.getenv("LOG_LEVEL", "INFO")),
+    stream=sys.stdout,
+)
 _LOGGER = logging.getLogger()
 
 # Constants
@@ -33,9 +34,7 @@ def find_tpch(raise_error_if_not_exists: bool) -> Path:
 
 
 # pylint: disable=fixme
-def get_customer_database(spark_session: SparkSession,
-                          use_gateway: bool
-                          ) -> DataFrame:
+def get_customer_database(spark_session: SparkSession, use_gateway: bool) -> DataFrame:
     """Register the TPC-H customer database."""
     location_customer = str(find_tpch(raise_error_if_not_exists=(not use_gateway)) / "customer")
 
@@ -44,12 +43,9 @@ def get_customer_database(spark_session: SparkSession,
 
 # pylint: disable=fixme
 # ruff: noqa: T201
-def execute_query(spark_session: SparkSession,
-                  use_gateway: bool) -> None:
+def execute_query(spark_session: SparkSession, use_gateway: bool) -> None:
     """Run a single sample query against the gateway."""
-    df_customer = get_customer_database(spark_session=spark_session,
-                                        use_gateway=use_gateway
-                                        )
+    df_customer = get_customer_database(spark_session=spark_session, use_gateway=use_gateway)
 
     df_customer.createOrReplaceTempView("customer")
 
@@ -65,11 +61,11 @@ def execute_query(spark_session: SparkSession,
 
 
 def run_demo(
-        use_gateway: bool = True,
-        host: str = "localhost",
-        port: int = SERVER_PORT,
-        use_tls: bool = False,
-        token: str | None = None,
+    use_gateway: bool = True,
+    host: str = "localhost",
+    port: int = SERVER_PORT,
+    use_tls: bool = False,
+    token: str | None = None,
 ):
     """Run a small Spark Substrait Gateway client demo."""
     logging.basicConfig(level=logging.INFO, encoding="utf-8")
@@ -91,9 +87,7 @@ def run_demo(
         spark = SparkSession.builder.remote(f"sc://{host}:{port}/{uri_parameters}").getOrCreate()
     else:
         spark = SparkSession.builder.master("local").getOrCreate()
-    execute_query(spark_session=spark,
-                  use_gateway=use_gateway
-                  )
+    execute_query(spark_session=spark, use_gateway=use_gateway)
 
 
 @click.command()
