@@ -3,6 +3,7 @@
 
 import logging
 import os
+import sys
 from pathlib import Path
 
 import click
@@ -11,30 +12,40 @@ from pyspark.sql.functions import col
 
 from gateway.config import SERVER_PORT
 
-_LOGGER = logging.getLogger(__name__)
+# Setup logging
+logging.basicConfig(
+    format="%(asctime)s - %(levelname)-8s %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S %Z",
+    level=getattr(logging, os.getenv("LOG_LEVEL", "INFO")),
+    stream=sys.stdout,
+)
+_LOGGER = logging.getLogger()
+
+# Constants
+CLIENT_DEMO_DATA_LOCATION = Path("data") / "tpch" / "parquet"
 
 
-def find_tpch() -> Path:
+def find_tpch(raise_error_if_not_exists: bool) -> Path:
     """Find the location of the TPCH dataset."""
-    location = Path("third_party") / "tpch" / "parquet"
-    if location.exists():
-        return location
-    raise ValueError("TPCH dataset not found")
+    location = CLIENT_DEMO_DATA_LOCATION
+    if raise_error_if_not_exists and not location.exists():
+        raise ValueError("TPCH dataset not found")
+    return location
 
 
 # pylint: disable=fixme
-def get_customer_database(spark_session: SparkSession) -> DataFrame:
+def get_customer_database(spark_session: SparkSession, use_gateway: bool) -> DataFrame:
     """Register the TPC-H customer database."""
-    location_customer = str(find_tpch() / "customer")
+    location_customer = str(find_tpch(raise_error_if_not_exists=(not use_gateway)) / "customer")
 
     return spark_session.read.parquet(location_customer, mergeSchema=False)
 
 
 # pylint: disable=fixme
 # ruff: noqa: T201
-def execute_query(spark_session: SparkSession) -> None:
+def execute_query(spark_session: SparkSession, use_gateway: bool) -> None:
     """Run a single sample query against the gateway."""
-    df_customer = get_customer_database(spark_session)
+    df_customer = get_customer_database(spark_session=spark_session, use_gateway=use_gateway)
 
     df_customer.createOrReplaceTempView("customer")
 
@@ -76,7 +87,7 @@ def run_demo(
         spark = SparkSession.builder.remote(f"sc://{host}:{port}/{uri_parameters}").getOrCreate()
     else:
         spark = SparkSession.builder.master("local").getOrCreate()
-    execute_query(spark)
+    execute_query(spark_session=spark, use_gateway=use_gateway)
 
 
 @click.command()

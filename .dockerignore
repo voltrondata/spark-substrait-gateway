@@ -2,3 +2,5 @@
 helm-chart
 tls
 .github
+Dockerfile
+.gitignore
