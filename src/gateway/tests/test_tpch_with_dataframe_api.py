@@ -24,9 +24,7 @@ def mark_tests_as_xfail(request):
         elif originalname == "test_query_16":
             request.node.add_marker(pytest.mark.xfail(reason="distinct not supported"))
     elif source == "gateway-over-datafusion":
-        if originalname in ["test_query_07"]:
-            request.node.add_marker(pytest.mark.xfail(reason="Duplicate Expression names"))
-        elif originalname in ["test_query_09"]:
+        if originalname in ["test_query_09"]:
             request.node.add_marker(
                 pytest.mark.xfail(
                     reason="Cannot create filter with non-boolean predicate - substr function"

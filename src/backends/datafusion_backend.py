@@ -53,8 +53,8 @@ class DatafusionBackend(Backend):
         import datafusion.substrait
 
         plan_data = plan.SerializeToString()
-        substrait_plan = datafusion.substrait.substrait.serde.deserialize_bytes(plan_data)
-        logical_plan = datafusion.substrait.substrait.consumer.from_substrait_plan(
+        substrait_plan = datafusion.substrait.serde.deserialize_bytes(plan_data)
+        logical_plan = datafusion.substrait.consumer.from_substrait_plan(
             self._connection, substrait_plan
         )
 
