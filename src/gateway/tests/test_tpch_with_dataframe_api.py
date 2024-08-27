@@ -21,12 +21,6 @@ def mark_tests_as_xfail(request):
     if source == "gateway-over-duckdb":
         if originalname == "test_query_16":
             request.node.add_marker(pytest.mark.xfail(reason="distinct not supported"))
-    elif source == "gateway-over-datafusion" and originalname in ["test_query_09"]:
-            request.node.add_marker(
-                pytest.mark.xfail(
-                    reason="Cannot create filter with non-boolean predicate - substr function"
-                )
-            )
 
 
 class TestTpchWithDataFrameAPI:
