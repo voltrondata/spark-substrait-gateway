@@ -126,8 +126,6 @@ def mark_dataframe_tests_as_xfail(request):
         pytest.skip(reason="internal Spark type error")
     if source == "gateway-over-duckdb" and originalname == "test_nullif":
         pytest.skip(reason="argument count issue in DuckDB mapping")
-    if source == "gateway-over-datafusion" and originalname == "test_count":
-        pytest.skip(reason="Schema at index 0 was different")
     if source != "spark" and originalname in ["test_locate", "test_position"]:
         pytest.skip(reason="no direct Substrait analog")
     if source == "gateway-over-duckdb" and originalname == "test_octet_length":
