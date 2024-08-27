@@ -66,6 +66,9 @@ def convert_pyarrow_datatype_to_spark(arrow_type: pa.DataType) -> types_pb2.Data
         data_type = types_pb2.DataType(integer=types_pb2.DataType.Integer())
     elif arrow_type == pa.int64():
         data_type = types_pb2.DataType(long=types_pb2.DataType.Long())
+    elif arrow_type == pa.uint64():
+        # TODO: Spark doesn't have unsigned types so come up with a way to handle overflow.
+        data_type = types_pb2.DataType(long=types_pb2.DataType.Long())
     elif arrow_type == pa.float32():
         data_type = types_pb2.DataType(float=types_pb2.DataType.Float())
     elif arrow_type == pa.float64():

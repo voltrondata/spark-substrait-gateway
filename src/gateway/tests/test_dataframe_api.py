@@ -52,6 +52,7 @@ from pyspark.sql.functions import (
     replace,
     right,
     rlike,
+    row_number,
     rpad,
     rtrim,
     sqrt,
@@ -64,6 +65,7 @@ from pyspark.sql.functions import (
     upper,
 )
 from pyspark.sql.types import DoubleType, StructField, StructType
+from pyspark.sql.window import Window
 from pyspark.testing import assertDataFrameEqual
 
 from gateway.tests.conftest import find_tpch
@@ -160,6 +162,9 @@ def mark_dataframe_tests_as_xfail(request):
         pytest.skip(reason="missing in Substrait")
     if source == "gateway-over-datafusion" and originalname == "test_try_divide":
         pytest.skip(reason="returns infinity instead of null")
+
+    if source == "gateway-over-duckdb" and originalname == "test_row_number":
+        pytest.skip(reason="window functions not yet implemented in DuckDB")
 
 
 # ruff: noqa: E712
@@ -2746,5 +2751,26 @@ class TestDataFrameAggregateBehavior:
                 .limit(3)
                 .collect()
             )
+
+        assertDataFrameEqual(outcome, expected)
+
+
+class TestDataFrameWindowFunctions:
+    """Tests window functions of the dataframe side of SparkConnect."""
+
+    def test_row_number(self, users_dataframe):
+        expected = [
+            Row(user_id="user705452451", name="Adrian Reyes", paid_for_service=False, row_number=1),
+            Row(user_id="user406489700", name="Alan Aguirre DVM", paid_for_service=False,
+                row_number=2),
+            Row(user_id="user965620978", name="Alan Whitaker", paid_for_service=False,
+                row_number=3),
+        ]
+
+        with utilizes_valid_plans(users_dataframe):
+            window_spec = Window.partitionBy().orderBy("name")
+            outcome = users_dataframe.withColumn("row_number",
+                                                 row_number().over(window_spec)).orderBy(
+                "row_number").limit(3)
 
         assertDataFrameEqual(outcome, expected)
