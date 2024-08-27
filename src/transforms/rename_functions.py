@@ -33,8 +33,6 @@ class RenameFunctionsForDatafusion(SubstraitPlanVisitor):
                 extension.extension_function.name = "add"
             elif extension.extension_function.name == "/":
                 extension.extension_function.name = "divide"
-            elif extension.extension_function.name == "contains":
-                extension.extension_function.name = "contains"
             elif extension.extension_function.name == "extract":
                 extension.extension_function.name = "date_part"
 
