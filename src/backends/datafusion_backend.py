@@ -70,8 +70,8 @@ class DatafusionBackend(Backend):
             df_result = df_result.with_column_renamed(
                 column_name, plan.relations[0].root.names[column_number]
             )
-        # MEGAHACK -- This conversion fails sometimes (null vs not null).
-        return df_result.to_arrow_table()
+        record_batch = df_result.collect()
+        return pa.Table.from_batches(record_batch)
 
     def register_table(
         self,
