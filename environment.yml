@@ -17,7 +17,7 @@ dependencies:
   - pip:
     - adbc_driver_manager
     - cargo
-    - pyarrow >= 16.1.0
+    - pyarrow >= 17.0.0
     - duckdb >= 1.0.0
     - datafusion == 40.1.*
     - grpcio-channelz
