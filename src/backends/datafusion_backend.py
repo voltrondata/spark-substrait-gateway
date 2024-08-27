@@ -53,8 +53,8 @@ class DatafusionBackend(Backend):
         import datafusion.substrait
 
         plan_data = plan.SerializeToString()
-        substrait_plan = datafusion.substrait.substrait.serde.deserialize_bytes(plan_data)
-        logical_plan = datafusion.substrait.substrait.consumer.from_substrait_plan(
+        substrait_plan = datafusion.substrait.Serde.deserialize_bytes(plan_data)
+        logical_plan = datafusion.substrait.Consumer.from_substrait_plan(
             self._connection, substrait_plan
         )
 
@@ -70,7 +70,8 @@ class DatafusionBackend(Backend):
             df_result = df_result.with_column_renamed(
                 column_name, plan.relations[0].root.names[column_number]
             )
-        return df_result.to_arrow_table()
+        record_batch = df_result.collect()
+        return pa.Table.from_batches(record_batch)
 
     def register_table(
         self,

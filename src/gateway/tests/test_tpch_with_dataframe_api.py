@@ -19,21 +19,10 @@ def mark_tests_as_xfail(request):
     source = request.getfixturevalue("source")
     originalname = request.keywords.node.originalname
     if source == "gateway-over-duckdb":
-        if originalname in ["test_query_15"]:
+        if originalname == "test_query_15":
             request.node.add_marker(pytest.mark.xfail(reason="No results (float vs decimal)"))
-        elif originalname == "test_query_16":
+        if originalname == "test_query_16":
             request.node.add_marker(pytest.mark.xfail(reason="distinct not supported"))
-    elif source == "gateway-over-datafusion":
-        if originalname in ["test_query_07"]:
-            request.node.add_marker(pytest.mark.xfail(reason="Duplicate Expression names"))
-        elif originalname in ["test_query_09"]:
-            request.node.add_marker(
-                pytest.mark.xfail(
-                    reason="Cannot create filter with non-boolean predicate - substr function"
-                )
-            )
-        elif originalname in ["test_query_11"]:
-            request.node.add_marker(pytest.mark.xfail(reason="Duplicate field in schema"))
 
 
 class TestTpchWithDataFrameAPI:
