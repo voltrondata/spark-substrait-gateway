@@ -27,8 +27,6 @@ from gateway.converter.conversion_options import arrow, datafusion, duck_db
 from gateway.converter.spark_to_substrait import SparkSubstraitConverter
 from gateway.security import BearerTokenAuthInterceptor
 
-from src.backends.backend_selector import backend_type
-
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -223,18 +221,12 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
             self._sql_backend = find_backend(BackendOptions(BackendEngine.DUCKDB, False))
             self._converter = SparkSubstraitConverter(self._options)
             self._converter.set_backends(self._backend, self._sql_backend)
-        if self._options.backend.backend != backend_type(self._backend):
-            # MEGAHACK -- This reset shouldn't be needed.
-            self._backend = find_backend(self._options.backend)
 
     def _ReinitializeExecution(self) -> None:
         """Reinitialize the execution of the Plan by resetting the backend."""
         self._statistics.database_resets += 1
         if not self._backend:
             return self._InitializeExecution()
-        if self._options.backend != backend_type(self._backend):
-            # MEGAHACK -- This reset shouldn't be needed.
-            self._backend = find_backend(self._options.backend)
         self._backend.reset_connection()
         self._sql_backend.reset_connection()
         return None

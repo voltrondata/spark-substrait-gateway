@@ -22,12 +22,3 @@ def find_backend(options: BackendOptions) -> backend.Backend:
             return DuckDBBackend(options)
         case _:
             raise ValueError(f"Unknown backend {options.backend} requested.")
-
-def backend_type(backend_instance: backend.Backend) -> BackendEngine:
-    if isinstance(backend_instance, DuckDBBackend):
-        return BackendEngine.DUCKDB
-    if isinstance(backend_instance, DatafusionBackend):
-        return BackendEngine.DATAFUSION
-    if isinstance(backend_instance, ArrowBackend):
-        return BackendEngine.ARROW
-    raise ValueError(f"Unknown backend type.")
