@@ -288,6 +288,7 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
         self._statistics.add_plan(substrait)
         if len(substrait.relations) != 1:
             raise ValueError(f"Expected exactly ONE relation in the plan: {request}")
+
         try:
             results = self._backend.execute(substrait)
         except Exception as err:
