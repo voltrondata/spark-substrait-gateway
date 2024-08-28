@@ -18,8 +18,8 @@ sql_test_case_names = [p.stem for p in sql_test_case_paths]
 def mark_tests_as_xfail(request):
     """Marks a subset of tests as expected to be fail."""
     source = request.getfixturevalue("source")
+    path = request.getfixturevalue("path")
     if source == "gateway-over-duckdb":
-        path = request.getfixturevalue("path")
         if path.stem in ["01", "06", "10", "16", "30", "32", "35", "69", "81", "86", "92", "94"]:
             pytest.skip(reason="DuckDB needs Delim join")
         elif path.stem in [
@@ -119,7 +119,12 @@ def mark_tests_as_xfail(request):
         elif path.stem in ["95"]:
             pytest.skip(reason="Unsupported join comparison: !=")
     if source == "gateway-over-datafusion":
-        pytest.skip(reason="not yet ready to run SQL tests regularly")
+        if path.stem in ["02"]:
+            pytest.skip(reason="Null type without kind is not supported")
+        elif path.stem in ["09"]:
+            pytest.skip(reason="Aggregate function any_value is not supported: function anchor = 6")
+        else:
+            pytest.skip(reason="not yet ready to run SQL tests regularly")
     if source == "gateway-over-arrow":
         pytest.skip(reason="not yet ready to run SQL tests regularly")
 

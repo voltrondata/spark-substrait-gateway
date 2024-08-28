@@ -52,6 +52,8 @@ class DatafusionBackend(Backend):
         """Execute the given Substrait plan against Datafusion."""
         import datafusion.substrait
 
+        if len(plan.relations) != 1:
+            raise ValueError(f"Expected exactly one relation in the plan: {plan}")
         plan_data = plan.SerializeToString()
         substrait_plan = datafusion.substrait.Serde.deserialize_bytes(plan_data)
         logical_plan = datafusion.substrait.Consumer.from_substrait_plan(
