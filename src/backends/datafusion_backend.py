@@ -32,6 +32,9 @@ class DatafusionBackend(Backend):
     @contextmanager
     def adjust_plan(self, plan: plan_pb2.Plan) -> Iterator[plan_pb2.Plan]:
         """Modify the given Substrait plan for use with Datafusion."""
+        if len(plan.relations) != 1:
+            raise ValueError(f"Expected exactly 1 relation in the plan: {plan}")
+
         file_groups = ReplaceLocalFilesWithNamedTable().visit_plan(plan)
         registered_tables = set()
         for table_name, files in file_groups:
