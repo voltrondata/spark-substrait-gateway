@@ -579,8 +579,8 @@ def serve(
     required=False,
     metavar=("CERTFILE", "KEYFILE"),
     help="Enable transport-level security (TLS/SSL).  Provide a "
-         "Certificate file path, and a Key file path - separated by a space.  "
-         "Example: tls/server.crt tls/server.key",
+    "Certificate file path, and a Key file path - separated by a space.  "
+    "Example: tls/server.crt tls/server.key",
 )
 @click.option(
     "--enable-auth/--no-enable-auth",
