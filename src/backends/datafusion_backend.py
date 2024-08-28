@@ -3,9 +3,9 @@
 
 from collections.abc import Iterator
 from contextlib import contextmanager
-import datafusion.substrait
 from pathlib import Path
 
+import datafusion.substrait
 import pyarrow as pa
 from substrait.gen.proto import plan_pb2
 
