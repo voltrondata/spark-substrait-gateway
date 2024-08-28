@@ -128,7 +128,7 @@ def convert_pyarrow_schema_to_spark(schema: pa.Schema) -> types_pb2.DataType:
 
 
 def create_dataframe_view(
-    session_id: str, view: commands_pb2.CreateDataFrameViewCommand, backend
+        session_id: str, view: commands_pb2.CreateDataFrameViewCommand, backend
 ) -> None:
     """Register the temporary dataframe."""
     read_data_source_relation = view.input.read.data_source
@@ -235,7 +235,7 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
         return None
 
     def ExecutePlan(
-        self, request: pb2.ExecutePlanRequest, context: grpc.RpcContext
+            self, request: pb2.ExecutePlanRequest, context: grpc.RpcContext
     ) -> Generator[pb2.ExecutePlanResponse, None, None]:
         """Execute the given plan and return the results."""
         self._statistics.execute_requests += 1
@@ -297,9 +297,9 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
         _LOGGER.debug("  results are: %s", results)
 
         if (
-            not self._options.implement_show_string
-            and request.plan.WhichOneof("op_type") == "root"
-            and request.plan.root.WhichOneof("rel_type") == "show_string"
+                not self._options.implement_show_string
+                and request.plan.WhichOneof("op_type") == "root"
+                and request.plan.root.WhichOneof("rel_type") == "show_string"
         ):
             yield pb2.ExecutePlanResponse(
                 session_id=request.session_id,
@@ -342,24 +342,31 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
         self._statistics.add_request(request)
         _LOGGER.info("AnalyzePlan: %s", request)
         self._InitializeExecution()
-        if request.schema:
-            substrait = self._converter.convert_plan(request.schema.plan)
-            self._statistics.add_plan(substrait)
-            if len(substrait.relations) != 1:
-                raise ValueError(f"Expected exactly _ONE_ relation in the plan: {request}")
-            try:
-                results = self._backend.execute(substrait)
-            except Exception as err:
-                self._ReinitializeExecution()
-                raise err
-            _LOGGER.debug("  results are: %s", results)
-            return pb2.AnalyzePlanResponse(
-                session_id=request.session_id,
-                schema=pb2.AnalyzePlanResponse.Schema(
-                    schema=convert_pyarrow_schema_to_spark(results.schema)
-                ),
-            )
-        raise NotImplementedError("AnalyzePlan not yet implemented for non-Schema requests.")
+        match request.WhichOneof("analyze"):
+            case 'schema':
+                request_plan = request.schema.plan
+            case 'is_streaming':
+                request_plan = request.is_streaming.plan
+            case _:
+                raise NotImplementedError(
+                    "AnalyzePlan not yet implemented for non-Schema requests: "
+                    f"{request.WhichOneof('analyze')}")
+        substrait = self._converter.convert_plan(request_plan)
+        self._statistics.add_plan(substrait)
+        if len(substrait.relations) != 1:
+            raise ValueError(f"Expected exactly _ONE_ relation in the plan: {request}")
+        try:
+            results = self._backend.execute(substrait)
+        except Exception as err:
+            self._ReinitializeExecution()
+            raise err
+        _LOGGER.debug("  results are: %s", results)
+        return pb2.AnalyzePlanResponse(
+            session_id=request.session_id,
+            schema=pb2.AnalyzePlanResponse.Schema(
+                schema=convert_pyarrow_schema_to_spark(results.schema)
+            ),
+        )
 
     def Config(self, request, context):
         """Get or set the configuration of the server."""
@@ -390,7 +397,7 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
                     elif key == "spark-substrait-gateway.plan_count":
                         response.pairs.add(key=key, value=str(len(self._statistics.plans)))
                     elif key.startswith("spark-substrait-gateway.plan."):
-                        index = int(key[len("spark-substrait-gateway.plan.") :])
+                        index = int(key[len("spark-substrait-gateway.plan."):])
                         if 0 <= index - 1 < len(self._statistics.plans):
                             response.pairs.add(key=key, value=self._statistics.plans[index - 1])
                     elif key == "spark.sql.session.timeZone":
@@ -468,7 +475,7 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
         return pb2.InterruptResponse()
 
     def ReattachExecute(
-        self, request: pb2.ReattachExecuteRequest, context: grpc.RpcContext
+            self, request: pb2.ReattachExecuteRequest, context: grpc.RpcContext
     ) -> Generator[pb2.ExecutePlanResponse, None, None]:
         """Reattach the execution of the given plan."""
         self._statistics.reattach_requests += 1
@@ -485,13 +492,13 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
 
 
 def serve(
-    port: int,
-    wait: bool,
-    tls: list[str] | None = None,
-    enable_auth: bool = False,
-    jwt_audience: str | None = None,
-    secret_key: str | None = None,
-    log_level: str = "INFO",
+        port: int,
+        wait: bool,
+        tls: list[str] | None = None,
+        enable_auth: bool = False,
+        jwt_audience: str | None = None,
+        secret_key: str | None = None,
+        log_level: str = "INFO",
 ) -> grpc.Server:
     """Start the Spark Substrait Gateway server."""
     logging.basicConfig(level=getattr(logging, log_level), encoding="utf-8")
@@ -569,8 +576,8 @@ def serve(
     required=False,
     metavar=("CERTFILE", "KEYFILE"),
     help="Enable transport-level security (TLS/SSL).  Provide a "
-    "Certificate file path, and a Key file path - separated by a space.  "
-    "Example: tls/server.crt tls/server.key",
+         "Certificate file path, and a Key file path - separated by a space.  "
+         "Example: tls/server.crt tls/server.key",
 )
 @click.option(
     "--enable-auth/--no-enable-auth",
@@ -601,13 +608,13 @@ def serve(
     help="The logging level to use for the server.",
 )
 def click_serve(
-    port: int,
-    wait: bool,
-    tls: list[str],
-    enable_auth: bool,
-    jwt_audience: str,
-    secret_key: str,
-    log_level: str,
+        port: int,
+        wait: bool,
+        tls: list[str],
+        enable_auth: bool,
+        jwt_audience: str,
+        secret_key: str,
+        log_level: str,
 ) -> grpc.Server:
     """Provide a click interface for starting the Spark Substrait Gateway server."""
     return serve(**locals())
