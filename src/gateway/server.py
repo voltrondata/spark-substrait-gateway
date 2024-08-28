@@ -361,10 +361,10 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
                     ),
                 )
             case 'is_streaming':
-                # TODO -- Actually look at request.is_streaming.plan
+                # TODO -- Actually look at the plan (this path is used by pyspark.testing.utils).
                 return pb2.AnalyzePlanResponse(
                     session_id=request.session_id,
-                    schema=pb2.AnalyzePlanResponse.IsStreaming(
+                    is_streaming=pb2.AnalyzePlanResponse.IsStreaming(
                         is_streaming=False
                     ),
                 )
