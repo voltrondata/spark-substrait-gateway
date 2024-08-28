@@ -3,6 +3,7 @@
 
 from collections.abc import Iterator
 from contextlib import contextmanager
+import datafusion.substrait
 from pathlib import Path
 
 import pyarrow as pa
@@ -32,9 +33,6 @@ class DatafusionBackend(Backend):
     @contextmanager
     def adjust_plan(self, plan: plan_pb2.Plan) -> Iterator[plan_pb2.Plan]:
         """Modify the given Substrait plan for use with Datafusion."""
-        if len(plan.relations) != 1:
-            raise ValueError(f"Expected exactly 1 relation in the plan: {plan}")
-
         file_groups = ReplaceLocalFilesWithNamedTable().visit_plan(plan)
         registered_tables = set()
         for table_name, files in file_groups:
@@ -53,10 +51,6 @@ class DatafusionBackend(Backend):
 
     def _execute_plan(self, plan: plan_pb2.Plan) -> pa.lib.Table:
         """Execute the given Substrait plan against Datafusion."""
-        import datafusion.substrait
-
-        if len(plan.relations) != 1:
-            raise ValueError(f"Expected exactly one relation in the plan: {plan}")
         plan_data = plan.SerializeToString()
         substrait_plan = datafusion.substrait.Serde.deserialize_bytes(plan_data)
         logical_plan = datafusion.substrait.Consumer.from_substrait_plan(
