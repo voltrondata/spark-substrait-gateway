@@ -286,7 +286,6 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
                 raise ValueError(f"Unknown plan type: {request.plan}")
         _LOGGER.debug("  as Substrait: %s", substrait)
         self._statistics.add_plan(substrait)
-
         try:
             results = self._backend.execute(substrait)
         except Exception as err:
