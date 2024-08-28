@@ -344,29 +344,34 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
         self._InitializeExecution()
         match request.WhichOneof("analyze"):
             case 'schema':
-                request_plan = request.schema.plan
+                substrait = self._converter.convert_plan(request.schema.plan)
+                self._statistics.add_plan(substrait)
+                if len(substrait.relations) != 1:
+                    raise ValueError(f"Expected exactly _ONE_ relation in the plan: {request}")
+                try:
+                    results = self._backend.execute(substrait)
+                except Exception as err:
+                    self._ReinitializeExecution()
+                    raise err
+                _LOGGER.debug("  results are: %s", results)
+                return pb2.AnalyzePlanResponse(
+                    session_id=request.session_id,
+                    schema=pb2.AnalyzePlanResponse.Schema(
+                        schema=convert_pyarrow_schema_to_spark(results.schema)
+                    ),
+                )
             case 'is_streaming':
-                request_plan = request.is_streaming.plan
+                # TODO -- Actually look at request.is_streaming.plan
+                return pb2.AnalyzePlanResponse(
+                    session_id=request.session_id,
+                    schema=pb2.AnalyzePlanResponse.IsStreaming(
+                        is_streaming=False
+                    ),
+                )
             case _:
                 raise NotImplementedError(
                     "AnalyzePlan not yet implemented for non-Schema requests: "
                     f"{request.WhichOneof('analyze')}")
-        substrait = self._converter.convert_plan(request_plan)
-        self._statistics.add_plan(substrait)
-        if len(substrait.relations) != 1:
-            raise ValueError(f"Expected exactly _ONE_ relation in the plan: {request}")
-        try:
-            results = self._backend.execute(substrait)
-        except Exception as err:
-            self._ReinitializeExecution()
-            raise err
-        _LOGGER.debug("  results are: %s", results)
-        return pb2.AnalyzePlanResponse(
-            session_id=request.session_id,
-            schema=pb2.AnalyzePlanResponse.Schema(
-                schema=convert_pyarrow_schema_to_spark(results.schema)
-            ),
-        )
 
     def Config(self, request, context):
         """Get or set the configuration of the server."""
