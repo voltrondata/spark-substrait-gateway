@@ -808,6 +808,13 @@ SPARK_SUBSTRAIT_MAPPING = {
             i64=type_pb2.Type.I64(nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED)
         ),
     ),
+    "row_number": ExtensionFunction(
+        "/functions_arithmetic.yaml",
+        "row_number:any",
+        type_pb2.Type(
+            i64=type_pb2.Type.I64(nullability=type_pb2.Type.Nullability.NULLABILITY_REQUIRED)
+        ),
+        function_type=FunctionType.WINDOW),
 }
 
 

@@ -18,11 +18,8 @@ def mark_tests_as_xfail(request):
     """Marks a subset of tests as expected to be fail."""
     source = request.getfixturevalue("source")
     originalname = request.keywords.node.originalname
-    if source == "gateway-over-duckdb":
-        if originalname == "test_query_15":
-            request.node.add_marker(pytest.mark.xfail(reason="No results (float vs decimal)"))
-        if originalname == "test_query_16":
-            request.node.add_marker(pytest.mark.xfail(reason="distinct not supported"))
+    if source == "gateway-over-duckdb" and originalname == "test_query_16":
+        request.node.add_marker(pytest.mark.xfail(reason="distinct not supported"))
 
 
 class TestTpchWithDataFrameAPI:

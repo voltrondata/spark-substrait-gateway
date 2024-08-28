@@ -66,6 +66,9 @@ def convert_pyarrow_datatype_to_spark(arrow_type: pa.DataType) -> types_pb2.Data
         data_type = types_pb2.DataType(integer=types_pb2.DataType.Integer())
     elif arrow_type == pa.int64():
         data_type = types_pb2.DataType(long=types_pb2.DataType.Long())
+    elif arrow_type == pa.uint64():
+        # TODO: Spark doesn't have unsigned types so come up with a way to handle overflow.
+        data_type = types_pb2.DataType(long=types_pb2.DataType.Long())
     elif arrow_type == pa.float32():
         data_type = types_pb2.DataType(float=types_pb2.DataType.Float())
     elif arrow_type == pa.float64():
@@ -336,22 +339,36 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
         self._statistics.add_request(request)
         _LOGGER.info("AnalyzePlan: %s", request)
         self._InitializeExecution()
-        if request.schema:
-            substrait = self._converter.convert_plan(request.schema.plan)
-            self._statistics.add_plan(substrait)
-            try:
-                results = self._backend.execute(substrait)
-            except Exception as err:
-                self._ReinitializeExecution()
-                raise err
-            _LOGGER.debug("  results are: %s", results)
-            return pb2.AnalyzePlanResponse(
-                session_id=request.session_id,
-                schema=pb2.AnalyzePlanResponse.Schema(
-                    schema=convert_pyarrow_schema_to_spark(results.schema)
-                ),
-            )
-        raise NotImplementedError("AnalyzePlan not yet implemented for non-Schema requests.")
+        match request.WhichOneof("analyze"):
+            case 'schema':
+                substrait = self._converter.convert_plan(request.schema.plan)
+                self._statistics.add_plan(substrait)
+                if len(substrait.relations) != 1:
+                    raise ValueError(f"Expected exactly _ONE_ relation in the plan: {request}")
+                try:
+                    results = self._backend.execute(substrait)
+                except Exception as err:
+                    self._ReinitializeExecution()
+                    raise err
+                _LOGGER.debug("  results are: %s", results)
+                return pb2.AnalyzePlanResponse(
+                    session_id=request.session_id,
+                    schema=pb2.AnalyzePlanResponse.Schema(
+                        schema=convert_pyarrow_schema_to_spark(results.schema)
+                    ),
+                )
+            case 'is_streaming':
+                # TODO -- Actually look at the plan (this path is used by pyspark.testing.utils).
+                return pb2.AnalyzePlanResponse(
+                    session_id=request.session_id,
+                    is_streaming=pb2.AnalyzePlanResponse.IsStreaming(
+                        is_streaming=False
+                    ),
+                )
+            case _:
+                raise NotImplementedError(
+                    "AnalyzePlan not yet implemented for non-Schema requests: "
+                    f"{request.WhichOneof('analyze')}")
 
     def Config(self, request, context):
         """Get or set the configuration of the server."""

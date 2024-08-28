@@ -618,6 +618,121 @@ class SparkSubstraitConverter:
                 raise NotImplementedError(f'unknown cast_to_type {cast.WhichOneof("cast_to_type")}')
         return algebra_pb2.Expression(cast=cast_rel)
 
+    def convert_frame_boundary(
+            self,
+            boundary: spark_exprs_pb2.Expression.Window.WindowFrame.FrameBoundary) \
+            -> algebra_pb2.Expression.WindowFunction.Bound:
+        """Convert a Spark frame boundary into a Substrait window Bound."""
+        bound = algebra_pb2.Expression.WindowFunction.Bound()
+        match boundary.WhichOneof("boundary"):
+            case "current_row":
+                bound.current_row.CopyFrom(algebra_pb2.Expression.WindowFunction.Bound.CurrentRow())
+            case "unbounded":
+                bound.unbounded.CopyFrom(algebra_pb2.Expression.WindowFunction.Bound.Unbounded())
+            case "value":
+                if boundary.value.WhichOneof("expr_type") != "literal":
+                    raise ValueError("Boundary value expression must be a literal.")
+                offset_expr = self.convert_literal_expression(boundary.value.literal)
+                match offset_expr.literal.WhichOneof("literal_type"):
+                    case "i8":
+                        offset_value = offset_expr.i8.value
+                    case "i16":
+                        offset_value = offset_expr.i16.value
+                    case "i32":
+                        offset_value = offset_expr.i32.value
+                    case "i64":
+                        offset_value = offset_expr.i64.value
+                    case _:
+                        raise ValueError(
+                            "Unexpected literal type: "
+                            f"{offset_expr.literal.WhichOneof('literal_type')}")
+                if offset_value > 0:
+                    boundary.following.offset = offset_value
+                elif offset_value < 0:
+                    boundary.preceding.offset = -offset_value
+                else:
+                    boundary.current_row.CopyFrom(
+                        algebra_pb2.Expression.WindowFunction.Bound.CurrentRow())
+            case _:
+                raise ValueError(f"Unknown boundary type: {boundary.WhichOneof('boundary')}")
+        return bound
+
+    def convert_order_spec(
+            self,
+            order: spark_exprs_pb2.Expression.SortOrder) -> algebra_pb2.SortField:
+        """Convert a Spark order specification into a Substrait sort field."""
+        if order.direction == spark_exprs_pb2.Expression.SortOrder.SORT_DIRECTION_ASCENDING:
+            if (order.null_ordering ==
+                    spark_exprs_pb2.Expression.SortOrder.NullOrdering.SORT_NULLS_FIRST):
+                sort_dir = algebra_pb2.SortField.SortDirection.SORT_DIRECTION_ASC_NULLS_FIRST
+            else:
+                sort_dir = algebra_pb2.SortField.SortDirection.SORT_DIRECTION_ASC_NULLS_LAST
+        else:
+            if (order.null_ordering ==
+                    spark_exprs_pb2.Expression.SortOrder.NullOrdering.SORT_NULLS_FIRST):
+                sort_dir = algebra_pb2.SortField.SortDirection.SORT_DIRECTION_DESC_NULLS_FIRST
+            else:
+                sort_dir = algebra_pb2.SortField.SortDirection.SORT_DIRECTION_DESC_NULLS_LAST
+        return algebra_pb2.SortField(
+            expr=self.convert_expression(order.child), direction=sort_dir)
+
+    def convert_window_expression(
+            self, window: spark_exprs_pb2.Expression.Window) -> algebra_pb2.Expression:
+        """Convert a Spark window expression into a Substrait window expression."""
+        func = algebra_pb2.Expression.WindowFunction()
+        if window.window_function.WhichOneof("expr_type") != "unresolved_function":
+            raise NotImplementedError(
+                "Window functions which are not unresolved functions are not yet supported.")
+        function_def = self.lookup_function_by_name(
+            window.window_function.unresolved_function.function_name)
+        func.function_reference = function_def.anchor
+        for idx, arg in enumerate(window.window_function.unresolved_function.arguments):
+            if function_def.max_args is not None and idx >= function_def.max_args:
+                break
+            if (window.window_function.unresolved_function.function_name == "count" and
+                    arg.WhichOneof("expr_type") == "unresolved_star"):
+                # Ignore all the rest of the arguments.
+                func.arguments.append(
+                    algebra_pb2.FunctionArgument(value=bigint_literal(1)))
+                break
+            func.arguments.append(
+                algebra_pb2.FunctionArgument(value=self.convert_expression(arg)))
+        if function_def.options:
+            func.options.extend(function_def.options)
+        func.output_type.CopyFrom(function_def.output_type)
+        for sort in window.order_spec:
+            func.sorts.append(self.convert_order_spec(sort))
+        if (function_def.function_type == FunctionType.WINDOW or
+                function_def.function_type == FunctionType.AGGREGATE):
+            func.invocation = algebra_pb2.AGGREGATION_PHASE_INITIAL_TO_RESULT
+        else:
+            raise ValueError(
+                f"Unexpected function type: {function_def.function_type}")
+        if window.partition_spec:
+            for partition in window.partition_spec:
+                func.partitions.append(self.convert_expression(partition))
+        if window.HasField("frame_spec"):
+            match window.frame_spec.frame_type:
+                case spark_exprs_pb2.Expression.Window.WindowFrame.FRAME_TYPE_RANGE:
+                    func.bounds_type = (
+                        algebra_pb2.Expression.WindowFunction.BoundsType.BOUNDS_TYPE_RANGE)
+                case spark_exprs_pb2.Expression.Window.WindowFrame.FRAME_TYPE_ROW:
+                    func.bounds_type = (
+                        algebra_pb2.Expression.WindowFunction.BoundsType.BOUNDS_TYPE_ROW)
+                case _:
+                    raise ValueError(
+                        f"Unknown frame type: {window.frame_spec.frame_type}")
+            func.lower_bound.CopyFrom(self.convert_frame_boundary(window.frame_spec.lower))
+            func.upper_bound.CopyFrom(self.convert_frame_boundary(window.frame_spec.upper))
+        else:
+            func.bounds_type = (
+                algebra_pb2.Expression.WindowFunction.BoundsType.BOUNDS_TYPE_UNSPECIFIED)
+            func.lower_bound.unbounded.CopyFrom(
+                algebra_pb2.Expression.WindowFunction.Bound.Unbounded())
+            func.upper_bound.unbounded.CopyFrom(
+                algebra_pb2.Expression.WindowFunction.Bound.Unbounded())
+        return algebra_pb2.Expression(window_function=func)
+
     def convert_extract_value(
         self, extract: spark_exprs_pb2.Expression.UnresolvedExtractValue
     ) -> algebra_pb2.Expression:
@@ -684,7 +799,7 @@ class SparkSubstraitConverter:
                 case "lambda_function":
                     raise NotImplementedError("lambda_function expression type not supported")
                 case "window":
-                    raise NotImplementedError("window expression type not supported")
+                    result = self.convert_window_expression(expr.window)
                 case "unresolved_extract_value":
                     result = self.convert_extract_value(expr.unresolved_extract_value)
                 case "update_fields":

@@ -5,6 +5,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
+import datafusion.substrait
 import pyarrow as pa
 from substrait.gen.proto import plan_pb2
 
@@ -50,8 +51,6 @@ class DatafusionBackend(Backend):
 
     def _execute_plan(self, plan: plan_pb2.Plan) -> pa.lib.Table:
         """Execute the given Substrait plan against Datafusion."""
-        import datafusion.substrait
-
         plan_data = plan.SerializeToString()
         substrait_plan = datafusion.substrait.Serde.deserialize_bytes(plan_data)
         logical_plan = datafusion.substrait.Consumer.from_substrait_plan(
