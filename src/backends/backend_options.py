@@ -11,6 +11,7 @@ class BackendEngine(Enum):
     ARROW = 1
     DATAFUSION = 2
     DUCKDB = 3
+    IBIS = 4
 
     def __str__(self):
         """Return the string representation of the backend."""

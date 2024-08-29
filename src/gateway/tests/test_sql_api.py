@@ -22,14 +22,6 @@ def mark_tests_as_xfail(request):
     """Marks a subset of tests as expected to be fail."""
     source = request.getfixturevalue("source")
     originalname = request.keywords.node.originalname
-    if source == "gateway-over-duckdb" and originalname == "test_tpch":
-        path = request.getfixturevalue("path")
-        if path.stem in ["02", "04", "17", "20", "21", "22"]:
-            pytest.skip(reason="DuckDB needs Dup Elim join")
-        elif path.stem in ["16"]:
-            pytest.skip(reason="DuckDB needs Mark join")
-        elif path.stem in ["19"]:
-            pytest.skip(reason="nullability mismatch")
     if source == "gateway-over-datafusion":
         if originalname == "test_count":
             pytest.skip(reason="COUNT() not implemented")

@@ -222,7 +222,7 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
         """Initialize the execution of the Plan by setting the backend."""
         if not self._backend:
             self._backend = find_backend(self._options.backend)
-            self._sql_backend = find_backend(BackendOptions(BackendEngine.DUCKDB, False))
+            self._sql_backend = find_backend(BackendOptions(BackendEngine.IBIS, False))
             self._converter = SparkSubstraitConverter(self._options)
             self._converter.set_backends(self._backend, self._sql_backend)
 
@@ -267,7 +267,6 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
                                 request.plan.command.sql_command.sql
                             )
                         except Exception as err:
-                            self._ReinitializeExecution()
                             raise err
                     case "create_dataframe_view":
                         create_dataframe_view(

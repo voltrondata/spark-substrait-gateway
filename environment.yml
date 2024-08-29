@@ -13,11 +13,13 @@ dependencies:
   - mypy-protobuf
   - types-protobuf >= 4.25.0, < 5.0.0
   - numpy < 2.0.0
+  - ibis-substrait == 4.0.*
   - Faker
   - pip:
     - adbc_driver_manager
     - cargo
     - pyarrow >= 17.0.0
+    - pyarrow-hotfix
     - duckdb == 1.1.0
     - datafusion == 41.0.*
     - grpcio-channelz

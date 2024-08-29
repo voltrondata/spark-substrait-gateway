@@ -7,6 +7,7 @@ from backends.arrow_backend import ArrowBackend
 from backends.backend_options import BackendEngine, BackendOptions
 from backends.datafusion_backend import DatafusionBackend
 from backends.duckdb_backend import DuckDBBackend
+from backends.ibis_backend import IbisBackend
 
 
 def find_backend(options: BackendOptions) -> backend.Backend:
@@ -20,5 +21,7 @@ def find_backend(options: BackendOptions) -> backend.Backend:
             if options.use_adbc:
                 return AdbcBackend(options)
             return DuckDBBackend(options)
+        case BackendEngine.IBIS:
+            return IbisBackend(options)
         case _:
             raise ValueError(f"Unknown backend {options.backend} requested.")
