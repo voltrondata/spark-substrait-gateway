@@ -42,6 +42,6 @@ class IbisBackend(Backend):
 
     def convert_sql(self, sql: str) -> plan_pb2.Plan:
         """Convert SQL into a Substrait plan."""
-        expr = parse_sql(sql, catalog=self._table_schemas)
+        expr = parse_sql(sql, catalog=self._table_schemas, dialect="spark")
         compiler = SubstraitCompiler()
         return compiler.compile(expr)
