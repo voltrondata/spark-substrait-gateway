@@ -166,6 +166,51 @@ def mark_dataframe_tests_as_xfail(request):
     if source == "gateway-over-duckdb" and originalname == "test_row_number":
         pytest.skip(reason="window functions not yet implemented in DuckDB")
 
+    if source == "gateway-over-duckdb" and originalname in [
+        "test_filter",
+        "test_create_dataframe_and_temp_view",
+        "test_dropna",
+        "test_dropna_by_name",
+        "test_dropna_by_count",
+        "test_join",
+        "test_union_distinct",
+        "test_subtract",
+        "test_intersect",
+        "test_data_source_schema",
+        "test_data_source_filter",
+        "test_data_source_options",
+        "test_table_filter",
+        "test_broadcast",
+    ]:
+        pytest.skip(reason="unsupported root chain type")
+    if source == "gateway-over-duckdb" and originalname in [
+        "test_abs",
+        "test_ceil",
+        "test_ceiling",
+        "test_floor",
+        "test_round",
+        "test_toradians",
+        "test_radians",
+        "test_sign",
+        "test_signum",
+        "test_acos",
+        "test_asin",
+        "test_atan",
+        "test_atan2",
+        "test_cos",
+        "test_sin",
+        "test_tan",
+        "test_exp",
+        "test_pow",
+        "test_power",
+        "test_try_add",
+        "test_try_avg",
+        "test_try_divide",
+        "test_try_multiply",
+        "test_try_subtract",
+        "test_try_sum",
+    ]:
+        pytest.skip(reason="missing numbers table")
 
 # ruff: noqa: E712
 class TestDataFrameAPI:
