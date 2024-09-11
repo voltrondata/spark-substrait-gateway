@@ -33,4 +33,4 @@ dependencies:
     - cryptography == 43.0.*
     - click == 8.1.*
     - pyjwt == 2.8.*
-
+    - ibis-framework == 9.5.*
