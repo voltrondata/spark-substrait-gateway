@@ -36,6 +36,8 @@ class DuckDBBackend(Backend):
             config={
                 "max_memory": "100GB",
                 "allow_unsigned_extensions": "true",
+                "autoinstall_extension_repository": "http://nightly-extensions.duckdb.org",
+                "custom_extension_repository": "http://nightly-extensions.duckdb.org",
                 "temp_directory": str(Path(".").resolve()),
             }
         )

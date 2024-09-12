@@ -13,21 +13,6 @@ from gateway.tests.compare_dataframes import assert_dataframes_equal
 from gateway.tests.plan_validator import utilizes_valid_plans
 
 
-@pytest.fixture(autouse=True)
-def mark_tests_as_xfail(request):
-    """Marks a subset of tests as expected to be fail."""
-    source = request.getfixturevalue("source")
-    originalname = request.keywords.node.originalname
-    if source == "gateway-over-duckdb":
-        if originalname in ["test_query_02", "test_query_09", "test_query_17"]:
-            pytest.skip(reason="JOIN_RELATION not supported")
-        if originalname in ["test_query_03", "test_query_05", "test_query_08", "test_query_10",
-                            "test_query_20", "test_query_21", "test_query_22"]:
-            pytest.skip(reason="FILTER_RELATION not supported")
-        if originalname in ["test_query_11"]:
-            pytest.skip(reason="LIMIT_RELATION -> ORDER_RELATION -> JOIN_RELATION not supported")
-
-
 class TestTpchWithDataFrameAPI:
     """Runs the TPC-H standard test suite against the dataframe side of SparkConnect."""
 
