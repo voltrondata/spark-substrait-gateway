@@ -36,13 +36,11 @@ class DuckDBBackend(Backend):
             config={
                 "max_memory": "100GB",
                 "allow_unsigned_extensions": "true",
-                "autoinstall_extension_repository": "http://nightly-extensions.duckdb.org",
-                "custom_extension_repository": "http://nightly-extensions.duckdb.org",
                 "temp_directory": str(Path(".").resolve()),
             }
         )
-        self._connection.install_extension("substrait")
-        self._connection.load_extension("substrait")
+        self._connection.execute("FORCE INSTALL substrait FROM core_nightly")
+        self._connection.execute("LOAD substrait")
 
         return self._connection
 
