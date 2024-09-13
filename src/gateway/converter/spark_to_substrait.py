@@ -1260,6 +1260,9 @@ class SparkSubstraitConverter:
         self._next_under_aggregation_reference_id = 0
         self._under_aggregation_projects = []
 
+        if rel.group_type != spark_relations_pb2.Aggregate.GroupType.GROUP_TYPE_GROUPBY:
+            raise NotImplementedError("Only GROUPBY group type is currently supported.")
+
         # TODO -- Deal with mixed groupings and measures.
         grouping_expression_list = []
         for idx, grouping in enumerate(rel.grouping_expressions):
