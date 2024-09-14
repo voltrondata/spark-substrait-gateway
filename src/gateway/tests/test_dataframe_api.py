@@ -2787,6 +2787,18 @@ def userage_dataframe(spark_session_for_setup):
 class TestDataFrameDataScienceFunctions:
     """Tests data science methods of the dataframe side of SparkConnect."""
 
+    def test_groupby(self, userage_dataframe):
+        expected = [
+            Row(name='Alice', age=1, count=1),
+            Row(name='Bob', age=2, count=1),
+        ]
+
+        with utilizes_valid_plans(userage_dataframe):
+            outcome = userage_dataframe.groupby("name", "age").count().orderBy("name",
+                                                                               "age").collect()
+
+        assertDataFrameEqual(outcome, expected)
+
     def test_rollup(self, userage_dataframe):
         expected = [
             Row(name='Alice', age=1, count=1),
@@ -2799,5 +2811,22 @@ class TestDataFrameDataScienceFunctions:
         with utilizes_valid_plans(userage_dataframe):
             outcome = userage_dataframe.rollup("name", "age").count().orderBy("name",
                                                                               "age").collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_cube(self, userage_dataframe):
+        expected = [
+            Row(name='Alice', age=1, count=1),
+            Row(name='Alice', age=None, count=1),
+            Row(name='Bob', age=2, count=1),
+            Row(name='Bob', age=None, count=1),
+            Row(name=None, age=1, count=1),
+            Row(name=None, age=2, count=1),
+            Row(name=None, age=None, count=2)
+        ]
+
+        with utilizes_valid_plans(userage_dataframe):
+            outcome = userage_dataframe.cube("name", "age").count().orderBy("name",
+                                                                            "age").collect()
 
         assertDataFrameEqual(outcome, expected)
