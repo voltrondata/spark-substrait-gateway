@@ -15,8 +15,10 @@ def mark_tests_as_xfail(request):
     """Marks a subset of tests as expected to fail."""
     source = request.getfixturevalue("source")
     originalname = request.keywords.node.originalname
-    if source != "spark" and originalname == "test_query_01":
-        pytest.skip(reason="gateway could not locate field")
+    if source == "gateway-over-duckdb" and originalname == "test_query_01":
+        pytest.skip(reason="Unsupported expression type 5")
+    if source == "gateway-over-datafusion" and originalname == "test_query_01":
+        pytest.skip(reason="Unsupported window function avg")
 
 
 @pytest.mark.interesting
@@ -40,8 +42,8 @@ class TestTpcdsWithDataFrameAPI:
             customer_total_return = (
                 store_returns
                 .join(date_dim, col("sr_returned_date_sk") == date_dim.d_date_sk)
-                .select("sr_customer_sk", "sr_store_sk", "sr_returned_date_sk", "sr_return_amt")
                 .where(col("d_year") == 2001)
+                .select("sr_customer_sk", "sr_store_sk", "sr_returned_date_sk", "sr_return_amt")
                 .withColumnsRenamed(
                     {"sr_customer_sk": "ctr_customer_sk",
                      "sr_store_sk": "ctr_store_sk"})
