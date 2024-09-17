@@ -1260,32 +1260,13 @@ class SparkSubstraitConverter:
         self._next_under_aggregation_reference_id = 0
         self._under_aggregation_projects = []
 
-        if rel.group_type != spark_relations_pb2.Aggregate.GroupType.GROUP_TYPE_GROUPBY:
-            raise NotImplementedError("Only GROUPBY group type is currently supported.")
-
-        # TODO -- Deal with mixed groupings and measures.
-        grouping_expression_list = []
-        for idx, grouping in enumerate(rel.grouping_expressions):
-            grouping_expression_list.append(self.convert_expression(grouping))
-            symbol.generated_fields.append(self.determine_name_for_grouping(grouping))
-            self._top_level_projects.append(field_reference(idx))
-        aggregate.groupings.append(
-            algebra_pb2.AggregateRel.Grouping(grouping_expressions=grouping_expression_list)
-        )
-
-        self._expression_processing_mode = ExpressionProcessingMode.AGGR_TOP_LEVEL
-
-        for expr in rel.aggregate_expressions:
-            result = self.convert_expression(expr)
-            if result:
-                self._top_level_projects.append(result)
-            symbol.generated_fields.append(self.determine_expression_name(expr))
-        symbol.output_fields.clear()
-        symbol.output_fields.extend(symbol.generated_fields)
-        if len(rel.grouping_expressions) > 1:
-            # Hide the grouping source from the downstream relations.
-            for i in range(len(rel.grouping_expressions) + len(rel.aggregate_expressions)):
-                aggregate.common.emit.output_mapping.append(i)
+        # Handle different group by types
+        if rel.group_type == spark_relations_pb2.Aggregate.GroupType.GROUP_TYPE_GROUPBY:
+            self.handle_group_by_aggregation(rel, aggregate, symbol)
+        elif rel.group_type == spark_relations_pb2.Aggregate.GroupType.GROUP_TYPE_CUBE:
+            self.handle_cube_aggregation(rel, aggregate, symbol)
+        else:
+            raise NotImplementedError("Only GROUPBY and CUBE group types are currently supported.")
 
         self._expression_processing_mode = ExpressionProcessingMode.NORMAL
 
@@ -1314,6 +1295,37 @@ class SparkSubstraitConverter:
             return algebra_pb2.Rel(project=top_project)
 
         return algebra_pb2.Rel(aggregate=aggregate)
+
+    def handle_group_by_aggregation(self, rel: spark_relations_pb2.Aggregate, aggregate: algebra_pb2.AggregateRel,
+                                    symbol):
+        """Handle regular group by aggregation."""
+        grouping_expression_list = []
+        rel_grouping_expressions = rel.grouping_expressions
+        for idx, grouping in enumerate(rel_grouping_expressions):
+            grouping_expression_list.append(self.convert_expression(grouping))
+            symbol.generated_fields.append(self.determine_name_for_grouping(grouping))
+            self._top_level_projects.append(field_reference(idx))
+        aggregate.groupings.append(
+            algebra_pb2.AggregateRel.Grouping(grouping_expressions=grouping_expression_list)
+        )
+
+        self._expression_processing_mode = ExpressionProcessingMode.AGGR_TOP_LEVEL
+
+        for expr in rel.aggregate_expressions:
+            result = self.convert_expression(expr)
+            if result:
+                self._top_level_projects.append(result)
+            symbol.generated_fields.append(self.determine_expression_name(expr))
+        symbol.output_fields.clear()
+        symbol.output_fields.extend(symbol.generated_fields)
+        if len(rel.grouping_expressions) > 1:
+            # Hide the grouping source from the downstream relations.
+            for i in range(len(rel.grouping_expressions) + len(rel.aggregate_expressions)):
+                aggregate.common.emit.output_mapping.append(i)
+
+    def handle_cube_aggregation(self, rel: spark_relations_pb2.Aggregate, aggregate: algebra_pb2.AggregateRel, symbol):
+        """Handle cube aggregation."""
+        raise NotImplementedError("Only GROUPBY group type is currently supported.")
 
     # pylint: disable=too-many-locals,pointless-string-statement
     def convert_show_string_relation(self, rel: spark_relations_pb2.ShowString) -> algebra_pb2.Rel:
