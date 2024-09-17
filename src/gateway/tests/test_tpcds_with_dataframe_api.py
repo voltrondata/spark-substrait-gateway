@@ -21,7 +21,6 @@ def mark_tests_as_xfail(request):
         pytest.skip(reason="Unsupported window function avg")
 
 
-@pytest.mark.interesting
 class TestTpcdsWithDataFrameAPI:
     """Runs the TPC-DS standard test suite against the dataframe side of SparkConnect."""
 
