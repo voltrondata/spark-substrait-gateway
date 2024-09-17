@@ -7,16 +7,18 @@ from pathlib import Path
 
 import duckdb
 import pyarrow as pa
+import pyarrow.parquet as pq
 from substrait.gen.proto import plan_pb2
 
 from backends.backend import Backend
 from transforms.rename_functions import RenameFunctionsForDuckDB
-from transforms.replace_virtual_tables import ReplaceVirtualTablesWithNamedTable
 
 
 # pylint: disable=fixme
 class DuckDBBackend(Backend):
     """Provides access to send Substrait plans to DuckDB."""
+
+    _TABLES_FOUND: int = 0
 
     def __init__(self, options):
         """Initialize the DuckDB backend."""
@@ -26,6 +28,7 @@ class DuckDBBackend(Backend):
         super().__init__(options)
         self.create_connection()
         self._use_duckdb_python_api = options.use_duckdb_python_api
+        self._register_virtual_tables_as_local = options.register_virtual_tables_as_local
 
     def create_connection(self):
         """Create a connection to the backend."""
@@ -57,20 +60,9 @@ class DuckDBBackend(Backend):
     @contextmanager
     def adjust_plan(self, plan: plan_pb2.Plan) -> Iterator[plan_pb2.Plan]:
         """Modify the given Substrait plan for use with DuckDB."""
-        table_definitions = ReplaceVirtualTablesWithNamedTable().visit_plan(plan)
-        for table_name, location in table_definitions:
-            self.register_table(table_name, location, temporary=True)
-
         RenameFunctionsForDuckDB().visit_plan(plan)
 
-        try:
-            yield plan
-        finally:
-            for _, location in table_definitions:
-                # TODO -- Tell DuckDB to forget about this table.
-                # self._connection.deregister_table(table_name)
-                location.unlink(missing_ok=True)
-                pass
+        yield plan
 
     # ruff: noqa: BLE001
     def _execute_plan(self, plan: plan_pb2.Plan) -> pa.lib.Table:
@@ -131,6 +123,16 @@ class DuckDBBackend(Backend):
                     del self._data_tables[name]
             except Exception:
                 pass
+
+        if self._register_virtual_tables_as_local:
+            DuckDBBackend._TABLES_FOUND += 1
+            table_name = f"virtual_table{DuckDBBackend._TABLES_FOUND}"
+            location = Path(f"./{table_name}.parquet").absolute()
+            table = pa.ipc.open_stream(data).read_all()
+            pq.write_table(table, location)
+
+            self.register_table(name, location, temporary=temporary, replace=replace)
+            return
 
         if not temporary:
             self._data_tables[name] = (name, data)
