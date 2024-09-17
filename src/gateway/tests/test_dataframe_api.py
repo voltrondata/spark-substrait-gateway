@@ -180,7 +180,6 @@ class TestDataFrameAPI:
 
         assertDataFrameEqual(test_df.collect(), expected)
 
-    @pytest.mark.interesting
     def test_create_dataframe_and_temp_view(self, spark_session, caplog):
         expected = [
             Row(age=1, name="Alice"),
