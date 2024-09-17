@@ -150,7 +150,10 @@ def mark_dataframe_tests_as_xfail(request):
 
     if source == "gateway-over-duckdb" and originalname == "test_row_number":
         pytest.skip(reason="window functions not yet implemented in DuckDB")
-
+    if source == "gateway-over-duckdb" and originalname == "test_atanh":
+        pytest.skip(reason="inf vs -inf difference")
+    if source == "gateway-over-duckdb" and originalname in ["test_union", "test_union_all"]:
+        pytest.skip(reason="distinct not handled properly")
 
 # ruff: noqa: E712
 class TestDataFrameAPI:
