@@ -5,7 +5,6 @@ import datetime
 from decimal import Decimal
 
 import pyspark
-import pytest
 from pyspark import Row
 from pyspark.sql.functions import avg, col, count, countDistinct, desc, try_sum, when
 
