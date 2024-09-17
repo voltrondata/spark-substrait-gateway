@@ -152,7 +152,7 @@ def mark_dataframe_tests_as_xfail(request):
         pytest.skip(reason="window functions not yet implemented in DuckDB")
     if source == "gateway-over-duckdb" and originalname == "test_atanh":
         pytest.skip(reason="inf vs -inf difference")
-    if source == "gateway-over-duckdb" and originalname in ["test_union", "test_union_all"]:
+    if source == "gateway-over-duckdb" and originalname in ["test_union", "test_unionall"]:
         pytest.skip(reason="distinct not handled properly")
 
 # ruff: noqa: E712
