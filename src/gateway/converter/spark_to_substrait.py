@@ -15,7 +15,11 @@ import pyspark.sql.connect.proto.expressions_pb2 as spark_exprs_pb2
 import pyspark.sql.connect.proto.relations_pb2 as spark_relations_pb2
 import pyspark.sql.connect.proto.types_pb2 as spark_types_pb2
 from gateway.converter.conversion_options import ConversionOptions
-from gateway.converter.spark_functions import ExtensionFunction, FunctionType, lookup_spark_function
+from gateway.converter.spark_functions import (
+    ExtensionFunction,
+    FunctionType,
+    lookup_spark_function,
+)
 from gateway.converter.substrait_builder import (
     add_function,
     aggregate_relation,
