@@ -1317,6 +1317,10 @@ class SparkSubstraitConverter:
                 # Generate and add all groupings required for CUBE
                 cube_groupings = self.create_cube_groupings(rel_grouping_expressions)
                 aggregate.groupings.extend(cube_groupings)
+            case spark_relations_pb2.Aggregate.GroupType.GROUP_TYPE_ROLLUP:
+                # Generate and add all groupings required for ROLLUP
+                rollup_groupings = self.create_rollup_groupings(rel_grouping_expressions)
+                aggregate.groupings.extend(rollup_groupings)
             case _:
                 raise NotImplementedError(
                     "Only GROUPBY and CUBE group types are currently supported."
@@ -1355,6 +1359,28 @@ class SparkSubstraitConverter:
                 )
 
         return cube_groupings
+
+    def create_rollup_groupings(self, grouping_expressions):
+        """Create all combinations of grouping expressions for rollup."""
+        num_expressions = len(grouping_expressions)
+        rollup_groupings = []
+
+        for i in range(num_expressions):
+            current_grouping = []
+            for j in range(i + 1):
+                converted_expression = self.convert_expression(grouping_expressions[j])
+                current_grouping.append(converted_expression)
+            rollup_groupings.append(
+                algebra_pb2.AggregateRel.Grouping(grouping_expressions=current_grouping)
+            )
+
+        # Add a final grouping with no expressions for the grand total.
+        # The grand total aggregates over all rows.
+        rollup_groupings.append(
+            algebra_pb2.AggregateRel.Grouping(grouping_expressions=[])
+        )
+
+        return rollup_groupings
 
     # pylint: disable=too-many-locals,pointless-string-statement
     def convert_show_string_relation(self, rel: spark_relations_pb2.ShowString) -> algebra_pb2.Rel:

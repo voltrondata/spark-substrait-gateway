@@ -154,8 +154,6 @@ def mark_dataframe_tests_as_xfail(request):
         pytest.skip(reason="inf vs -inf difference")
     if source == "gateway-over-duckdb" and originalname in ["test_union", "test_unionall"]:
         pytest.skip(reason="distinct not handled properly")
-    if source == "gateway-over-datafusion" and originalname == "test_rollup":
-        pytest.skip(reason="rollup aggregation not yet implemented in gateway")
     if source == "gateway-over-duckdb" and originalname == "test_rollup":
         pytest.skip(reason="rollup aggregation not yet implemented in gateway")
     if source == "gateway-over-duckdb" and originalname == "test_cube":
