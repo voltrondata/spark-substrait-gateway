@@ -97,8 +97,6 @@ def mark_dataframe_tests_as_xfail(request):
         pytest.skip(reason="unionByName not supported in Substrait")
     if source != "spark" and originalname.startswith("test_exceptall"):
         pytest.skip(reason="exceptAll not supported in Substrait")
-    if source == "gateway-over-duckdb" and originalname in ["test_union", "test_unionall"]:
-        pytest.skip(reason="DuckDB treats all unions as distinct")
     if source == "gateway-over-datafusion" and originalname == "test_subtract":
         pytest.skip(reason="subtract not supported")
     if source == "gateway-over-datafusion" and originalname == "test_intersect":
@@ -130,24 +128,11 @@ def mark_dataframe_tests_as_xfail(request):
         pytest.skip(reason="argument count issue in DuckDB mapping")
     if source != "spark" and originalname in ["test_locate", "test_position"]:
         pytest.skip(reason="no direct Substrait analog")
-    if source == "gateway-over-duckdb" and originalname == "test_octet_length":
-        pytest.skip(reason="varchar octet_length not supported")
 
-    if source == "gateway-over-duckdb" and originalname == "test_sqrt":
-        pytest.skip(reason="behavior option ignored")
     if source != "spark" and originalname in ["test_rint", "test_bround"]:
         pytest.skip(reason="behavior option ignored")
     if source != "spark" and originalname in ["test_negative", "test_negate", "test_positive"]:
         pytest.skip(reason="custom implementation required")
-    if source == "gateway-over-duckdb" and originalname in [
-        "test_acosh",
-        "test_asinh",
-        "test_atanh",
-        "test_cosh",
-        "test_sinh",
-        "test_tanh",
-    ]:
-        pytest.skip(reason="missing implementation")
     if source == "gateway-over-datafusion" and originalname in ["test_sign", "test_signum"]:
         pytest.skip(reason="missing implementation")
     if source != "spark" and originalname in [
@@ -165,7 +150,10 @@ def mark_dataframe_tests_as_xfail(request):
 
     if source == "gateway-over-duckdb" and originalname == "test_row_number":
         pytest.skip(reason="window functions not yet implemented in DuckDB")
-
+    if source == "gateway-over-duckdb" and originalname == "test_atanh":
+        pytest.skip(reason="inf vs -inf difference")
+    if source == "gateway-over-duckdb" and originalname in ["test_union", "test_unionall"]:
+        pytest.skip(reason="distinct not handled properly")
 
 # ruff: noqa: E712
 class TestDataFrameAPI:

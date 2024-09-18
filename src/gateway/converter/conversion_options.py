@@ -62,6 +62,7 @@ def duck_db():
     options.use_duckdb_regexp_matches_function = True
     options.duckdb_project_emit_workaround = True
     options.backend.use_duckdb_python_api = False
+    options.backend.register_virtual_tables_as_local = True
     options.use_duckdb_struct_name_behavior = True
     options.join_not_honoring_emit_workaround = True
     return options

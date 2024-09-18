@@ -31,3 +31,4 @@ class BackendOptions:
 
         self.use_arrow_uri_workaround = False
         self.use_duckdb_python_api = False
+        self.register_virtual_tables_as_local = False

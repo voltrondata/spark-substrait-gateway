@@ -5,21 +5,11 @@ import datetime
 from decimal import Decimal
 
 import pyspark
-import pytest
 from pyspark import Row
 from pyspark.sql.functions import avg, col, count, countDistinct, desc, try_sum, when
 
 from gateway.tests.compare_dataframes import assert_dataframes_equal
 from gateway.tests.plan_validator import utilizes_valid_plans
-
-
-@pytest.fixture(autouse=True)
-def mark_tests_as_xfail(request):
-    """Marks a subset of tests as expected to be fail."""
-    source = request.getfixturevalue("source")
-    originalname = request.keywords.node.originalname
-    if source == "gateway-over-duckdb" and originalname == "test_query_16":
-        request.node.add_marker(pytest.mark.xfail(reason="distinct not supported"))
 
 
 class TestTpchWithDataFrameAPI:

@@ -23,7 +23,6 @@ def mark_tests_as_xfail(request):
         if path.stem in ["01", "06", "10", "16", "30", "32", "35", "69", "81", "86", "92", "94"]:
             pytest.skip(reason="DuckDB needs Delim join")
         elif path.stem in [
-            "02",
             "03",
             "04",
             "05",
