@@ -1310,15 +1310,17 @@ class SparkSubstraitConverter:
         match rel.group_type:
             case spark_relations_pb2.Aggregate.GroupType.GROUP_TYPE_GROUPBY:
                 aggregate.groupings.append(
-                    algebra_pb2.AggregateRel.Grouping(grouping_expressions=grouping_expression_list)
+                    algebra_pb2.AggregateRel.Grouping(
+                        grouping_expressions=grouping_expression_list)
                 )
             case spark_relations_pb2.Aggregate.GroupType.GROUP_TYPE_CUBE:
                 # Generate and add all groupings required for CUBE
                 cube_groupings = self.create_cube_groupings(rel_grouping_expressions)
                 aggregate.groupings.extend(cube_groupings)
             case _:
-                raise NotImplementedError("Only GROUPBY and CUBE group types are currently supported.")
-
+                raise NotImplementedError(
+                    "Only GROUPBY and CUBE group types are currently supported."
+                )
 
         self._expression_processing_mode = ExpressionProcessingMode.AGGR_TOP_LEVEL
 
