@@ -1266,7 +1266,7 @@ class SparkSubstraitConverter:
         self._under_aggregation_projects = []
 
         # Handle different group by types
-        self.handle_group_by_aggregations(rel, aggregate, symbol)
+        self.handle_grouping_and_measures(rel, aggregate, symbol)
 
         self._expression_processing_mode = ExpressionProcessingMode.NORMAL
 
@@ -1296,7 +1296,7 @@ class SparkSubstraitConverter:
 
         return algebra_pb2.Rel(aggregate=aggregate)
 
-    def handle_group_by_aggregations(self, rel: spark_relations_pb2.Aggregate,
+    def handle_grouping_and_measures(self, rel: spark_relations_pb2.Aggregate,
                                      aggregate: algebra_pb2.AggregateRel,
                                      symbol):
         """Handle group by aggregations."""
@@ -1307,16 +1307,18 @@ class SparkSubstraitConverter:
             symbol.generated_fields.append(self.determine_name_for_grouping(grouping))
             self._top_level_projects.append(field_reference(idx))
 
-        if rel.group_type == spark_relations_pb2.Aggregate.GroupType.GROUP_TYPE_GROUPBY:
-            aggregate.groupings.append(
-                algebra_pb2.AggregateRel.Grouping(grouping_expressions=grouping_expression_list)
-            )
-        elif rel.group_type == spark_relations_pb2.Aggregate.GroupType.GROUP_TYPE_CUBE:
-            # Generate and add all groupings required for CUBE
-            cube_groupings = self.create_cube_groupings(rel_grouping_expressions)
-            aggregate.groupings.extend(cube_groupings)
-        else:
-            raise NotImplementedError("Only GROUPBY and CUBE group types are currently supported.")
+        match rel.group_type:
+            case spark_relations_pb2.Aggregate.GroupType.GROUP_TYPE_GROUPBY:
+                aggregate.groupings.append(
+                    algebra_pb2.AggregateRel.Grouping(grouping_expressions=grouping_expression_list)
+                )
+            case spark_relations_pb2.Aggregate.GroupType.GROUP_TYPE_CUBE:
+                # Generate and add all groupings required for CUBE
+                cube_groupings = self.create_cube_groupings(rel_grouping_expressions)
+                aggregate.groupings.extend(cube_groupings)
+            case _:
+                raise NotImplementedError("Only GROUPBY and CUBE group types are currently supported.")
+
 
         self._expression_processing_mode = ExpressionProcessingMode.AGGR_TOP_LEVEL
 

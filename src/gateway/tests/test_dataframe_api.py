@@ -2792,7 +2792,7 @@ def userage_dataframe(spark_session_for_setup):
     return spark_session_for_setup.table("userage")
 
 
-class TestDataFrameDataScienceFunctions:
+class TestDataFrameDecisionSupport:
     """Tests data science methods of the dataframe side of SparkConnect."""
 
     def test_groupby(self, userage_dataframe):
