@@ -64,7 +64,7 @@ from pyspark.sql.functions import (
     ucase,
     upper,
 )
-from pyspark.sql.types import DoubleType, StructField, StructType
+from pyspark.sql.types import DoubleType, IntegerType, StringType, StructField, StructType
 from pyspark.sql.window import Window
 from pyspark.testing import assertDataFrameEqual
 
@@ -154,6 +154,13 @@ def mark_dataframe_tests_as_xfail(request):
         pytest.skip(reason="inf vs -inf difference")
     if source == "gateway-over-duckdb" and originalname in ["test_union", "test_unionall"]:
         pytest.skip(reason="distinct not handled properly")
+    if source == "gateway-over-datafusion" and originalname == "test_rollup":
+        pytest.skip(reason="rollup aggregation not yet implemented in gateway")
+    if source == "gateway-over-duckdb" and originalname == "test_rollup":
+        pytest.skip(reason="rollup aggregation not yet implemented in gateway")
+    if source == "gateway-over-duckdb" and originalname == "test_cube":
+        pytest.skip(reason="cube aggregation not yet implemented in DuckDB")
+
 
 # ruff: noqa: E712
 class TestDataFrameAPI:
@@ -689,14 +696,14 @@ only showing top 1 row
                 n_name="RUSSIA",
                 n_regionkey=3,
                 n_comment="uctions. furiously unusual instructions sleep furiously ironic "
-                "packages. slyly ",
+                          "packages. slyly ",
             ),
             Row(
                 n_nationkey=22,
                 n_name="RUSSIA",
                 n_regionkey=3,
                 n_comment="uctions. furiously unusual instructions sleep furiously ironic "
-                "packages. slyly ",
+                          "packages. slyly ",
             ),
             Row(
                 n_nationkey=23,
@@ -709,14 +716,14 @@ only showing top 1 row
                 n_name="UNITED STATES",
                 n_regionkey=1,
                 n_comment="ly ironic requests along the slyly bold ideas hang after the "
-                "blithely special notornis; blithely even accounts",
+                          "blithely special notornis; blithely even accounts",
             ),
             Row(
                 n_nationkey=24,
                 n_name="UNITED STATES",
                 n_regionkey=1,
                 n_comment="ly ironic requests along the slyly bold ideas hang after the "
-                "blithely special notornis; blithely even accounts",
+                          "blithely special notornis; blithely even accounts",
             ),
         ]
 
@@ -802,14 +809,14 @@ only showing top 1 row
                 n_name="RUSSIA",
                 n_regionkey=3,
                 n_comment="uctions. furiously unusual instructions sleep furiously "
-                "ironic packages. slyly ",
+                          "ironic packages. slyly ",
             ),
             Row(
                 n_nationkey=24,
                 n_name="UNITED STATES",
                 n_regionkey=1,
                 n_comment="ly ironic requests along the slyly bold ideas hang after "
-                "the blithely special notornis; blithely even accounts",
+                          "the blithely special notornis; blithely even accounts",
             ),
         ]
 
@@ -2657,7 +2664,7 @@ class TestDataFrameAggregateBehavior:
         assertDataFrameEqual(outcome, expected)
 
     def test_computation_with_two_aggregations_and_internal_calculation(
-        self, register_tpch_dataset, spark_session
+            self, register_tpch_dataset, spark_session
     ):
         expected = [
             Row(l_suppkey=1, a=Decimal("3903113211864.3000")),
@@ -2760,5 +2767,78 @@ class TestDataFrameWindowFunctions:
             outcome = users_dataframe.withColumn("row_number",
                                                  row_number().over(window_spec)).orderBy(
                 "row_number").limit(3)
+
+        assertDataFrameEqual(outcome, expected)
+
+
+@pytest.fixture(scope="class")
+def userage_dataframe(spark_session_for_setup):
+    data = [
+        [1, "Alice"],
+        [2, "Bob"],
+        [3, "Alice"]
+    ]
+
+    schema = StructType(
+        [
+            StructField("age", IntegerType(), True),
+            StructField("name", StringType(), True),
+        ]
+    )
+
+    test_df = spark_session_for_setup.createDataFrame(data, schema)
+
+    test_df.createOrReplaceTempView("userage")
+    return spark_session_for_setup.table("userage")
+
+
+class TestDataFrameDecisionSupport:
+    """Tests data science methods of the dataframe side of SparkConnect."""
+
+    def test_groupby(self, userage_dataframe):
+        expected = [
+            Row(name='Alice', age=1, count=1),
+            Row(name='Alice', age=3, count=1),
+            Row(name='Bob', age=2, count=1)
+        ]
+
+        with utilizes_valid_plans(userage_dataframe):
+            outcome = userage_dataframe.groupby("name", "age").count().orderBy("name",
+                                                                               "age").collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_rollup(self, userage_dataframe):
+        expected = [
+            Row(name='Alice', age=1, count=1),
+            Row(name='Alice', age=3, count=1),
+            Row(name='Alice', age=None, count=2),
+            Row(name='Bob', age=2, count=1),
+            Row(name='Bob', age=None, count=1),
+            Row(name=None, age=None, count=3)
+        ]
+
+        with utilizes_valid_plans(userage_dataframe):
+            outcome = userage_dataframe.rollup("name", "age").count().orderBy("name",
+                                                                              "age").collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_cube(self, userage_dataframe):
+        expected = [
+            Row(name='Alice', age=1, count=1),
+            Row(name='Alice', age=3, count=1),
+            Row(name='Alice', age=None, count=2),
+            Row(name='Bob', age=2, count=1),
+            Row(name='Bob', age=None, count=1),
+            Row(name=None, age=1, count=1),
+            Row(name=None, age=2, count=1),
+            Row(name=None, age=3, count=1),
+            Row(name=None, age=None, count=3)
+        ]
+
+        with utilizes_valid_plans(userage_dataframe):
+            outcome = userage_dataframe.cube("name", "age").count().orderBy("name",
+                                                                            "age").collect()
 
         assertDataFrameEqual(outcome, expected)
