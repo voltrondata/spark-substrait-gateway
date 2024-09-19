@@ -62,7 +62,7 @@ from pyspark.sql.functions import (
     trim,
     try_sum,
     ucase,
-    upper,
+    upper, struct,
 )
 from pyspark.sql.types import DoubleType, IntegerType, StringType, StructField, StructType
 from pyspark.sql.window import Window
@@ -2791,7 +2791,7 @@ def userage_dataframe(spark_session_for_setup):
 
 
 class TestDataFrameDecisionSupport:
-    """Tests data science methods of the dataframe side of SparkConnect."""
+    """Tests decision support methods of the dataframe side of SparkConnect."""
 
     def test_groupby(self, userage_dataframe):
         expected = [
@@ -2838,5 +2838,24 @@ class TestDataFrameDecisionSupport:
         with utilizes_valid_plans(userage_dataframe):
             outcome = userage_dataframe.cube("name", "age").count().orderBy("name",
                                                                             "age").collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+
+class TestDataFrameComplexDatastructures:
+    """Tests the use of complex datastructures in the dataframe side of SparkConnect."""
+
+    @pytest.mark.interesting
+    def test_struct(self, register_tpch_dataset, spark_session):
+        expected = [
+            Row(result=1),
+        ]
+
+        with utilizes_valid_plans(spark_session):
+            customer_df = spark_session.table("customer")
+            outcome = customer_df.select(
+                struct(col('c_custkey'), col('c_name')).alias('test_struct')).agg(
+                pyspark.sql.functions.min(col('test_struct').getField('c_custkey')).alias(
+                    'result')).collect()
 
         assertDataFrameEqual(outcome, expected)
