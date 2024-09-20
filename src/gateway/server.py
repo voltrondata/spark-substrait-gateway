@@ -386,7 +386,6 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
                 for pair in request.operation.set.pairs:
                     if pair.key == "spark-substrait-gateway.backend":
                         # Set the server backend for all connections (including ongoing ones).
-                        need_reset = False
                         match pair.value:
                             case "arrow":
                                 if (self._backend is not None and

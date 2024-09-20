@@ -57,12 +57,13 @@ from pyspark.sql.functions import (
     rtrim,
     sqrt,
     startswith,
+    struct,
     substr,
     substring,
     trim,
     try_sum,
     ucase,
-    upper, struct,
+    upper,
 )
 from pyspark.sql.types import DoubleType, IntegerType, StringType, StructField, StructType
 from pyspark.sql.window import Window
