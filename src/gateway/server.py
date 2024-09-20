@@ -399,7 +399,6 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
                                     need_reset = True
                                 self._options = duck_db()
                             case "datafusion":
-                                need_reset = False
                                 if (self._backend is not None and
                                         self._options.backend.backend != BackendEngine.DATAFUSION):
                                     need_reset = True
