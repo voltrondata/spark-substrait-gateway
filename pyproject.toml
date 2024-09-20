@@ -5,7 +5,7 @@ authors = [{name = "Substrait contributors", email = "substrait@googlegroups.com
 license = {text = "Apache-2.0"}
 readme = "README.md"
 requires-python = ">=3.8.1"
-dependencies = ["protobuf >= 3.20", "datafusion >= 40.1.0", "pyarrow >= 17.0.0", "substrait == 0.21.0", "duckdb == 1.1.0"]
+dependencies = ["protobuf >= 3.20", "datafusion == 41.0.*", "pyarrow >= 17.0.0", "substrait == 0.21.0", "duckdb == 1.1.0"]
 dynamic = ["version"]
 
 [tool.setuptools_scm]
