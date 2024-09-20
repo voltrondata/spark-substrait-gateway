@@ -380,15 +380,26 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
                 for pair in request.operation.set.pairs:
                     if pair.key == "spark-substrait-gateway.backend":
                         # Set the server backend for all connections (including ongoing ones).
+                        need_reset = False
                         match pair.value:
                             case "arrow":
+                                if self._backend is not None and self._options.backend.backend != BackendEngine.ARROW:
+                                    need_reset = True
                                 self._options = arrow()
                             case "duckdb":
+                                if self._backend is not None and self._options.backend.backend != BackendEngine.DUCKDB:
+                                    need_reset = True
                                 self._options = duck_db()
                             case "datafusion":
+                                need_reset = False
+                                if self._backend is not None and self._options.backend.backend != BackendEngine.DATAFUSION:
+                                    need_reset = True
                                 self._options = datafusion()
                             case _:
                                 raise ValueError(f"Unknown backend: {pair.value}")
+                        if need_reset:
+                            self._backend = None
+                            self._sql_backend = None
                     elif pair.key == "spark-substrait-gateway.reset_statistics":
                         self._statistics.reset()
                 response.pairs.extend(request.operation.set.pairs)
