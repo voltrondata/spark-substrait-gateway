@@ -198,6 +198,7 @@ class Statistics:
         self.reattach_requests = 0
         self.release_requests = 0
         self.database_resets = 0
+        self.engine_changes = 0
 
         self.requests = []
         self.plans = []
@@ -233,6 +234,11 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
         self._backend.reset_connection()
         self._sql_backend.reset_connection()
         return None
+
+    def _ChangeExecution(self) -> None:
+        self._statistics.engine_changes += 1
+        self._backend = None
+        self._sql_backend = None
 
     def ExecutePlan(
             self, request: pb2.ExecutePlanRequest, context: grpc.RpcContext
@@ -401,8 +407,7 @@ class SparkConnectService(pb2_grpc.SparkConnectServiceServicer):
                             case _:
                                 raise ValueError(f"Unknown backend: {pair.value}")
                         if need_reset:
-                            self._backend = None
-                            self._sql_backend = None
+                            self._ChangeExecution()
                     elif pair.key == "spark-substrait-gateway.reset_statistics":
                         self._statistics.reset()
                 response.pairs.extend(request.operation.set.pairs)
