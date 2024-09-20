@@ -2846,16 +2846,31 @@ class TestDataFrameComplexDatastructures:
     """Tests the use of complex datastructures in the dataframe side of SparkConnect."""
 
     @pytest.mark.interesting
-    def test_struct(self, register_tpch_dataset, spark_session):
+    def test_struct(self, register_tpch_dataset, spark_session, caplog):
+        expected = [
+            Row(test_struct=Row(c_custkey=1, c_name='Customer#000000001')),
+            Row(test_struct=Row(c_custkey=2, c_name='Customer#000000002')),
+            Row(test_struct=Row(c_custkey=3, c_name='Customer#000000003')),
+        ]
+
+        # TODO -- Validate once the validator supports nested expressions.
+        customer_df = spark_session.table("customer")
+        outcome = customer_df.select(
+            struct(col('c_custkey'), col('c_name')).alias('test_struct')).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    @pytest.mark.interesting
+    def test_struct_and_getfield(self, register_tpch_dataset, spark_session, caplog):
         expected = [
             Row(result=1),
         ]
 
-        with utilizes_valid_plans(spark_session):
-            customer_df = spark_session.table("customer")
-            outcome = customer_df.select(
-                struct(col('c_custkey'), col('c_name')).alias('test_struct')).agg(
-                pyspark.sql.functions.min(col('test_struct').getField('c_custkey')).alias(
-                    'result')).collect()
+        # TODO -- Validate once the validator supports nested expressions.
+        customer_df = spark_session.table("customer")
+        outcome = customer_df.select(
+            struct(col('c_custkey'), col('c_name')).alias('test_struct')).agg(
+            pyspark.sql.functions.min(col('test_struct').getField('c_custkey')).alias(
+                'result')).collect()
 
         assertDataFrameEqual(outcome, expected)

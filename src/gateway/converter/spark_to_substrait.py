@@ -495,6 +495,17 @@ class SparkSubstraitConverter:
 
         return if_then_else_operation(expr, arg1, arg0)
 
+    def convert_struct_function(
+        self, func: spark_exprs_pb2.Expression.UnresolvedFunction
+    ) -> algebra_pb2.Expression:
+        """Convert a Spark struct function into a Substrait nested expression."""
+        nested = algebra_pb2.Expression.Nested()
+        nested.nullable = False
+        for spark_arg in func.arguments:
+            arg = self.convert_expression(spark_arg)
+            nested.struct.fields.append(arg)
+        return algebra_pb2.Expression(nested=nested)
+
     def convert_unresolved_function(
         self, unresolved_function: spark_exprs_pb2.Expression.UnresolvedFunction
     ) -> algebra_pb2.Expression | algebra_pb2.AggregateFunction:
@@ -517,6 +528,8 @@ class SparkSubstraitConverter:
                 return self.convert_nvl2_function(unresolved_function)
             if unresolved_function.function_name == "ifnull":
                 return self.convert_ifnull_function(unresolved_function)
+            if unresolved_function.function_name == "struct":
+                return self.convert_struct_function(unresolved_function)
             func = algebra_pb2.Expression.ScalarFunction()
             function_def = self.lookup_function_by_name(unresolved_function.function_name)
             if (
