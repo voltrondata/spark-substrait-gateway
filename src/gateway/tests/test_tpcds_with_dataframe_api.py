@@ -17,8 +17,6 @@ def mark_tests_as_xfail(request):
     originalname = request.keywords.node.originalname
     if source == "gateway-over-duckdb" and originalname == "test_query_01":
         pytest.skip(reason="Unsupported expression type 5")
-    if source == "gateway-over-datafusion" and originalname == "test_query_01":
-        pytest.skip(reason="Unsupported window function avg")
 
 
 class TestTpcdsWithDataFrameAPI:
