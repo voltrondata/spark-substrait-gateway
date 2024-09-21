@@ -67,13 +67,30 @@ class DuckDBBackend(Backend):
     # ruff: noqa: BLE001
     def _execute_plan(self, plan: plan_pb2.Plan) -> pa.lib.Table:
         """Execute the given Substrait plan against DuckDB."""
+        if False:
+            plan.relations[0].root.names.append("custid")
+            plan.relations[0].root.names.append("custname")
         plan_data = plan.SerializeToString()
 
         try:
             query_result = self._connection.from_substrait(proto=plan_data)
         except Exception as err:
             raise ValueError(f"DuckDB Execution Error: {err}") from err
-        return query_result.arrow()
+        if False:
+            arrow = query_result.arrow()
+            new_struct_array = pa.StructArray.from_arrays(arrow, names=["custid", "custname"])
+            new_schema = pa.schema(
+                [
+                    pa.field("test_struct", pa.struct([
+                        pa.field("custid", pa.int64()),
+                        pa.field("custname", pa.string()),
+                    ])),
+                ]
+            )
+            new_table = pa.Table.from_arrays([new_struct_array], schema=new_schema)
+            return new_table
+        else:
+            return query_result.arrow()
 
     def register_table(
         self,
