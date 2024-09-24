@@ -11,14 +11,14 @@ class PlanMetadata:
     plan_id: int
     type: str | None
     parent_plan_id: int | None
-    input_fields: list[str]  # And maybe type
+    input_fields: list[str]  # And maybe type with additional names
     generated_fields: list[str]
     output_fields: list[str]
 
     def __init__(self, plan_id: int):
         """Create the PlanMetadata structure."""
         self.plan_id = plan_id
-        self.symbol_type = None
+        self.symbol_type = None  # Useful when debugging.
         self.parent_plan_id = None
         self.input_fields = []
         self.generated_fields = []
