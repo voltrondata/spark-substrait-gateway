@@ -22,11 +22,13 @@ or Velox.
 ### Locally
 To run the gateway locally - you need to setup a Python (Conda) environment.
 
+To run the Spark tests you will need Java installed.
+
 Ensure you have [Miniconda](https://docs.anaconda.com/miniconda/miniconda-install/) and [Rust/Cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html) installed.
 
 Once that is done - run these steps from a bash terminal:
 ```bash
-git clone --recursive https://github.com/<your-fork>/spark-substrait-gateway.git
+git clone https://github.com/<your-fork>/spark-substrait-gateway.git
 cd spark-substrait-gateway
 conda init bash
 . ~/.bashrc
