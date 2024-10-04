@@ -4,6 +4,7 @@
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
+from typing import List
 
 import duckdb
 import pyarrow as pa
@@ -12,6 +13,8 @@ from substrait.gen.proto import plan_pb2
 
 from backends.backend import Backend
 from transforms.rename_functions import RenameFunctionsForDuckDB
+
+from src.backends.arrow_tools import reapply_names
 
 
 # pylint: disable=fixme
@@ -67,7 +70,7 @@ class DuckDBBackend(Backend):
     # ruff: noqa: BLE001
     def _execute_plan(self, plan: plan_pb2.Plan) -> pa.lib.Table:
         """Execute the given Substrait plan against DuckDB."""
-        if False:
+        if True:
             plan.relations[0].root.names.append("custid")
             plan.relations[0].root.names.append("custname")
         plan_data = plan.SerializeToString()
@@ -76,21 +79,8 @@ class DuckDBBackend(Backend):
             query_result = self._connection.from_substrait(proto=plan_data)
         except Exception as err:
             raise ValueError(f"DuckDB Execution Error: {err}") from err
-        if False:
-            arrow = query_result.arrow()
-            new_struct_array = pa.StructArray.from_arrays(arrow, names=["custid", "custname"])
-            new_schema = pa.schema(
-                [
-                    pa.field("test_struct", pa.struct([
-                        pa.field("custid", pa.int64()),
-                        pa.field("custname", pa.string()),
-                    ])),
-                ]
-            )
-            new_table = pa.Table.from_arrays([new_struct_array], schema=new_schema)
-            return new_table
-        else:
-            return query_result.arrow()
+        arrow = query_result.arrow()
+        return reapply_names(arrow, plan.relations[0].root.names)
 
     def register_table(
         self,
