@@ -16,9 +16,28 @@ class TestCase:
 
 cases: List[TestCase] = [
     TestCase('empty table', pa.Table.from_arrays([]), ['a', 'b'], pa.Table.from_arrays([])),
-    TestCase('normal columns', pa.Table.from_arrays([]), ['a', 'b', 'c'], pa.Table.from_arrays([])),
-    TestCase('struct column', pa.Table.from_arrays([]), ['a', 'b'], pa.Table.from_arrays([])),
+    TestCase('normal columns',
+             pa.Table.from_pydict(
+                 {"name": [None, "Joe", "Sarah", None], "age": [99, None, 42, None]},
+                 schema=pa.schema({"name": pa.string(), "age": pa.int32()})
+             ),
+             ['renamed_name', 'renamed_age'],
+             pa.Table.from_pydict(
+                 {"renamed_name": [None, "Joe", "Sarah", None], "renamed_age": [99, None, 42, None]},
+                 schema=pa.schema({"renamed_name": pa.string(), "renamed_age": pa.int32()})
+             )),
+    TestCase('struct column',
+             pa.Table.from_arrays(
+                 [pa.array([{"": 1, "b": "b"}], type=pa.struct([("", pa.int64()), ("b", pa.string())]))],
+                 names=["r"]),
+             ['r', 'a', 'b'],
+             pa.Table.from_arrays(
+                 [pa.array([{"a": 1, "b": "b"}], type=pa.struct([("a", pa.int64()), ("b", pa.string())]))], names=["r"])
+             ),
     TestCase('nested structs', pa.Table.from_arrays([]), ['a', 'b'], pa.Table.from_arrays([])),
+    # TODO -- Test a list.
+    # TODO -- Test a map.
+    # TODO -- Test a mixture of complex and simple types.
 ]
 
 
