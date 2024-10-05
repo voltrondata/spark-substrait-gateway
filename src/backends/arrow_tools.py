@@ -7,6 +7,9 @@ def _reapply_names_to_type(array: pa.ChunkedArray, names: List[str]) -> (pa.Arra
     new_arrays = []
     new_schema = []
 
+    if array.type.num_fields > len(names):
+        raise ValueError('Insufficient number of names provided to reapply names.')
+
     remaining_names = names
     if pa.types.is_list(array.type):
         raise NotImplementedError('Reapplying names to lists not yet supported')

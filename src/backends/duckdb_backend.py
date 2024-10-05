@@ -70,10 +70,6 @@ class DuckDBBackend(Backend):
     # ruff: noqa: BLE001
     def _execute_plan(self, plan: plan_pb2.Plan) -> pa.lib.Table:
         """Execute the given Substrait plan against DuckDB."""
-        if True:
-            # MEGAHACK -- Modify the plan conversion to include these fields.
-            plan.relations[0].root.names.append("custid")
-            plan.relations[0].root.names.append("custname")
         plan_data = plan.SerializeToString()
 
         try:
