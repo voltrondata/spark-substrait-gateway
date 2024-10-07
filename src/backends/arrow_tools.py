@@ -1,9 +1,9 @@
-from typing import List
-
+# SPDX-License-Identifier: Apache-2.0
+"""Routines to manipulate arrow tables."""
 import pyarrow as pa
 
 
-def _reapply_names_to_type(array: pa.ChunkedArray, names: List[str]) -> (pa.Array, List[str]):
+def _reapply_names_to_type(array: pa.ChunkedArray, names: list[str]) -> (pa.Array, list[str]):
     new_arrays = []
     new_schema = []
 
@@ -13,9 +13,9 @@ def _reapply_names_to_type(array: pa.ChunkedArray, names: List[str]) -> (pa.Arra
     remaining_names = names
     if pa.types.is_list(array.type):
         raise NotImplementedError('Reapplying names to lists not yet supported')
-    elif pa.types.is_map(array.type):
+    if pa.types.is_map(array.type):
         raise NotImplementedError('Reapplying names to maps not yet supported')
-    elif pa.types.is_struct(array.type):
+    if pa.types.is_struct(array.type):
         field_num = 0
         while field_num < array.type.num_fields:
             field = array.chunks[0].field(field_num)
@@ -34,7 +34,8 @@ def _reapply_names_to_type(array: pa.ChunkedArray, names: List[str]) -> (pa.Arra
     return array, remaining_names
 
 
-def reapply_names(table: pa.Table, names: List[str]) -> pa.Table:
+def reapply_names(table: pa.Table, names: list[str]) -> pa.Table:
+    """Apply the provided names to the given table recursively."""
     new_arrays = []
     new_schema = []
 
@@ -47,5 +48,4 @@ def reapply_names(table: pa.Table, names: List[str]) -> pa.Table:
 
         new_schema.append(pa.field(this_name, new_array.type))
 
-    new_table = pa.Table.from_arrays(new_arrays, schema=pa.schema(new_schema))
-    return new_table
+    return pa.Table.from_arrays(new_arrays, schema=pa.schema(new_schema))

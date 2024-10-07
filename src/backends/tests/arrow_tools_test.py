@@ -1,7 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
 from dataclasses import dataclass
-from typing import List
-import pytest
+
 import pyarrow as pa
+import pytest
 
 from src.backends.arrow_tools import reapply_names
 
@@ -10,11 +11,11 @@ from src.backends.arrow_tools import reapply_names
 class TestCase:
     name: str
     input: pa.Table
-    names: List[str]
+    names: list[str]
     expected: pa.table
 
 
-cases: List[TestCase] = [
+cases: list[TestCase] = [
     TestCase('empty table', pa.Table.from_arrays([]), ['a', 'b'], pa.Table.from_arrays([])),
     TestCase('normal columns',
              pa.Table.from_pydict(
@@ -23,16 +24,19 @@ cases: List[TestCase] = [
              ),
              ['renamed_name', 'renamed_age'],
              pa.Table.from_pydict(
-                 {"renamed_name": [None, "Joe", "Sarah", None], "renamed_age": [99, None, 42, None]},
+                 {"renamed_name": [None, "Joe", "Sarah", None],
+                  "renamed_age": [99, None, 42, None]},
                  schema=pa.schema({"renamed_name": pa.string(), "renamed_age": pa.int32()})
              )),
     TestCase('struct column',
              pa.Table.from_arrays(
-                 [pa.array([{"": 1, "b": "b"}], type=pa.struct([("", pa.int64()), ("b", pa.string())]))],
+                 [pa.array([{"": 1, "b": "b"}],
+                           type=pa.struct([("", pa.int64()), ("b", pa.string())]))],
                  names=["r"]),
              ['r', 'a', 'b'],
              pa.Table.from_arrays(
-                 [pa.array([{"a": 1, "b": "b"}], type=pa.struct([("a", pa.int64()), ("b", pa.string())]))], names=["r"])
+                 [pa.array([{"a": 1, "b": "b"}],
+                           type=pa.struct([("a", pa.int64()), ("b", pa.string())]))], names=["r"])
              ),
     TestCase('nested structs', pa.Table.from_arrays([]), ['a', 'b'], pa.Table.from_arrays([])),
     # TODO -- Test a list.

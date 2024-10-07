@@ -57,7 +57,11 @@ from gateway.converter.substrait_builder import (
     string_type,
     strlen,
 )
-from gateway.converter.symbol_table import SymbolTable
+from gateway.converter.symbol_table import Field, SymbolTable
+
+
+class InternalError(Exception):
+    pass
 
 
 class ExpressionProcessingMode(Enum):
@@ -81,6 +85,13 @@ def _extract_decimal_parameters(type_name: str) -> tuple[int, int, int]:
     return int(match.group(1)), int(match.group(2)), int(match.group(3))
 
 
+def _find_reference_number(fields: list[Field], name: str) -> int | None:
+    for reference, field in enumerate(fields):
+        if field.name == name:
+            return reference
+    return None
+
+
 # ruff: noqa: RUF005
 class SparkSubstraitConverter:
     """Converts SparkConnect plans to Substrait plans."""
@@ -101,7 +112,7 @@ class SparkSubstraitConverter:
         # These are used when processing expressions inside aggregate relations.
         self._expression_processing_mode = ExpressionProcessingMode.NORMAL
         self._top_level_projects: list[algebra_pb2.Rel] = []
-        self._next_aggregation_reference_id = None
+        self._next_aggregation_reference_id = 0
         self._aggregations: list[algebra_pb2.AggregateFunction] = []
         self._next_under_aggregation_reference_id = 0
         self._under_aggregation_projects: list[algebra_pb2.Rel] = []
@@ -114,8 +125,9 @@ class SparkSubstraitConverter:
 
     def lookup_function_by_name(self, name: str) -> ExtensionFunction:
         """Find the function reference for a given Spark function name."""
-        if name in self._functions:
-            return self._functions.get(name)
+        function = self._functions.get(name)
+        if function is not None:
+            return function
         func = lookup_spark_function(name, self._conversion_options)
         if not func:
             raise LookupError(
@@ -125,25 +137,33 @@ class SparkSubstraitConverter:
         self._functions[name] = func
         if not self._function_uris.get(func.uri):
             self._function_uris[func.uri] = len(self._function_uris) + 1
-        return self._functions.get(name)
+        function = self._functions.get(name)
+        assert function is not None
+        return function
 
     def update_field_references(self, plan_id: int) -> None:
         """Use the field references using the specified portion of the plan."""
         source_symbol = self._symbol_table.get_symbol(plan_id)
+        if not source_symbol:
+            raise InternalError(f'Could not find plan id {plan_id} that we constructed earlier.')
         current_symbol = self._symbol_table.get_symbol(self._current_plan_id)
+        if not current_symbol:
+            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
         original_output_fields = current_symbol.output_fields
         for symbol in source_symbol.output_fields:
-            new_name = symbol
-            while new_name in original_output_fields:
-                new_name = new_name + "_dup"
-            current_symbol.input_fields.append(new_name)
-            current_symbol.output_fields.append(new_name)
+            new_symbol = symbol
+            while _find_reference_number(original_output_fields, new_symbol.name):
+                new_symbol.name = new_symbol.name + "_dup"
+            current_symbol.input_fields.append(new_symbol)
+            current_symbol.output_fields.append(new_symbol)
 
     def find_field_by_name(self, field_name: str) -> int | None:
         """Look up the field name in the current set of field references."""
         current_symbol = self._symbol_table.get_symbol(self._current_plan_id)
+        if not current_symbol:
+            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
         try:
-            return current_symbol.input_fields.index(field_name)
+            return _find_reference_number(current_symbol.input_fields, field_name)
         except ValueError:
             return None
 
@@ -172,7 +192,7 @@ class SparkSubstraitConverter:
         return algebra_pb2.Expression.Literal(string=s)
 
     def convert_literal_expression(
-        self, literal: spark_exprs_pb2.Expression.Literal
+            self, literal: spark_exprs_pb2.Expression.Literal
     ) -> algebra_pb2.Expression:
         """Convert a Spark literal into a Substrait literal."""
         match literal.WhichOneof("literal_type"):
@@ -251,7 +271,7 @@ class SparkSubstraitConverter:
         return algebra_pb2.Expression(literal=result)
 
     def convert_unresolved_attribute(
-        self, attr: spark_exprs_pb2.Expression.UnresolvedAttribute
+            self, attr: spark_exprs_pb2.Expression.UnresolvedAttribute
     ) -> algebra_pb2.Expression:
         """Convert a Spark unresolved attribute into a Substrait field reference."""
         field_ref = self.find_field_by_name(attr.unparsed_identifier)
@@ -308,7 +328,7 @@ class SparkSubstraitConverter:
         )
 
     def convert_when_function(
-        self, when: spark_exprs_pb2.Expression.UnresolvedFunction
+            self, when: spark_exprs_pb2.Expression.UnresolvedFunction
     ) -> algebra_pb2.Expression:
         """Convert a Spark when function into a Substrait if-then expression."""
         ifthen = algebra_pb2.Expression.IfThen()
@@ -324,6 +344,8 @@ class SparkSubstraitConverter:
         else:
             nullable_literal = self.determine_type_of_expression(ifthen.ifs[-1].then)
             kind = nullable_literal.WhichOneof("kind")
+            if not kind:
+                raise ValueError('Missing kind one_of in when function.')
             getattr(
                 nullable_literal, kind
             ).nullability = type_pb2.Type.Nullability.NULLABILITY_NULLABLE
@@ -336,7 +358,7 @@ class SparkSubstraitConverter:
         return algebra_pb2.Expression(if_then=ifthen)
 
     def convert_in_function(
-        self, in_: spark_exprs_pb2.Expression.UnresolvedFunction
+            self, in_: spark_exprs_pb2.Expression.UnresolvedFunction
     ) -> algebra_pb2.Expression:
         """Convert a Spark in function into a Substrait switch expression."""
 
@@ -378,7 +400,7 @@ class SparkSubstraitConverter:
         return algebra_pb2.Expression(if_then=ifthen)
 
     def convert_rlike_function(
-        self, in_: spark_exprs_pb2.Expression.UnresolvedFunction
+            self, in_: spark_exprs_pb2.Expression.UnresolvedFunction
     ) -> algebra_pb2.Expression:
         """Convert a Spark rlike function into a Substrait expression."""
         if self._conversion_options.use_duckdb_regexp_matches_function:
@@ -419,7 +441,7 @@ class SparkSubstraitConverter:
         return greater_function(greater_func, regexp_expr, bigint_literal(0))
 
     def convert_nanvl_function(
-        self, in_: spark_exprs_pb2.Expression.UnresolvedFunction
+            self, in_: spark_exprs_pb2.Expression.UnresolvedFunction
     ) -> algebra_pb2.Expression:
         """Convert a Spark nanvl function into a Substrait expression."""
         isnan_func = self.lookup_function_by_name("isnan")
@@ -438,7 +460,7 @@ class SparkSubstraitConverter:
         return if_then_else_operation(expr, arg1, arg0)
 
     def convert_nvl_function(
-        self, in_: spark_exprs_pb2.Expression.UnresolvedFunction
+            self, in_: spark_exprs_pb2.Expression.UnresolvedFunction
     ) -> algebra_pb2.Expression:
         """Convert a Spark nvl function into a Substrait expression."""
         isnull_func = self.lookup_function_by_name("isnull")
@@ -457,7 +479,7 @@ class SparkSubstraitConverter:
         return if_then_else_operation(expr, arg1, arg0)
 
     def convert_nvl2_function(
-        self, in_: spark_exprs_pb2.Expression.UnresolvedFunction
+            self, in_: spark_exprs_pb2.Expression.UnresolvedFunction
     ) -> algebra_pb2.Expression:
         """Convert a Spark nvl2 function into a Substrait expression."""
         isnotnull_func = self.lookup_function_by_name("isnotnull")
@@ -477,7 +499,7 @@ class SparkSubstraitConverter:
         return if_then_else_operation(expr, arg1, arg2)
 
     def convert_ifnull_function(
-        self, in_: spark_exprs_pb2.Expression.UnresolvedFunction
+            self, in_: spark_exprs_pb2.Expression.UnresolvedFunction
     ) -> algebra_pb2.Expression:
         """Convert a Spark ifnull function into a Substrait expression."""
         isnan_func = self.lookup_function_by_name("isnull")
@@ -496,7 +518,7 @@ class SparkSubstraitConverter:
         return if_then_else_operation(expr, arg1, arg0)
 
     def convert_struct_function(
-        self, func: spark_exprs_pb2.Expression.UnresolvedFunction
+            self, func: spark_exprs_pb2.Expression.UnresolvedFunction
     ) -> algebra_pb2.Expression:
         """Convert a Spark struct function into a Substrait nested expression."""
         nested = algebra_pb2.Expression.Nested()
@@ -507,7 +529,7 @@ class SparkSubstraitConverter:
         return algebra_pb2.Expression(nested=nested)
 
     def convert_unresolved_function(
-        self, unresolved_function: spark_exprs_pb2.Expression.UnresolvedFunction
+            self, unresolved_function: spark_exprs_pb2.Expression.UnresolvedFunction
     ) -> algebra_pb2.Expression | algebra_pb2.AggregateFunction:
         """Convert a Spark unresolved function into a Substrait scalar function."""
         parent_processing_mode = self._expression_processing_mode
@@ -533,8 +555,8 @@ class SparkSubstraitConverter:
             func = algebra_pb2.Expression.ScalarFunction()
             function_def = self.lookup_function_by_name(unresolved_function.function_name)
             if (
-                parent_processing_mode == ExpressionProcessingMode.AGGR_NOT_TOP_LEVEL
-                and function_def.function_type == FunctionType.AGGREGATE
+                    parent_processing_mode == ExpressionProcessingMode.AGGR_NOT_TOP_LEVEL
+                    and function_def.function_type == FunctionType.AGGREGATE
             ):
                 self._expression_processing_mode = ExpressionProcessingMode.AGGR_UNDER_AGGREGATE
             func.function_reference = function_def.anchor
@@ -542,8 +564,8 @@ class SparkSubstraitConverter:
                 if function_def.max_args is not None and idx >= function_def.max_args:
                     break
                 if (
-                    unresolved_function.function_name == "count"
-                    and arg.WhichOneof("expr_type") == "unresolved_star"
+                        unresolved_function.function_name == "count"
+                        and arg.WhichOneof("expr_type") == "unresolved_star"
                 ):
                     # Ignore all the rest of the arguments.
                     func.arguments.append(algebra_pb2.FunctionArgument(value=bigint_literal(1)))
@@ -589,7 +611,7 @@ class SparkSubstraitConverter:
             self._expression_processing_mode = parent_processing_mode
 
     def convert_alias_expression(
-        self, alias: spark_exprs_pb2.Expression.Alias
+            self, alias: spark_exprs_pb2.Expression.Alias
     ) -> algebra_pb2.Expression:
         """Convert a Spark alias into a Substrait expression."""
         # We do nothing here and let the magic happen in the calling project relation.
@@ -620,7 +642,7 @@ class SparkSubstraitConverter:
         return self.convert_type_str(spark_type.WhichOneof("kind"))
 
     def convert_cast_expression(
-        self, cast: spark_exprs_pb2.Expression.Cast
+            self, cast: spark_exprs_pb2.Expression.Cast
     ) -> algebra_pb2.Expression:
         """Convert a Spark cast expression into a Substrait cast expression."""
         cast_rel = algebra_pb2.Expression.Cast(
@@ -752,7 +774,7 @@ class SparkSubstraitConverter:
         return algebra_pb2.Expression(window_function=func)
 
     def convert_extract_value(
-        self, extract: spark_exprs_pb2.Expression.UnresolvedExtractValue
+            self, extract: spark_exprs_pb2.Expression.UnresolvedExtractValue
     ) -> algebra_pb2.Expression:
         """Convert a Spark extract value expression into a Substrait extract value expression."""
         # TODO -- Add support for list and map operations.
@@ -764,6 +786,7 @@ class SparkSubstraitConverter:
                 value=self.convert_unresolved_attribute(extract.child.unresolved_attribute)
             )
         )
+        # MEGAHACK -- here
         # MEGAHACK -- Fix this to be relative to the struct value we found above.
         field_ref = self.find_field_by_name(extract.extraction.literal.string)
         if field_ref is None:
@@ -772,7 +795,7 @@ class SparkSubstraitConverter:
                 f"{self._current_plan_id}"
             )
         func.arguments.append(
-            algebra_pb2.FunctionArgument(value=integer_literal(field_ref+1))
+            algebra_pb2.FunctionArgument(value=integer_literal(field_ref + 1))
         )
         return algebra_pb2.Expression(scalar_function=func)
 
@@ -861,21 +884,25 @@ class SparkSubstraitConverter:
         return primary_names
 
     def convert_read_named_table_relation(
-        self, rel: spark_relations_pb2.Read.NamedTable
+            self, rel: spark_relations_pb2.Read.NamedTable
     ) -> algebra_pb2.Rel:
         """Convert a read named table relation to a Substrait relation."""
         table_name = rel.unparsed_identifier
 
+        assert self._backend is not None
         arrow_schema = self._backend.describe_table(table_name)
 
         schema = self.convert_arrow_schema(arrow_schema)
 
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
+        if not symbol:
+            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
         if self._conversion_options.use_duckdb_struct_name_behavior:
             for field_name in self.get_primary_names(schema):
-                symbol.output_fields.append(field_name)
+                symbol.output_fields.append(Field(field_name))
         else:
-            symbol.output_fields.extend(schema.names)
+            for field_name in schema.names:
+                symbol.output_fields.append(Field(field_name))
 
         return algebra_pb2.Rel(
             read=algebra_pb2.ReadRel(
@@ -912,7 +939,7 @@ class SparkSubstraitConverter:
             case _:
                 raise NotImplementedError(f"Unexpected type name: {type_name}")
 
-    def convert_field(self, field: types_pb2.DataType) -> (type_pb2.Type, list[str]):
+    def convert_field(self, field: types_pb2.DataType) -> tuple[type_pb2.Type, list[str]]:
         """Convert a Spark field into a Substrait field."""
         if field.get("nullable"):
             nullability = type_pb2.Type.NULLABILITY_NULLABLE
@@ -960,6 +987,8 @@ class SparkSubstraitConverter:
                 elif ft.get("type") == "struct":
                     field_type = type_pb2.Type(struct=type_pb2.Type.Struct(nullability=nullability))
                     sub_type = self.convert_schema_dict(ft)
+                    if not sub_type:
+                        raise ValueError(f'Could not parse type struct type {ft}')
                     more_names.extend(sub_type.names)
                     field_type.struct.types.extend(sub_type.struct.types)
                 else:
@@ -990,8 +1019,8 @@ class SparkSubstraitConverter:
         return self.convert_schema_dict(schema_data)
 
     def convert_arrow_datatype(
-        self, arrow_type: pa.DataType, nullable: bool = False
-    ) -> (type_pb2.Type, list[str]):
+            self, arrow_type: pa.DataType, nullable: bool = False
+    ) -> tuple[type_pb2.Type, list[str]]:
         """Convert an Arrow datatype into a Substrait type."""
         if nullable:
             nullability = type_pb2.Type.NULLABILITY_NULLABLE
@@ -1032,7 +1061,7 @@ class SparkSubstraitConverter:
                         sub_type = self.convert_arrow_schema(y.type.schema)
                         more_names.extend(y.name)
                         field_type.struct.types.extend(sub_type.struct.types)
-                    return field_type
+                    return field_type, more_names
                 raise NotImplementedError(f"Unexpected arrow datatype: {arrow_type}")
 
         return field_type, more_names
@@ -1125,8 +1154,10 @@ class SparkSubstraitConverter:
             arrow_schema = self._backend.describe_files(paths)
             schema = self.convert_arrow_schema(arrow_schema)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
+        if not symbol:
+            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
         for field_name in schema.names:
-            symbol.output_fields.append(field_name)
+            symbol.output_fields.append(Field(field_name))
         if self._conversion_options.use_named_table_workaround:
             return algebra_pb2.Rel(
                 read=algebra_pb2.ReadRel(
@@ -1195,6 +1226,8 @@ class SparkSubstraitConverter:
         if not self._conversion_options.use_emits_instead_of_direct:
             return algebra_pb2.RelCommon(direct=algebra_pb2.RelCommon.Direct())
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
+        if not symbol:
+            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
         emit = algebra_pb2.RelCommon.Emit()
         if emit_overrides:
             for field_number in emit_overrides:
@@ -1277,6 +1310,8 @@ class SparkSubstraitConverter:
         self.update_field_references(rel.input.common.plan_id)
         aggregate.common.CopyFrom(self.create_common_relation())
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
+        if not symbol:
+            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
 
         # Start tracking the parts of the expressions we are interested in.
         self._top_level_projects = []
@@ -1352,7 +1387,7 @@ class SparkSubstraitConverter:
             result = self.convert_expression(expr)
             if result:
                 self._top_level_projects.append(result)
-            symbol.generated_fields.append(self.determine_expression_name(expr))
+            symbol.generated_fields.append(Field(self.determine_expression_name(expr)))
         symbol.output_fields.clear()
         symbol.output_fields.extend(symbol.generated_fields)
         if len(rel.grouping_expressions) > 1:
@@ -1458,6 +1493,8 @@ class SparkSubstraitConverter:
         # Now that we've processed the input, do the bookkeeping.
         self.update_field_references(rel.input.common.plan_id)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
+        if not symbol:
+            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
 
         # Find the length of each column in every row.
         project1 = project_relation(
@@ -1486,18 +1523,18 @@ class SparkSubstraitConverter:
                     least_function(
                         greater_func, field_reference(column_number), bigint_literal(rel.truncate)
                     ),
-                    strlen(strlen_func, string_literal(symbol.input_fields[column_number])),
+                    strlen(strlen_func, string_literal(symbol.input_fields[column_number].name)),
                 )
                 for column_number in range(len(symbol.input_fields))
             ],
         )
 
-        def field_header_fragment(field_number: int) -> list[algebra_pb2.Expression]:
+        def field_header_fragment(fields: list[Field], field_number: int) -> list[algebra_pb2.Expression]:
             return [
                 string_literal("|"),
                 lpad_function(
                     lpad_func,
-                    string_literal(symbol.input_fields[field_number]),
+                    string_literal(fields[field_number].name),
                     field_reference(field_number),
                 ),
             ]
@@ -1508,7 +1545,7 @@ class SparkSubstraitConverter:
                 repeat_function(repeat_func, "-", field_reference(field_number)),
             ]
 
-        def field_body_fragment(field_number: int) -> list[algebra_pb2.Expression]:
+        def field_body_fragment(fields: list[Field], field_number: int) -> list[algebra_pb2.Expression]:
             return [
                 string_literal("|"),
                 if_then_else_operation(
@@ -1518,7 +1555,7 @@ class SparkSubstraitConverter:
                             strlen_func,
                             cast_operation(field_reference(field_number), string_type()),
                         ),
-                        field_reference(field_number + len(symbol.input_fields)),
+                        field_reference(field_number + len(fields)),
                     ),
                     concat(
                         concat_func,
@@ -1528,7 +1565,7 @@ class SparkSubstraitConverter:
                                 field_reference(field_number),
                                 minus_function(
                                     minus_func,
-                                    field_reference(field_number + len(symbol.input_fields)),
+                                    field_reference(field_number + len(fields)),
                                     bigint_literal(3),
                                 ),
                             ),
@@ -1538,17 +1575,17 @@ class SparkSubstraitConverter:
                     lpad_function(
                         lpad_func,
                         field_reference(field_number),
-                        field_reference(field_number + len(symbol.input_fields)),
+                        field_reference(field_number + len(fields)),
                     ),
                 ),
             ]
 
-        def header_line(fields: list[str]) -> list[algebra_pb2.Expression]:
+        def header_line(fields: list[Field]) -> list[algebra_pb2.Expression]:
             return [
                 concat(
                     concat_func,
                     flatten(
-                        [field_header_fragment(field_number) for field_number in range(len(fields))]
+                        [field_header_fragment(fields, field_number) for field_number in range(len(fields))]
                     )
                     + [
                         string_literal("|\n"),
@@ -1556,7 +1593,7 @@ class SparkSubstraitConverter:
                 )
             ]
 
-        def full_line(fields: list[str]) -> list[algebra_pb2.Expression]:
+        def full_line(fields: list[Field]) -> list[algebra_pb2.Expression]:
             return [
                 concat(
                     concat_func,
@@ -1594,7 +1631,7 @@ class SparkSubstraitConverter:
                     concat_func,
                     flatten(
                         [
-                            field_body_fragment(field_number)
+                            field_body_fragment(symbol.input_fields, field_number)
                             for field_number in range(len(symbol.input_fields))
                         ]
                     )
@@ -1614,8 +1651,10 @@ class SparkSubstraitConverter:
         join2 = join_relation(project3, aggregate2)
 
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
+        if not symbol:
+            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
         symbol.output_fields.clear()
-        symbol.output_fields.append("show_string")
+        symbol.output_fields.append(Field("show_string"))
 
         def compute_row_count_footer(num_rows: int) -> str:
             if num_rows == 1:
@@ -1647,26 +1686,29 @@ class SparkSubstraitConverter:
         return project5
 
     def convert_with_columns_relation(
-        self, rel: spark_relations_pb2.WithColumns
+            self, rel: spark_relations_pb2.WithColumns
     ) -> algebra_pb2.Rel:
         """Convert a with columns relation into a Substrait project relation."""
         input_rel = self.convert_relation(rel.input)
         project = algebra_pb2.ProjectRel(input=input_rel)
         self.update_field_references(rel.input.common.plan_id)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
+        if not symbol:
+            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
         proposed_expressions = [field_reference(i) for i in range(len(symbol.input_fields))]
         for alias in rel.aliases:
             if len(alias.name) != 1:
                 raise ValueError("Only one name part is supported in an alias.")
             name = alias.name[0]
-            if name in symbol.input_fields:
-                proposed_expressions[symbol.input_fields.index(name)] = self.convert_expression(
-                    alias.expr
-                )
+            field_num = _find_reference_number(symbol.input_fields, name)
+            if field_num is not None:
+                # Overwrite our the old expression with our own.
+                proposed_expressions[field_num] = self.convert_expression(alias.expr)
             else:
+                # This is a new column.
                 proposed_expressions.append(self.convert_expression(alias.expr))
-                symbol.generated_fields.append(name)
-                symbol.output_fields.append(name)
+                symbol.generated_fields.append(Field(name))
+                symbol.output_fields.append(Field(name))
         project.common.CopyFrom(self.create_common_relation())
         project.expressions.extend(proposed_expressions)
         for i in range(len(proposed_expressions)):
@@ -1674,22 +1716,24 @@ class SparkSubstraitConverter:
         return algebra_pb2.Rel(project=project)
 
     def convert_with_columns_renamed_relation(
-        self, rel: spark_relations_pb2.WithColumnsRenamed
+            self, rel: spark_relations_pb2.WithColumnsRenamed
     ) -> algebra_pb2.Rel:
         """Update the columns names based on the Spark with columns renamed relation."""
         input_rel = self.convert_relation(rel.input)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
+        if not symbol:
+            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
         self.update_field_references(rel.input.common.plan_id)
         symbol.output_fields.clear()
         if hasattr(rel, "renames"):
             aliases = {r.col_name: r.new_col_name for r in rel.renames}
         else:
             aliases = rel.rename_columns_map
-        for field_name in symbol.input_fields:
-            if field_name in aliases:
-                symbol.output_fields.append(aliases[field_name])
+        for field in symbol.input_fields:
+            if field.name in aliases:
+                symbol.output_fields.append(field.alias(aliases[field.name]))
             else:
-                symbol.output_fields.append(field_name)
+                symbol.output_fields.append(field)
         return input_rel
 
     def convert_drop_relation(self, rel: spark_relations_pb2.Drop) -> algebra_pb2.Rel:
@@ -1698,14 +1742,16 @@ class SparkSubstraitConverter:
         project = algebra_pb2.ProjectRel(input=input_rel)
         self.update_field_references(rel.input.common.plan_id)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
+        if not symbol:
+            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
         if rel.columns:
             column_names = [c.unresolved_attribute.unparsed_identifier for c in rel.columns]
         else:
             column_names = rel.column_names
         symbol.output_fields.clear()
-        for field_number, field_name in enumerate(symbol.input_fields):
-            if field_name not in column_names:
-                symbol.output_fields.append(field_name)
+        for field_number, field in enumerate(symbol.input_fields):
+            if field.name not in column_names:
+                symbol.output_fields.append(field)
                 if self._conversion_options.drop_emit_workaround:
                     project.common.emit.output_mapping.append(len(project.expressions))
                     project.expressions.append(field_reference(field_number))
@@ -1720,6 +1766,8 @@ class SparkSubstraitConverter:
         input_rel = self.convert_relation(rel.input)
         self.update_field_references(rel.input.common.plan_id)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
+        if not symbol:
+            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
         if len(rel.column_names) != len(symbol.input_fields):
             raise ValueError(
                 "column_names does not match the number of input fields at "
@@ -1727,7 +1775,7 @@ class SparkSubstraitConverter:
             )
         symbol.output_fields.clear()
         for field_name in rel.column_names:
-            symbol.output_fields.append(field_name)
+            symbol.output_fields.append(Field(field_name))
         return input_rel
 
     def convert_arrow_to_literal(self, val: pa.Scalar) -> algebra_pb2.Expression.Literal:
@@ -1793,9 +1841,13 @@ class SparkSubstraitConverter:
         """Convert a Spark local relation into a virtual table."""
         read = algebra_pb2.ReadRel(virtual_table=self.convert_arrow_data_to_virtual_table(rel.data))
         schema = self.convert_schema(rel.schema)
+        if not schema:
+            raise ValueError(f'Received an empty schema in plan id {self._current_plan_id}')
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
+        if not symbol:
+            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
         for field_name in schema.names:
-            symbol.output_fields.append(field_name)
+            symbol.output_fields.append(Field(field_name))
         read.base_schema.CopyFrom(schema)
         read.common.CopyFrom(self.create_common_relation())
         return algebra_pb2.Rel(read=read)
@@ -1805,6 +1857,8 @@ class SparkSubstraitConverter:
         # TODO -- Handle multithreading in the case with a persistent backend.
         plan = self._sql_backend.convert_sql(rel.query)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
+        if not symbol:
+            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
         for field_name in plan.relations[0].root.names:
             symbol.output_fields.append(field_name)
         # TODO -- Correctly capture all the used functions and extensions.
@@ -1815,7 +1869,7 @@ class SparkSubstraitConverter:
         return plan.relations[0].root.input
 
     def convert_spark_join_type(
-        self, join_type: spark_relations_pb2.Join.JoinType
+            self, join_type: spark_relations_pb2.Join.JoinType
     ) -> algebra_pb2.JoinRel.JoinType:
         """Convert a Spark join type into a Substrait join type."""
         match join_type:
@@ -1833,7 +1887,7 @@ class SparkSubstraitConverter:
                 return algebra_pb2.JoinRel.JOIN_TYPE_ANTI
             case spark_relations_pb2.Join.JOIN_TYPE_LEFT_SEMI:
                 return algebra_pb2.JoinRel.JOIN_TYPE_SEMI
-            case spark_relations_pb2.Join.CROSS:
+            case spark_relations_pb2.Join.JOIN_TYPE_CROSS:
                 raise RuntimeError("Internal error:  cross joins should be handled elsewhere")
             case _:
                 raise ValueError(f"Unexpected join type: {join_type}")
@@ -1868,12 +1922,20 @@ class SparkSubstraitConverter:
         else:
             equal_func = self.lookup_function_by_name("==")
             if rel.using_columns:
-                column = rel.using_columns[0]
-                left_fields = self._symbol_table.get_symbol(rel.left.common.plan_id).output_fields
+                column_name = rel.using_columns[0]
+                left_symbol = self._symbol_table.get_symbol(rel.left.common.plan_id)
+                if not left_symbol:
+                    raise InternalError(
+                        f'Could not find plan id {rel.left.common.plan_id} that we constructed earlier.')
+                left_fields = left_symbol.output_fields
                 left_column_count = len(left_fields)
-                left_column_reference = left_fields.index(column)
-                right_fields = self._symbol_table.get_symbol(rel.right.common.plan_id).output_fields
-                right_column_reference = right_fields.index(column)
+                left_column_reference = _find_reference_number(left_fields, column_name)
+                right_symbol = self._symbol_table.get_symbol(rel.right.common.plan_id)
+                if not right_symbol:
+                    raise InternalError(
+                        f'Could not find plan id {rel.right.common.plan_id} that we constructed earlier.')
+                right_fields = right_symbol.output_fields
+                right_column_reference = _find_reference_number(right_fields, column_name)
                 join.expression.CopyFrom(
                     equal_function(
                         equal_func,
@@ -1884,6 +1946,8 @@ class SparkSubstraitConverter:
 
                 # Avoid emitting the join column twice.
                 symbol = self._symbol_table.get_symbol(self._current_plan_id)
+                if not symbol:
+                    raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
                 if self._conversion_options.join_not_honoring_emit_workaround:
                     project = algebra_pb2.ProjectRel(input=algebra_pb2.Rel(join=join))
                     for column_number in range(len(symbol.output_fields)):
@@ -1898,21 +1962,36 @@ class SparkSubstraitConverter:
                 del symbol.output_fields[right_column_reference + left_column_count]
         return algebra_pb2.Rel(join=join)
 
+    def find_additional_names(self, expr: spark_exprs_pb2.Expression) -> list[str]:
+        if expr.WhichOneof("expr_type") == "alias":
+            current_expr = expr.alias.expr
+        else:
+            current_expr = expr
+        if current_expr.unresolved_function.function_name == "struct":
+            new_names = []
+            for arg in current_expr.unresolved_function.arguments:
+                new_names.append(arg.unresolved_attribute.unparsed_identifier)
+            # TODO -- Handle nested structures.
+            return new_names
+        return []
+
     def convert_project_relation(self, rel: spark_relations_pb2.Project) -> algebra_pb2.Rel:
         """Convert a Spark project relation into a Substrait project relation."""
         input_rel = self.convert_relation(rel.input)
         project = algebra_pb2.ProjectRel(input=input_rel)
         self.update_field_references(rel.input.common.plan_id)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
+        if not symbol:
+            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
         for field_number, expr in enumerate(rel.expressions):
             if expr.WhichOneof("expr_type") == "unresolved_regex":
                 regex = expr.unresolved_regex.col_name.replace("`", "")
                 matcher = re.compile(regex)
                 found = False
                 for column in symbol.input_fields:
-                    if matcher.match(column):
+                    if matcher.match(column.name):
                         project.expressions.append(
-                            field_reference(symbol.input_fields.index(column))
+                            field_reference(_find_reference_number(symbol.input_fields, column.name))
                         )
                         symbol.generated_fields.append(column)
                         symbol.output_fields.append(column)
@@ -1929,8 +2008,10 @@ class SparkSubstraitConverter:
                 name = expr.unresolved_attribute.unparsed_identifier
             else:
                 name = f"generated_field_{field_number}"
-            symbol.generated_fields.append(name)
-            symbol.output_fields.append(name)
+            projected_symbol = Field(name)
+            projected_symbol.child_names.extend(self.find_additional_names(expr))
+            symbol.generated_fields.append(projected_symbol)
+            symbol.output_fields.append(projected_symbol)
         project.common.CopyFrom(self.create_common_relation())
         symbol.output_fields = symbol.generated_fields
         for field_number in range(len(symbol.output_fields)):
@@ -1938,7 +2019,7 @@ class SparkSubstraitConverter:
         return algebra_pb2.Rel(project=project)
 
     def convert_subquery_alias_relation(
-        self, rel: spark_relations_pb2.SubqueryAlias
+            self, rel: spark_relations_pb2.SubqueryAlias
     ) -> algebra_pb2.Rel:
         """Convert a Spark subquery alias relation into a Substrait relation."""
         raise NotImplementedError("Subquery alias relations are not yet implemented")
@@ -1954,6 +2035,8 @@ class SparkSubstraitConverter:
         self.update_field_references(rel.input.common.plan_id)
         aggregate.common.CopyFrom(self.create_common_relation())
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
+        if not symbol:
+            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
         grouping = aggregate.groupings.add()
         for idx, field in enumerate(symbol.input_fields):
             grouping.grouping_expressions.append(field_reference(idx))
@@ -1981,7 +2064,7 @@ class SparkSubstraitConverter:
         return project
 
     def convert_set_operation_relation(
-        self, rel: spark_relations_pb2.SetOperation
+            self, rel: spark_relations_pb2.SetOperation
     ) -> algebra_pb2.Rel:
         """Convert a Spark set operation relation into a Substrait set operation relation."""
         left = self.convert_relation(rel.left_input)
@@ -2035,8 +2118,10 @@ class SparkSubstraitConverter:
         self.update_field_references(rel.input.common.plan_id)
         filter_rel.common.CopyFrom(self.create_common_relation())
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
+        if not symbol:
+            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
         if rel.cols:
-            cols = [symbol.input_fields.index(col) for col in rel.cols]
+            cols = [_find_reference_number(symbol.input_fields, col) for col in rel.cols]
         else:
             cols = range(len(symbol.input_fields))
         min_non_nulls = rel.min_non_nulls if rel.min_non_nulls else len(cols)
@@ -2130,8 +2215,10 @@ class SparkSubstraitConverter:
         if plan.HasField("root"):
             rel_root = algebra_pb2.RelRoot(input=self.convert_relation(plan.root))
             symbol = self._symbol_table.get_symbol(plan.root.common.plan_id)
-            for name in symbol.output_fields:
-                rel_root.names.append(name)
+            if not symbol:
+                raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
+            for field in symbol.output_fields:
+                rel_root.names.extend(field.output_names())
             result.relations.append(plan_pb2.PlanRel(root=rel_root))
         for uri in sorted(self._function_uris.items(), key=operator.itemgetter(1)):
             result.extension_uris.append(

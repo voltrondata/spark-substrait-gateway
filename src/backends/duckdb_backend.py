@@ -4,7 +4,6 @@
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import List
 
 import duckdb
 import pyarrow as pa
@@ -12,9 +11,8 @@ import pyarrow.parquet as pq
 from substrait.gen.proto import plan_pb2
 
 from backends.backend import Backend
-from transforms.rename_functions import RenameFunctionsForDuckDB
-
 from src.backends.arrow_tools import reapply_names
+from transforms.rename_functions import RenameFunctionsForDuckDB
 
 
 # pylint: disable=fixme
