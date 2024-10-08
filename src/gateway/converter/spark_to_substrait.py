@@ -61,13 +61,13 @@ from gateway.converter.symbol_table import Field, SymbolTable
 
 
 class InternalError(Exception):
-    pass
+    """Raised when there is an internal gateway issue (should not occur)."""
 
 
 class ExpressionProcessingMode(Enum):
     """The mode of processing expressions."""
 
-    # Processing of an expression outside of an aggregate relation.
+    # Processing of an expression outside an aggregate relation.
     NORMAL = 0
     # Processing of a measure at depth 0.
     AGGR_TOP_LEVEL = 1
@@ -145,10 +145,11 @@ class SparkSubstraitConverter:
         """Use the field references using the specified portion of the plan."""
         source_symbol = self._symbol_table.get_symbol(plan_id)
         if not source_symbol:
-            raise InternalError(f'Could not find plan id {plan_id} that we constructed earlier.')
+            raise InternalError(f'Could not find plan id {plan_id} constructed earlier.')
         current_symbol = self._symbol_table.get_symbol(self._current_plan_id)
         if not current_symbol:
-            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
+            raise InternalError(
+                f'Could not find plan id {self._current_plan_id} constructed earlier.')
         original_output_fields = current_symbol.output_fields
         for symbol in source_symbol.output_fields:
             new_symbol = symbol
@@ -161,7 +162,8 @@ class SparkSubstraitConverter:
         """Look up the field name in the current set of field references."""
         current_symbol = self._symbol_table.get_symbol(self._current_plan_id)
         if not current_symbol:
-            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
+            raise InternalError(
+                f'Could not find plan id {self._current_plan_id} constructed earlier.')
         try:
             return _find_reference_number(current_symbol.input_fields, field_name)
         except ValueError:
@@ -895,7 +897,8 @@ class SparkSubstraitConverter:
 
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         if not symbol:
-            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
+            raise InternalError(
+                f'Could not find plan id {self._current_plan_id} constructed earlier.')
         if self._conversion_options.use_duckdb_struct_name_behavior:
             for field_name in self.get_primary_names(schema):
                 symbol.output_fields.append(Field(field_name))
@@ -1154,7 +1157,8 @@ class SparkSubstraitConverter:
             schema = self.convert_arrow_schema(arrow_schema)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         if not symbol:
-            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
+            raise InternalError(
+                f'Could not find plan id {self._current_plan_id} constructed earlier.')
         for field_name in schema.names:
             symbol.output_fields.append(Field(field_name))
         if self._conversion_options.use_named_table_workaround:
@@ -1226,7 +1230,8 @@ class SparkSubstraitConverter:
             return algebra_pb2.RelCommon(direct=algebra_pb2.RelCommon.Direct())
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         if not symbol:
-            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
+            raise InternalError(
+                f'Could not find plan id {self._current_plan_id} constructed earlier.')
         emit = algebra_pb2.RelCommon.Emit()
         if emit_overrides:
             for field_number in emit_overrides:
@@ -1310,7 +1315,8 @@ class SparkSubstraitConverter:
         aggregate.common.CopyFrom(self.create_common_relation())
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         if not symbol:
-            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
+            raise InternalError(
+                f'Could not find plan id {self._current_plan_id} constructed earlier.')
 
         # Start tracking the parts of the expressions we are interested in.
         self._top_level_projects = []
@@ -1493,7 +1499,8 @@ class SparkSubstraitConverter:
         self.update_field_references(rel.input.common.plan_id)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         if not symbol:
-            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
+            raise InternalError(
+                f'Could not find plan id {self._current_plan_id} constructed earlier.')
 
         # Find the length of each column in every row.
         project1 = project_relation(
@@ -1528,7 +1535,8 @@ class SparkSubstraitConverter:
             ],
         )
 
-        def field_header_fragment(fields: list[Field], field_number: int) -> list[algebra_pb2.Expression]:
+        def field_header_fragment(fields: list[Field],
+                                  field_number: int) -> list[algebra_pb2.Expression]:
             return [
                 string_literal("|"),
                 lpad_function(
@@ -1544,7 +1552,8 @@ class SparkSubstraitConverter:
                 repeat_function(repeat_func, "-", field_reference(field_number)),
             ]
 
-        def field_body_fragment(fields: list[Field], field_number: int) -> list[algebra_pb2.Expression]:
+        def field_body_fragment(fields: list[Field],
+                                field_number: int) -> list[algebra_pb2.Expression]:
             return [
                 string_literal("|"),
                 if_then_else_operation(
@@ -1584,7 +1593,8 @@ class SparkSubstraitConverter:
                 concat(
                     concat_func,
                     flatten(
-                        [field_header_fragment(fields, field_number) for field_number in range(len(fields))]
+                        [field_header_fragment(fields, field_number)
+                         for field_number in range(len(fields))]
                     )
                     + [
                         string_literal("|\n"),
@@ -1651,7 +1661,8 @@ class SparkSubstraitConverter:
 
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         if not symbol:
-            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
+            raise InternalError(
+                f'Could not find plan id {self._current_plan_id} constructed earlier.')
         symbol.output_fields.clear()
         symbol.output_fields.append(Field("show_string"))
 
@@ -1693,7 +1704,8 @@ class SparkSubstraitConverter:
         self.update_field_references(rel.input.common.plan_id)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         if not symbol:
-            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
+            raise InternalError(
+                f'Could not find plan id {self._current_plan_id} constructed earlier.')
         proposed_expressions = [field_reference(i) for i in range(len(symbol.input_fields))]
         for alias in rel.aliases:
             if len(alias.name) != 1:
@@ -1721,7 +1733,8 @@ class SparkSubstraitConverter:
         input_rel = self.convert_relation(rel.input)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         if not symbol:
-            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
+            raise InternalError(
+                f'Could not find plan id {self._current_plan_id} constructed earlier.')
         self.update_field_references(rel.input.common.plan_id)
         symbol.output_fields.clear()
         if hasattr(rel, "renames"):
@@ -1742,7 +1755,8 @@ class SparkSubstraitConverter:
         self.update_field_references(rel.input.common.plan_id)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         if not symbol:
-            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
+            raise InternalError(
+                f'Could not find plan id {self._current_plan_id} constructed earlier.')
         if rel.columns:
             column_names = [c.unresolved_attribute.unparsed_identifier for c in rel.columns]
         else:
@@ -1766,7 +1780,8 @@ class SparkSubstraitConverter:
         self.update_field_references(rel.input.common.plan_id)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         if not symbol:
-            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
+            raise InternalError(
+                f'Could not find plan id {self._current_plan_id} constructed earlier.')
         if len(rel.column_names) != len(symbol.input_fields):
             raise ValueError(
                 "column_names does not match the number of input fields at "
@@ -1844,7 +1859,8 @@ class SparkSubstraitConverter:
             raise ValueError(f'Received an empty schema in plan id {self._current_plan_id}')
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         if not symbol:
-            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
+            raise InternalError(
+                f'Could not find plan id {self._current_plan_id} constructed earlier.')
         for field_name in schema.names:
             symbol.output_fields.append(Field(field_name))
         read.base_schema.CopyFrom(schema)
@@ -1857,7 +1873,8 @@ class SparkSubstraitConverter:
         plan = self._sql_backend.convert_sql(rel.query)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         if not symbol:
-            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
+            raise InternalError(
+                f'Could not find plan id {self._current_plan_id} constructed earlier.')
         for field_name in plan.relations[0].root.names:
             symbol.output_fields.append(Field(field_name))
         # TODO -- Correctly capture all the used functions and extensions.
@@ -1925,14 +1942,14 @@ class SparkSubstraitConverter:
                 left_symbol = self._symbol_table.get_symbol(rel.left.common.plan_id)
                 if not left_symbol:
                     raise InternalError(
-                        f'Could not find plan id {rel.left.common.plan_id} that we constructed earlier.')
+                        f'Could not find plan id {rel.left.common.plan_id} constructed earlier.')
                 left_fields = left_symbol.output_fields
                 left_column_count = len(left_fields)
                 left_column_reference = _find_reference_number(left_fields, column_name)
                 right_symbol = self._symbol_table.get_symbol(rel.right.common.plan_id)
                 if not right_symbol:
                     raise InternalError(
-                        f'Could not find plan id {rel.right.common.plan_id} that we constructed earlier.')
+                        f'Could not find plan id {rel.right.common.plan_id} constructed earlier.')
                 right_fields = right_symbol.output_fields
                 right_column_reference = _find_reference_number(right_fields, column_name)
                 join.expression.CopyFrom(
@@ -1946,7 +1963,8 @@ class SparkSubstraitConverter:
                 # Avoid emitting the join column twice.
                 symbol = self._symbol_table.get_symbol(self._current_plan_id)
                 if not symbol:
-                    raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
+                    raise InternalError(
+                        f'Could not find plan id {self._current_plan_id} constructed earlier.')
                 if self._conversion_options.join_not_honoring_emit_workaround:
                     project = algebra_pb2.ProjectRel(input=algebra_pb2.Rel(join=join))
                     for column_number in range(len(symbol.output_fields)):
@@ -1962,10 +1980,8 @@ class SparkSubstraitConverter:
         return algebra_pb2.Rel(join=join)
 
     def find_additional_names(self, expr: spark_exprs_pb2.Expression) -> list[str]:
-        if expr.WhichOneof("expr_type") == "alias":
-            current_expr = expr.alias.expr
-        else:
-            current_expr = expr
+        """Find any extra names used by this expression."""
+        current_expr = expr.alias.expr if expr.WhichOneof("expr_type") == "alias" else expr
         if current_expr.unresolved_function.function_name == "struct":
             new_names = []
             for arg in current_expr.unresolved_function.arguments:
@@ -1981,7 +1997,8 @@ class SparkSubstraitConverter:
         self.update_field_references(rel.input.common.plan_id)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         if not symbol:
-            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
+            raise InternalError(
+                f'Could not find plan id {self._current_plan_id} constructed earlier.')
         for field_number, expr in enumerate(rel.expressions):
             if expr.WhichOneof("expr_type") == "unresolved_regex":
                 regex = expr.unresolved_regex.col_name.replace("`", "")
@@ -1990,7 +2007,8 @@ class SparkSubstraitConverter:
                 for column in symbol.input_fields:
                     if matcher.match(column.name):
                         project.expressions.append(
-                            field_reference(_find_reference_number(symbol.input_fields, column.name))
+                            field_reference(
+                                _find_reference_number(symbol.input_fields, column.name))
                         )
                         symbol.generated_fields.append(column)
                         symbol.output_fields.append(column)
@@ -2035,7 +2053,8 @@ class SparkSubstraitConverter:
         aggregate.common.CopyFrom(self.create_common_relation())
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         if not symbol:
-            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
+            raise InternalError(
+                f'Could not find plan id {self._current_plan_id} constructed earlier.')
         grouping = aggregate.groupings.add()
         for idx, field in enumerate(symbol.input_fields):
             grouping.grouping_expressions.append(field_reference(idx))
@@ -2118,7 +2137,8 @@ class SparkSubstraitConverter:
         filter_rel.common.CopyFrom(self.create_common_relation())
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         if not symbol:
-            raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
+            raise InternalError(
+                f'Could not find plan id {self._current_plan_id} constructed earlier.')
         if rel.cols:
             cols = [_find_reference_number(symbol.input_fields, col) for col in rel.cols]
         else:
@@ -2215,7 +2235,8 @@ class SparkSubstraitConverter:
             rel_root = algebra_pb2.RelRoot(input=self.convert_relation(plan.root))
             symbol = self._symbol_table.get_symbol(plan.root.common.plan_id)
             if not symbol:
-                raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
+                raise InternalError(
+                    f'Could not find plan id {self._current_plan_id} constructed earlier.')
             for field in symbol.output_fields:
                 rel_root.names.extend(field.output_names())
             result.relations.append(plan_pb2.PlanRel(root=rel_root))

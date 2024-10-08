@@ -2,6 +2,7 @@
 """Routines to convert SparkConnect plans to Substrait plans."""
 
 import dataclasses
+from typing import Self
 
 
 @dataclasses.dataclass
@@ -17,13 +18,15 @@ class Field:
         self.name = name
         self.child_names = child_names or []
 
-    def alias(self, name: str):
+    def alias(self, name: str) -> Self:
+        """Create a copy with an alternate name."""
         new_field = Field(name)
         new_field.child_names = self.child_names
         return new_field
 
     def output_names(self) -> list[str]:
-        return [self.name] + self.child_names
+        """Return all of the names used by this field (including subtypes)."""
+        return [self.name, *self.child_names]
 
 
 @dataclasses.dataclass
