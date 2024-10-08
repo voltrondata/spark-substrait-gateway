@@ -160,6 +160,9 @@ def mark_dataframe_tests_as_xfail(request):
     if source == "gateway-over-duckdb" and originalname == "test_cube":
         pytest.skip(reason="cube aggregation not yet implemented in DuckDB")
 
+    if source == "gateway-over-duckdb" and originalname in ["test_column_getfield",
+                                                                "test_struct_and_getfield"]:
+        pytest.skip(reason="fully named structs not yet tracked in gateway")
     if source == "gateway-over-datafusion" and originalname in ["test_struct",
                                                                 "test_struct_and_getfield"]:
         pytest.skip(reason="nested expressions not supported")

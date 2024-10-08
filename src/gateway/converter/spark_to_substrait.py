@@ -786,17 +786,16 @@ class SparkSubstraitConverter:
                 value=self.convert_unresolved_attribute(extract.child.unresolved_attribute)
             )
         )
-        # MEGAHACK -- here
-        # MEGAHACK -- Fix this to be relative to the struct value we found above.
         field_ref = self.find_field_by_name(extract.extraction.literal.string)
         if field_ref is None:
-            raise ValueError(
-                f"could not locate field named {extract.extraction.literal.string} in plan id "
-                f"{self._current_plan_id}"
+            func.arguments.append(
+                algebra_pb2.FunctionArgument(value=string_literal(extract.extraction.literal.string))
             )
-        func.arguments.append(
-            algebra_pb2.FunctionArgument(value=integer_literal(field_ref + 1))
-        )
+        else:
+            # TODO -- Fix this to be relative to the struct value we found above.
+            func.arguments.append(
+                algebra_pb2.FunctionArgument(value=integer_literal(field_ref + 1))
+            )
         return algebra_pb2.Expression(scalar_function=func)
 
     def convert_expression(self, expr: spark_exprs_pb2.Expression) -> algebra_pb2.Expression | None:
