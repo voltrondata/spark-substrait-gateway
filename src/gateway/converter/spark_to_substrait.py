@@ -1359,7 +1359,7 @@ class SparkSubstraitConverter:
         rel_grouping_expressions = rel.grouping_expressions
         for idx, grouping in enumerate(rel_grouping_expressions):
             grouping_expression_list.append(self.convert_expression(grouping))
-            symbol.generated_fields.append(self.determine_name_for_grouping(grouping))
+            symbol.generated_fields.append(Field(self.determine_name_for_grouping(grouping)))
             self._top_level_projects.append(field_reference(idx))
 
         match rel.group_type:

@@ -2850,7 +2850,6 @@ class TestDataFrameDecisionSupport:
 class TestDataFrameComplexDatastructures:
     """Tests the use of complex datastructures in the dataframe side of SparkConnect."""
 
-    @pytest.mark.interesting
     def test_struct(self, register_tpch_dataset, spark_session, caplog):
         expected = [
             Row(test_struct=Row(c_custkey=1, c_name='Customer#000000001')),
@@ -2865,7 +2864,6 @@ class TestDataFrameComplexDatastructures:
 
         assertDataFrameEqual(outcome, expected)
 
-    @pytest.mark.interesting
     def test_struct_and_getfield(self, register_tpch_dataset, spark_session, caplog):
         expected = [
             Row(result=1),
