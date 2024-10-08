@@ -1860,7 +1860,7 @@ class SparkSubstraitConverter:
         if not symbol:
             raise InternalError(f'Could not find plan id {self._current_plan_id} that we constructed earlier.')
         for field_name in plan.relations[0].root.names:
-            symbol.output_fields.append(field_name)
+            symbol.output_fields.append(Field(field_name))
         # TODO -- Correctly capture all the used functions and extensions.
         self._saved_extension_uris = plan.extension_uris
         self._saved_extensions = plan.extensions
