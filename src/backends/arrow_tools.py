@@ -41,11 +41,17 @@ def reapply_names(table: pa.Table, names: list[str]) -> pa.Table:
 
     remaining_names = names
     for column in iter(table.columns):
+        if not remaining_names:
+            raise ValueError('Insufficient number of names provided to reapply names.')
+
         this_name = remaining_names.pop(0)
 
         new_array, remaining_names = _reapply_names_to_type(column, remaining_names)
         new_arrays.append(new_array)
 
         new_schema.append(pa.field(this_name, new_array.type))
+
+    if remaining_names:
+        raise ValueError('Too many names provided to reapply names.')
 
     return pa.Table.from_arrays(new_arrays, schema=pa.schema(new_schema))

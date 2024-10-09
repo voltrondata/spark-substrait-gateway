@@ -24,7 +24,7 @@ class Field:
         return new_field
 
     def output_names(self) -> list[str]:
-        """Return all of the names used by this field (including subtypes)."""
+        """Return all the names used by this field (including subtypes)."""
         return [self.name, *self.child_names]
 
 
