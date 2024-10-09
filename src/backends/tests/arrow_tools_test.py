@@ -60,7 +60,6 @@ cases: list[TestCase] = [
 ]
 
 
-@pytest.mark.interesting
 class TestArrowTools:
     """Tests the functionality of the arrow tools package."""
 
