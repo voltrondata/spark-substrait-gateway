@@ -5,20 +5,44 @@ import dataclasses
 
 
 @dataclasses.dataclass
+class Field:
+    """Tracks the names used by a field used as the input or output of a relation."""
+
+    name: str
+    # TODO -- Also track the field's type.
+    child_names: list[str]
+
+    def __init__(self, name: str, child_names=None):
+        """Create the Field structure."""
+        self.name = name
+        self.child_names = child_names or []
+
+    def alias(self, name: str):
+        """Create a copy with an alternate name."""
+        new_field = Field(name)
+        new_field.child_names = self.child_names
+        return new_field
+
+    def output_names(self) -> list[str]:
+        """Return all the names used by this field (including subtypes)."""
+        return [self.name, *self.child_names]
+
+
+@dataclasses.dataclass
 class PlanMetadata:
     """Tracks various information about a specific plan id."""
 
     plan_id: int
-    type: str | None
+    symbol_type: str | None
     parent_plan_id: int | None
-    input_fields: list[str]  # And maybe type
-    generated_fields: list[str]
-    output_fields: list[str]
+    input_fields: list[Field]
+    generated_fields: list[Field]
+    output_fields: list[Field]
 
     def __init__(self, plan_id: int):
         """Create the PlanMetadata structure."""
         self.plan_id = plan_id
-        self.symbol_type = None
+        self.symbol_type = None  # Useful when debugging.
         self.parent_plan_id = None
         self.input_fields = []
         self.generated_fields = []

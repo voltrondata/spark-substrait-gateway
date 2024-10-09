@@ -11,7 +11,7 @@ from backends.backend_options import BackendEngine, BackendOptions
 class ConversionOptions:
     """Holds all the possible conversion options."""
 
-    def __init__(self, backend: BackendOptions = None):
+    def __init__(self, backend: BackendOptions):
         """Initialize the conversion options."""
         self.use_named_table_workaround = False
         self.needs_scheme_in_path_uris = False

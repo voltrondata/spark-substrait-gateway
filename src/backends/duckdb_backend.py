@@ -11,6 +11,7 @@ import pyarrow.parquet as pq
 from substrait.gen.proto import plan_pb2
 
 from backends.backend import Backend
+from src.backends.arrow_tools import reapply_names
 from transforms.rename_functions import RenameFunctionsForDuckDB
 
 
@@ -73,7 +74,8 @@ class DuckDBBackend(Backend):
             query_result = self._connection.from_substrait(proto=plan_data)
         except Exception as err:
             raise ValueError(f"DuckDB Execution Error: {err}") from err
-        return query_result.arrow()
+        arrow = query_result.arrow()
+        return reapply_names(arrow, plan.relations[0].root.names)
 
     def register_table(
         self,

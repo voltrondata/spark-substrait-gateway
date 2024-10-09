@@ -6,6 +6,7 @@ from typing import Any
 from substrait.gen.proto import algebra_pb2, plan_pb2
 
 from gateway.converter.symbol_table import SymbolTable
+from src.gateway.converter.symbol_table import Field
 from substrait_visitors.substrait_plan_visitor import SubstraitPlanVisitor
 from transforms.label_relations import get_common_section
 
@@ -48,8 +49,8 @@ class OutputFieldTrackingVisitor(SubstraitPlanVisitor):
         super().visit_read_relation(rel)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         # TODO -- Validate this logic where complicated data structures are used.
-        for field in rel.base_schema.names:
-            symbol.output_fields.append(field)
+        for field_name in rel.base_schema.names:
+            symbol.output_fields.append(Field(field_name))
 
     def visit_filter_relation(self, rel: algebra_pb2.FilterRel) -> Any:
         """Collect the field references from the filter relation."""
@@ -66,9 +67,9 @@ class OutputFieldTrackingVisitor(SubstraitPlanVisitor):
         super().visit_aggregate_relation(rel)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         for _ in rel.groupings:
-            symbol.generated_fields.append("grouping")
+            symbol.generated_fields.append(Field("grouping"))
         for _ in rel.measures:
-            symbol.generated_fields.append("measure")
+            symbol.generated_fields.append(Field("measure"))
         self.update_field_references(get_plan_id(rel.input))
 
     def visit_sort_relation(self, rel: algebra_pb2.SortRel) -> Any:
@@ -81,7 +82,7 @@ class OutputFieldTrackingVisitor(SubstraitPlanVisitor):
         super().visit_project_relation(rel)
         symbol = self._symbol_table.get_symbol(self._current_plan_id)
         for _ in rel.expressions:
-            symbol.generated_fields.append("intermediate")
+            symbol.generated_fields.append(Field("intermediate"))
         self.update_field_references(get_plan_id(rel.input))
 
     def visit_extension_single_relation(self, rel: algebra_pb2.ExtensionSingleRel) -> Any:

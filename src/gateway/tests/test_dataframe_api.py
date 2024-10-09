@@ -57,6 +57,7 @@ from pyspark.sql.functions import (
     rtrim,
     sqrt,
     startswith,
+    struct,
     substr,
     substring,
     trim,
@@ -158,6 +159,13 @@ def mark_dataframe_tests_as_xfail(request):
         pytest.skip(reason="rollup aggregation not yet implemented in gateway")
     if source == "gateway-over-duckdb" and originalname == "test_cube":
         pytest.skip(reason="cube aggregation not yet implemented in DuckDB")
+
+    if source == "gateway-over-duckdb" and originalname in ["test_column_getfield",
+                                                                "test_struct_and_getfield"]:
+        pytest.skip(reason="fully named structs not yet tracked in gateway")
+    if source == "gateway-over-datafusion" and originalname in ["test_struct",
+                                                                "test_struct_and_getfield"]:
+        pytest.skip(reason="nested expressions not supported")
 
 
 # ruff: noqa: E712
@@ -2791,7 +2799,7 @@ def userage_dataframe(spark_session_for_setup):
 
 
 class TestDataFrameDecisionSupport:
-    """Tests data science methods of the dataframe side of SparkConnect."""
+    """Tests decision support methods of the dataframe side of SparkConnect."""
 
     def test_groupby(self, userage_dataframe):
         expected = [
@@ -2838,5 +2846,37 @@ class TestDataFrameDecisionSupport:
         with utilizes_valid_plans(userage_dataframe):
             outcome = userage_dataframe.cube("name", "age").count().orderBy("name",
                                                                             "age").collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+
+class TestDataFrameComplexDatastructures:
+    """Tests the use of complex datastructures in the dataframe side of SparkConnect."""
+
+    def test_struct(self, register_tpch_dataset, spark_session, caplog):
+        expected = [
+            Row(test_struct=Row(c_custkey=1, c_name='Customer#000000001')),
+            Row(test_struct=Row(c_custkey=2, c_name='Customer#000000002')),
+            Row(test_struct=Row(c_custkey=3, c_name='Customer#000000003')),
+        ]
+
+        # TODO -- Validate once the validator supports nested expressions.
+        customer_df = spark_session.table("customer")
+        outcome = customer_df.select(
+            struct(col('c_custkey'), col('c_name')).alias('test_struct')).limit(3).collect()
+
+        assertDataFrameEqual(outcome, expected)
+
+    def test_struct_and_getfield(self, register_tpch_dataset, spark_session, caplog):
+        expected = [
+            Row(result=1),
+        ]
+
+        # TODO -- Validate once the validator supports nested expressions.
+        customer_df = spark_session.table("customer")
+        outcome = customer_df.select(
+            struct(col('c_custkey'), col('c_name')).alias('test_struct')).agg(
+            pyspark.sql.functions.min(col('test_struct').getField('c_custkey')).alias(
+                'result')).collect()
 
         assertDataFrameEqual(outcome, expected)
